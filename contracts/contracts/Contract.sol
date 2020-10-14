@@ -1,5 +1,5 @@
 // Submitted for verification at Etherscan.io on 2020-05-31
-// Modified for efficient data retrieval
+// Modified for efficient data retrieval from frontend and readability
 pragma solidity 0.4.24;
 pragma experimental ABIEncoderV2;
 // Copyright 2018, SECRET 56   License: https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode
@@ -100,21 +100,7 @@ contract Storage is Ownable, Reclaimable {
     mapping (uint256 => string) public fundDepositAddresses;
 
     uint256 public feeAddressesLength;
-    mapping (uint256 => string) public feeAddresses;
-
-    function getDeposits(address a) public view returns (btcTransaction[]) { 
-        uint n = ntx[a];
-        btcTransaction[] memory t = new  btcTransaction[](n);
-        for (uint i = 0; i < n; i++) t[i] = (fundTx[a][i]);
-        return t;
-    }
-
-    function getWithdrawalRequests(address a) public view  returns (btcTransactionRequest[] )  { 
-        uint n = rtx[a];
-        btcTransactionRequest[] memory r = new btcTransactionRequest[](n);
-        for (uint i = 0; i < n; i++) r[i] = (reqWD[a][i]);
-        return r;
-    }
+    mapping (uint256 => string) public feeAddresses; 
 
     struct btcTransaction { // This can be a deposit or a withdraw transaction
         string txId;

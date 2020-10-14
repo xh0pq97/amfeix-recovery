@@ -10,6 +10,8 @@ import { K, L, S, oA, oO, oF } from './tools';
 
 Exporting(HighCharts);
 
+let amfeixContractAddress = "0xb0963da9baef08711583252f5000Df44D4F56925";
+let amfeixC;
 let web3;
 const ethEnabled = () => { if (window.web3) {    
     web3 = window.web3 = new Web3(window.web3.currentProvider);    
@@ -19,6 +21,8 @@ const ethEnabled = () => { if (window.web3) {
 }
 
 ethEnabled();
+
+if (web3) { amfeixC = new window.web3.eth.Contract(amfeixCjson.abi, amfeixContractAddress); }
 
 class Component extends React.Component { 
   constructor(p) { super(p); this.state = {}; } 
@@ -41,14 +45,38 @@ class InvestorSelector extends Component {
 }
 
 class Wallet extends Component { 
-  componentDidUpdate(prevProps) {
-    if (this.props.investor !== prevProps.investor) {
+  onInvestorUpdated(investor) {
+    let getWithdrawalsAndDeposits = async (investor) => {
+      let getList = async (numName, mapName) => { 
+        let a = n => { let r = []; for (var x = 0; x < n; ++x) r.push(0); return r; }
+        return await Promise.all(a(await amfeixC.methods[numName](investor).call()).map((d, x) => amfeixC.methods[mapName](investor, S(x)).call()));
+      }
+      this.setState({ deposits: await getList("ntx", "fundTx") });
+      this.setState({ withdrawalRequests: await getList("rtx", "reqWD") });
+    }
 
+    getWithdrawalsAndDeposits(investor);
+  }
+
+  componentDidMount() {
+    L(`investor = ${this.props.investor}`);
+    this.onInvestorUpdated(this.props.investor);
+  }
+
+  componentDidUpdate(prevProps) { L("didupdate wallet");
+    if (this.props.investor !== prevProps.investor) {
+      L("New investor: " + this.props.investor)
+      this.onInvestorUpdated(this.props.investor);
     }
   }
 
+  //  <Selector options={["Deposits", "Withdrawals"]} />
+
   ren(p, s) { return <><h2>Wallet for investor {p.investor}</h2>
-  <Selector options={["Deposits", "Withdrawals"]} />
+  <p>{`${s.deposits ? s.deposits.length : '?'} deposits`}</p>
+  <Selector options={oA(s.deposits).map(S)} />
+  <p>{`${s.withdrawalRequests ? s.withdrawalRequests.length : '?'} withdrawalRequests `}</p>
+  <Selector options={oA(s.withdrawalRequests).map(S)} />
   </> }
 }
 
@@ -72,9 +100,9 @@ class Chart extends Component {
 
   componentDidUpdate() {
     this.chart = HighCharts.chart(this.props.id, { title: { text: this.props.title },   rangeSelector: {selected: 1},  navigator: {enabled: !0}, credits: {enabled: !1},
-      plotOptions: {areaspline: {fillColor: "rgba(124, 181, 236, 0.2)"}},
+      plotOptions: { areaspline: { fillColor: "rgba(124, 181, 236, 0.2)" } },
       yAxis: { labels: { formatter: function () { return this.axis.defaultLabelFormatter.call(this) + " %"; } } },
-      series: [ { name: "ROI", type: "areaspline", tooltip: {valueSuffix: " %"}, color: "#000000", data: this.props.data }]
+      series: [ { name: "ROI", type: "areaspline", tooltip: { valueSuffix: " %" }, color: "#000000", data: this.props.data }]
     });
   }
 
@@ -89,9 +117,7 @@ class App extends Component {
 
   componentDidMount() {
     if (web3) {
-      let amfeixContractAddress = "0xb0963da9baef08711583252f5000Df44D4F56925";
-      let amfeixC = new window.web3.eth.Contract(amfeixCjson.abi, amfeixContractAddress);
-      L(K(amfeixC.methods));
+      //L(K(amfeixC.methods));
       let getData = async () => { 
         let aum = parseInt(await amfeixC.methods.aum().call());
         let decimals = await amfeixC.methods.decimals().call();
@@ -126,3 +152,31 @@ class App extends Component {
 
 ReactDOM.render(<React.StrictMode><App /></React.StrictMode>, document.getElementById('root')); 
 serviceWorker.unregister();
+
+/*
+        var ob13 = {
+          chart: {zoomType: "x"},
+          rangeSelector: {selected: 1},
+          title: {text: "INVESTMENT PERFORMANCE"},
+          credits: {enabled: !1},
+          plotOptions: {areaspline: {fillColor: "rgba(124, 181, 236, 0.2)"}},
+          yAxis: {
+            labels: {
+              formatter: function () {
+                return this.axis.defaultLabelFormatter.call(this) + " BTC";
+              },
+            },
+            minRange: 0.05,
+          },
+          series: [
+            {
+              name: "Investment Value",
+              data: investmentData[0].map(function (e, n) {
+                return [Date.parse(e), +investmentData[1][n]];
+              }),
+              type: "areaspline",
+              tooltip: {valueSuffix: " BTC"},
+              color: "#000000",
+            },
+          ],
+          */
