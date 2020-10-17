@@ -2,20 +2,22 @@ import React from 'react'; import ReactDOM from 'react-dom';
 import Highcharts from 'highcharts'; import HighchartsReact from 'highcharts-react-official';
 import * as serviceWorker from './serviceWorker';
 import { D, E, F, K, L, S, V, oA, oO, oF, singleKeyObject } from './tools'; 
-import { ethBasicFields, data } from './data';
+import { amfeixFeeFields, ethBasicFields, data } from './data';
 
 let formatDate = date => { let fmt = { year: 'numeric', month: 'short', day: '2-digit', hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false };
   let d = F(E(fmt).map(([k, v]) => [k, new Intl.DateTimeFormat('en', singleKeyObject(k, v)).format(date)])); 
   return `${d.month} ${d.day}, ${d.year} @ ${d.hour}:${d.minute}:${d.second}`;
 }, formatTimestamp = timestamp => formatDate(new Date(1000*timestamp));
 
-let captionMap = { timestamp: "Date", txId: "Transaction ID", deposits: "Deposits", withdrawals: "Withdrawals", withdrawalRequests: "Withdrawal Requests", _: "" };
+let captionMap = { timestamp: "Time", txId: "Transaction ID", deposits: "Deposits", withdrawals: "Withdrawals", withdrawalRequests: "Withdrawal Requests", 
+ fundDepositAddresses: "Fund deposit addresses", feeAddresses: "Fee Addresses", _: "" };
 let displayFunctions = { timestamp: formatTimestamp };
 
 class Component extends React.Component { constructor(p) { super(p); this.state = {}; }  
   render() { return this.ren(this.props, this.state); } 
   initRefs(spacedOutRefString) { this.fers = F(spacedOutRefString.split(" ").map(k => [k, React.createRef()])); }
   componentWillUnmount() { this.unmounted = true; }
+  setStateIfMounted(s) { if (!this.unmounted) this.setState(s); return !this.unmounted; }
 }
 
 class Selector extends Component {
@@ -64,12 +66,11 @@ class BitcoinWallet extends Component {
 }
 
 class FundView extends Component {
-  componentDidMount() { ethBasicFields.concat(["dailyChange", "timeData"]).map(k => data.addObserver(k, d => { this.setState(singleKeyObject(k, d)); return !this.unmounted; })); }
+  componentDidMount() { ethBasicFields.concat(["dailyChange", "timeData"]).map(k => data.addObserver(k, d => this.setStateIfMounted(singleKeyObject(k, d)))); }
 
   ren(p, s) { let changePercentage = v => D(v) ? `${v >= 0 ? "+" : "-"}${v}%` : '';
     return  <table><tbody>
     <tr><td><div>{`Daily Change: ${changePercentage(s.dailyChange)}`}</div></td><td><div>{`AUM: ${parseInt(s.aum) / Math.pow(10, s.decimals)} BTC`}</div></td><td><div>{`BTC Price: ${s.btcPrice}`}</div></td></tr>  
-    <tr><td><div>{`Fee 1: ${s.fee1}`}</div></td><td><div>{`Fee 2: ${s.fee2}`}</div></td><td><div>{`Fee 3: ${s.fee3}`}</div></td></tr>  
     <tr><td colSpan={3}><HighchartsReact highcharts={Highcharts} options={{ title: { text: 'Fund Index' }, rangeSelector: {selected: 1}, navigator: {enabled: !0}, credits: {enabled: !1},
       plotOptions: { areaspline: { fillColor: "rgba(124, 181, 236, 0.2)" } },
       yAxis: { labels: { formatter: function () { return this.axis.defaultLabelFormatter.call(this) + " %"; } } },
@@ -81,19 +82,18 @@ class FundView extends Component {
 }
 
 class InvestorView extends Component {
-  updateInvestor(investor) {  
+  updateInvestor(investor) { let fields = "deposits withdrawals withdrawalRequests bitcoinTxs".split(" ");
     if (investor) {
-      "deposits withdrawals withdrawalRequests bitcoinTxs".split(" ").forEach(k => 
-        data.addObserver(`investorData.${this.props.investor}.${k}`, (d, ctxInv) => { this.setState(L(singleKeyObject(k, d))); return investor === ctxInv && !this.unmounted; })); 
+      fields.forEach(k => data.addObserver(`investorData.${this.props.investor}.${k}`, (d, ctxInv) => (investor === ctxInv) && this.setStateIfMounted(L(singleKeyObject(k, d))), investor)); 
       data.retrieveInvestorData(investor);
-    }
+    } else this.setState(F(fields.map(f => [f, false])));
   }
 
   componentDidMount() { this.updateInvestor(this.props.investor); }
   componentDidUpdate(prevP) { let investor = this.props.investor; if (prevP.investor !== investor) this.updateInvestor(investor); }
 
-  ren(p, s) { 
-    let transactionList = d => <List headers={["timestamp", "txId", "value", "_"]} data={oA(d).map(({timestamp, txId}) => ({timestamp, txId, value: "TODO", x: "TODO"}))} />
+  ren(p, s) { let txMap = oO(s.bitcoinTxs);
+    let transactionList = d => <List headers={["timestamp", "txId", "value", "_"]} data={oA(d).map(({timestamp, txId}) => ({timestamp, txId, value: txMap[txId] || "?", x: "TODO"}))} />
     return <table><tbody> 
       <tr><td><div>Investment Value: TODO</div></td></tr>
       <tr><td colSpan={3}><TabbedView tabs={["deposits", "withdrawals", "withdrawalRequests"].map(k => ([`${captionMap[k]} ${s[k] ? `(${s[k].length})` : ''}`, transactionList(s[k])]))} /></td></tr>
@@ -110,8 +110,13 @@ class EthereumP2PNet extends Component {
   ren(p, s) { return <div /> }
 }
 
+let amfeixAddressLists = ["fundDepositAddresses", "feeAddresses"];
 class EthereumContract extends Component {
-  ren(p, s) { return <div /> }
+  componentDidMount() { amfeixAddressLists.concat(amfeixFeeFields).forEach(k => data.addObserver(k, d => this.setStateIfMounted((singleKeyObject(k, d))))); }
+  ren(p, s) { return <table><tbody>
+      <tr><td colSpan={2}><table><tbody><tr><td><div>{`Fee 1: ${s.fee1}`}</div></td><td><div>{`Fee 2: ${s.fee2}`}</div></td><td><div>{`Fee 3: ${s.fee3}`}</div></td></tr></tbody></table></td></tr>
+      <tr>{amfeixAddressLists.map((k, i) => <td key={i}><p>{k}</p><List headers={["address"]} data={oA(s[k]).map(address => ({address}))} /></td>)}</tr>
+    </tbody></table> }
 }
 
 class MainView extends Component {
@@ -121,7 +126,7 @@ class MainView extends Component {
 }
 
 class App extends Component { constructor(p) { super(p); }
-  componentDidMount() { data.addObserver("investors", investors => { this.setState({ investors }); return !this.unmounted; }); }
+  componentDidMount() { data.addObserver("investors", investors => this.setStateIfMounted({ investors })); }
 
   ren(p, s) { let investorViewLimit = 33;
     return <><table><tbody><tr>
