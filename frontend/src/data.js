@@ -2,6 +2,7 @@ import Web3 from 'web3';
 import BN from 'bn.js';
 import amfeixCjson from './amfeixC.json'; 
 import { A, D, E, F, H, K, L, S, V, oA, oO, oF, isO, isA } from './tools'; 
+import { IndexedDB } from './indexedDB';
 
 const btcRpcUrl = `http://157.245.35.34/`, 
 ethInterfaceUrl = "ws://46.101.6.38/ws"; 
@@ -13,8 +14,7 @@ const amfeixM = amfeixC.methods;
 
 let amfeixFeeFields = "fee1 fee2 fee3".split(" ");
 let invMap = (countTable, dataTable) => ({countTable, dataTable});
-let arrays = "investorsAddresses time amount".split(" "), 
-indexMaps = "feeAddresses fundDepositAddresses".split(" "), 
+let arrays = "investorsAddresses time amount".split(" "), indexMaps = "feeAddresses fundDepositAddresses".split(" "), 
 investorMaps = [invMap("ntx", "fundTX"), invMap("rtx", "reqWD")]; 
 let ethBasicFields = "owner aum decimals btcPrice".split(" ").concat(amfeixFeeFields).concat(indexMaps.map(k => `${k}Length`));
 const btcFields = "blockcount connectioncount difficulty blockchaininfo".split(" ");
@@ -22,7 +22,7 @@ const btcFields = "blockcount connectioncount difficulty blockchaininfo".split("
 let btcRpc = async (method, func, params) => ((await fetch(`${btcRpcUrl}${func}/${method === "GET" ? `?${E(oO(params)).map(x => x.map(encodeURIComponent).join("=")).join("&")}` : ''}`, 
  { method, mode: 'cors', headers: { "content-type": "application/json" }, ...(method === "POST" ? { body: S({params}) }: {}) })).json());
 
-let tableStrucMap = {}
+export let tableStrucMap = {}
 let hierName = (o, p) => F(E(o).map(([k, v]) => { let q = p ? [p, k].join("-") : k; return [k, isA(v) ? (tableStrucMap[q] = {...v[0], table: q}, q) : hierName(v, q)]; }));
 let struc = (keyPath, indices) => [{ keyPath, indices }];
 let tables = hierName({ 
@@ -36,39 +36,6 @@ let tables = hierName({
     transactions: struc(["hash"], [["hash", "hash", true]])
   } 
 });
-//L({tables}); L({tableStrucMap});
-
-class IndexedDB {
-  constructor(name) { this.name = name;
-    this.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB; 
-    this.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction;
-    this.IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange; 
-  }
-
-  async init() { L("Initializing db.")
-    this.db = await new Promise((resolve, reject) => A(this.indexedDB.open(this.name, 1), { onerror: e => reject(`DB Error: ${e.target.error}`), onsuccess: e => { L("DB opened."); resolve(e.target.result); },
-      onupgradeneeded: e => (async () => { let db = e.target.result; L("Upgrading db.");
-        await Promise.all((V(tableStrucMap)).map((({table, keyPath, indices}) => new Promise((resolve, reject) => { //L(`Creating table '${table}'`);
-          let os = db.createObjectStore(table, { keyPath });
-          oA(indices).forEach(i => os.createIndex(i[0], i[1], { unique: i[2] }));
-          os.transaction.oncomplete = () => { L(`Object store created: ${L(K(os))}`); resolve(os) };
-          os.transaction.onerror = () => reject(`Creating table '${table}' failed`);
-        })))); 
-        L("DB structure initialized."); 
-        resolve(db);
-      })()
-    }));
-  }
-
-  getTx(table, label, reject) { let tx = this.db.transaction([table], "readwrite"); return A(tx, { onerror: () => (tx.error !== null) && reject(`Error on ${label} for ${table}: ${tx.error}`) }); }
-  getOS(table, label, reject) { return this.getTx(table, label, reject).objectStore(table); }
-  act(table, label, input, getData) { return new Promise((resolve, reject) => { this.getOS(table, label, reject)[label](input).onsuccess = e => resolve(getData(e)); }); }
-  add(table, data) { return this.act(table, "add", data, () => data); }
-  put(table, data) { return this.act(table, "put", data, () => data); } 
-  get(table, data) { return this.act(table, "get", [data[tableStrucMap[table].keyPath[0]]], e => e.target.result); }
-  count(table) { return this.act(table, "count", undefined, e => e.target.result); } 
-  write(table, data) { return this.get(table, data).catch(() => this.add(table, data)).then(() => this.put(table, data)) } 
-}
 
 class Data {
   constructor() { 
@@ -94,7 +61,7 @@ class Data {
       //    setEthData("dailyChange", parseInt(L(timeData[1][timeData[1].length - 1]))/L(this.getFactor())); 
   //      })()
       ]);  
-  //    await Promise.all([...investorMaps.map(m => this.updateInvestorMappedArray(m.dataTable, m))]);
+//      await Promise.all([...investorMaps.map(m => this.updateInvestorMappedArray(onLoadProgress('investors'), m.dataTable, m))]);
     })();
   }
 
@@ -104,7 +71,7 @@ class Data {
     this.updateLoadProgress(onLoadProgress, alsi.startIndex, alsi.length);
     //L(`galsi(${countTable}, ${S(countKey)}, ${lengthName}, ${parms}) ==> ${S({ length, startIndex })}`) 
     return ({ startIndex: 0, ...alsi });
-  }
+  } 
 
   updateLoadProgress(onLoadProgress, index, length, fin) { //L({index ,length})
     if ((index % 20 === 0) || (index === length) || fin) onLoadProgress({ msg: `${index}${D(length) ? `/${length}` : ''}`, p: D(length) && (index/length)});
@@ -128,9 +95,10 @@ class Data {
     let investorCount = await this.idb.count("investorsAddresses");
     for (let investorIx = 0; investorIx < investorCount; ++investorIx) { let countKey = { investorIx };
       let investor = this.getData("investorsAddresses", { index: investorIx });
-      let parms = [investor.address];
-      let alsi = await this.getArrayLengthAndStartIndex(onLoadProgress, countTable, countKey, countTable, parms);
-      this.updateGenericArray(onLoadProgress, name, L(alsi), countKey, countTable, dataTable, parms);
+      let parms = [investor.address]; 
+      this.updateLoadProgress(onLoadProgress, investorIx, investorCount);
+      let alsi = await this.getArrayLengthAndStartIndex(() => {}, countTable, countKey, countTable, parms);
+      this.updateGenericArray(() => {}, name, L(alsi), countKey, countTable, dataTable, parms);
     }
   }
 
