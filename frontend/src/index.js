@@ -181,6 +181,7 @@ class MainView extends Component {
 
 class App extends Component { constructor(p) { super(p); this.initRefs("mode"); }
   componentDidMount() { 
+    data.addObserver("loadProgress", loadProgress => this.setStateIfMounted({ loadProgress })); 
     data.addObserver("investors", investors => this.setStateIfMounted({ investors })); 
     this.fers.mode.current.setSelectedIx(0);
   }
@@ -193,7 +194,9 @@ class App extends Component { constructor(p) { super(p); this.initRefs("mode"); 
         <Selector options={oA(s.investors).slice(0, investorViewLimit)} onChanged={i => this.setState({ investor: oA(s.investors)[i]})} vertical={true}/>
       </td>
       <td><MainView investor={s.investor} dev={s.dev} /></td>
-    </tr></tbody></table></>
+    </tr>
+    <tr><td colSpan={2}><table><tbody><tr>{E(oO(s.loadProgress)).map(([k, v], i) => <td key={i}>{`${k} = ${v.msg}`}</td>)}</tr></tbody></table></td></tr>
+    </tbody></table></>
   }
 } 
 
