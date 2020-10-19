@@ -36,29 +36,64 @@ class List extends Component {
   ren(p, s) { return <table style={{height: "100%", overflow: "scroll"}}><thead><tr>{oA(p.headers).map((x, i) => <td key={i}>{captionMap[x] || x}</td>)}</tr></thead>
     <tbody style={{overflow: "scroll"}}>{oA(p.data).map((d, i) => <tr key={i}>{oA(p.headers).map((x, j) => <td key={j}>{(displayFunctions[x] || (e => e))(d[x], d)}</td>)}</tr>)}</tbody></table>
   }
+
+  ren2(p, s) { 
+    /*return <Paper><EnhancedTableToolbar numSelected={selected.length} /><TableContainer>
+      <Table className={classes.table} aria-labelledby="tableTitle" size={true ? 'small' : 'medium'} aria-label="enhanced table" >
+        <EnhancedTableHead classes={classes} numSelected={selected.length} order={order} orderBy={orderBy} onSelectAllClick={handleSelectAllClick} onRequestSort={handleRequestSort} rowCount={rows.length} />
+        <TableBody>
+          {stableSort(rows, getComparator(order, orderBy)).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => {
+              const isItemSelected = isSelected(row.name);
+              const labelId = `enhanced-table-checkbox-${index}`;
+
+              return (
+                <TableRow hover onClick={(event) => handleClick(event, row.name)} role="checkbox" aria-checked={isItemSelected} tabIndex={-1} key={row.name} selected={isItemSelected} >
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={isItemSelected}
+                      inputProps={{ 'aria-labelledby': labelId }}
+                    />
+                  </TableCell>
+                  <TableCell component="th" id={labelId} scope="row" padding="none">
+                    {row.name}
+                  </TableCell>
+                  <TableCell align="right">{row.calories}</TableCell>
+                  <TableCell align="right">{row.fat}</TableCell>
+                  <TableCell align="right">{row.carbs}</TableCell>
+                  <TableCell align="right">{row.protein}</TableCell>
+                </TableRow>
+              );
+            })}
+          {emptyRows > 0 && (
+            <TableRow style={{ height: (dense ? 33 : 53) * emptyRows }}>
+              <TableCell colSpan={6} />
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+    <TablePagination
+      rowsPerPageOptions={[5, 10, 25]}
+      component="div"
+      count={rows.length}
+      rowsPerPage={rowsPerPage}
+      page={page}
+      onChangePage={handleChangePage}
+      onChangeRowsPerPage={handleChangeRowsPerPage}
+    />
+  </Paper> */
+  }
 }  
 
+
+/*
 class TabView extends Component {
   constructor(p) { super(p); this.initRefs("selector"); }
   setSelectedTabIx(i) { this.fers.selector.current.setSelectedIx(i); }
   ren(p, s) { return <table><thead><tr><th><Selector ref={this.fers.selector} options={p.tabs.map(x => x.title)} onChanged={i => this.setState({ selectedTabIx: i })}/></th></tr></thead>
     <tbody><tr><td>{p.tabs.map((x, j) => <div key={j} style={{ display: (j === s.selectedTabIx) ? undefined : "none" }}>{x.control}</div>)}</td></tr></tbody></table> 
   }
-}
-/*
-<Paper square>
-  <Tabs
-    value={value}
-    indicatorColor="primary"
-    textColor="primary"
-    onChange={handleChange}
-    aria-label="disabled tabs example"
-  >
-    <Tab label="Active" />
-    <Tab label="Disabled" disabled />
-    <Tab label="Active" />
-  </Tabs>
-</Paper> */
+} */
 
 class TabbedView extends Component { //constructor(p) { super(p); this.initRefs("tabControl"); } 
   componentDidMount() { this.setState({ selectTabIx: 0 }); }

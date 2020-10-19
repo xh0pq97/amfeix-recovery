@@ -11,8 +11,10 @@ const web3 = new Web3(new (ethInterfaceUrl.indexOf("ws://") === 0 ? Web3.provide
 const amfeixC = new web3.eth.Contract(amfeixCjson.abi, "0xb0963da9baef08711583252f5000Df44D4F56925"); 
 
 let amfeixFeeFields = "fee1 fee2 fee3".split(" ");
-let arrays = "investorsAddresses time amount".split(" "), mappedIndexArrays = "fundDepositAddresses feeAddresses".split(" ");
-let ethBasicFields = "owner aum decimals btcPrice".split(" ").concat(amfeixFeeFields).concat(mappedIndexArrays.map(k => `${k}Length`));
+let invMap = (countTable, dataTable) => ({countTable, dataTable});
+let arrays = "investorsAddresses time amount".split(" "), indexMaps = "feeAddresses fundDepositAddresses".split(" "), 
+investorMaps = [invMap("ntx", "fundTX"), invMap("rtx", "reqWD")];
+let ethBasicFields = "owner aum decimals btcPrice".split(" ").concat(amfeixFeeFields).concat(indexMaps.map(k => `${k}Length`));
 const btcFields = "blockcount connectioncount difficulty blockchaininfo".split(" ");
 
 let btcRpc = async (method, func, params) => ((await fetch(`${btcRpcUrl}${func}/${method === "GET" ? `?${E(oO(params)).map(x => x.map(encodeURIComponent).join("=")).join("&")}` : ''}`, 
@@ -22,10 +24,10 @@ let tableStrucMap = {}
 let hierName = (o, p) => F(E(o).map(([k, v]) => { let q = p ? [p, k].join("-") : k; return [k, isA(v) ? (tableStrucMap[q] = {...v[0], table: q}, q) : hierName(v, q)]; }));
 let struc = (keyPath, indices) => [{ keyPath, indices }];
 let tables = hierName({ 
-  eth: { ...F(arrays.map(k => [k, struc(["index"], [["data", "data", true]])])), 
+  eth: { ...F(arrays.concat(indexMaps).map(k => [k, struc(["index"], [["data", "data", true]])])), 
     constants: struc(["name"], [["name", "name", true]]), 
-    ntx: struc(["investorIx"]), transactions: struc(["investorIx", "index"], [["hash", "hash", true]]),
-    rtx: struc(["investorIx"]), withdrawalRequests: struc(["investorIx", "index"], [["hash", "hash", true]]),
+    ntx: struc(["investorIx"]), fundTX: struc(["investorIx", "index"], [["hash", "hash", true]]),
+    rtx: struc(["investorIx"]), reqWD: struc(["investorIx", "index"], [["hash", "hash", true]]),
   }, 
   btc: { 
     constants: struc(["name"], [["name", "name", true]]), 
@@ -35,11 +37,10 @@ let tables = hierName({
 //L({tables}); L({tableStrucMap});
 
 class IndexedDB {
-  constructor(name) {
+  constructor(name) { this.name = name;
     this.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB; 
     this.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction;
-    this.IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange;
-    this.name = name;
+    this.IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange; 
   }
 
   async init() { L("Initializing db.")
@@ -58,66 +59,61 @@ class IndexedDB {
   }
 
   getTx(table, label, reject) { let tx = this.db.transaction([table], "readwrite"); return A(tx, { onerror: () => (tx.error !== null) && reject(`Error on ${label} for ${table}: ${tx.error}`) }); }
-  async insert(table, data) { return await new Promise((resolve, reject) => {
-    this.getTx(table, "insert", reject).objectStore(table).add(data).onsuccess = () => resolve(data);
-  }); }
-
-  async get(table, data) { return await new Promise((resolve, reject) => {  
-    this.getTx(table, "get", reject).objectStore(table).get([data[tableStrucMap[table].keyPath[0]]]).onsuccess = e => resolve((e.target.result));
-  }); }
-
-  async put(table, data) { return await (new Promise((resolve, reject) => {
-    this.getTx(table, "put", reject).objectStore(table).put(data).onsuccess = () => resolve(data); 
-  })) 
+  getOS(table, label, reject) { return this.getTx(table, label, reject).objectStore(table); }
+  act(table, label, input, getData) { return new Promise((resolve, reject) => { this.getOS(table, label, reject)[label](input).onsuccess = e => resolve(getData(e)); }); }
+  add(table, data) { return this.act(table, "add",  data, () => data); }
+  put(table, data) { return this.act(table, "put", data, () => data); } 
+  count(table) { return this.act(table, "count", undefined, e => e.target.result); } 
+  get(table, data) { return this.act(table, "get", [data[tableStrucMap[table].keyPath[0]]], e => e.target.result); 
 }
 
-  async write(table, data) { this.get(table, data).catch(() => this.insert(table, data)).then(() => this.put(table, data)) } 
+  async write(table, data) { return await this.get(table, data).catch(() => this.add(table, data)).then(() => this.put(table, data)) } 
 }
 
 class Data {
-  constructor() { let i = A(this, { investorData: {}, observers: {}, data: {}, idb: new IndexedDB("5") }); 
+  constructor() { let i = A(this, { investorData: {}, observers: {}, data: {}, idb: new IndexedDB("42") }); 
     (async () => { await this.idb.init(); 
-      await Promise.all([arrays.map(l => this.updateArray(l)),
+      await Promise.all([...arrays.map(l => this.updateSimpleArray(l)), ...indexMaps.map(l => this.updateSimpleArray(l, `${l}Length`)),
         ...btcFields.map(name => this.getData(tables.btc.constants, { name }, async () => ({ name, value: await btcRpc("GET", `get${name}`) }))),
         ...ethBasicFields.map(name => this.getData(tables.eth.constants, { name }, async () => ({ name, value: await amfeixC.methods[name]().call() }))),
-        (async () => {  
-          let timeData = await amfeixC.methods.getAll().call(); 
-          let data = []; 
-          for (var x = 0, l = timeData[1].length, acc = 100 * this.getFactor(); x < l; ++x) data.push((acc += parseInt(timeData[1][x]))/this.getFactor()); 
+//        (async () => {  
+//          let timeData = await amfeixC.methods.getAll().call(); 
+  //        let data = []; 
+    //      for (var x = 0, l = timeData[1].length, acc = 100 * this.getFactor(); x < l; ++x) data.push((acc += parseInt(timeData[1][x]))/this.getFactor()); 
   //        let td = data.map((d, i) => [parseInt(timeData[0][i]), d]); 
   //        setEthData("timeData", td);
     //      setEthData("roi", td[td.length - 1][1] - 100);
       //    setEthData("dailyChange", parseInt(L(timeData[1][timeData[1].length - 1]))/L(this.getFactor())); 
-        })()
-      ].flat()); 
-      await Promise.all();
+  //      })()
+      ]);  
+      await Promise.all([...investorMaps.map(m => this.updateInvestorMappedArray(m))]);
     })();
   }
+/*
+  async getArrayLengthAndStartIndex(lengthName) {
+    let length = lengthName ? oO(await this.getData(countTable, { name: lengthNameKey }, async () => ({ name: lengthNameKey, value: (await amfeixC.methods[(lengthName)](...oA(parms)).call()) }))).value : undefined; 
+    let startIndex = oO(await this.getData(countTable, { name: startIndexName })).value || 0;
+    return { length, startIndex };
+  }*/
 
-  async updateArray(arrayName, numName, parms) { 
-    let key = `${arrayName}.length`; 
-    let index = oO(await this.getData(tables.eth.constants, { name: key })).value || 0;
-    L(`Array '${arrayName}' start size: ${index}`)
-    /* if (false) { L("One-shot investor address list initialization.");
-      let investors = await amfeixC.methods.getAllInvestors().call();
-      await Promise.all(investors.map((address, index) => this.setData(tables.eth.investors, { index, address })));
-      await this.setData(tables.eth.constants, { name: key, value: investors.length });
-    } else */ 
-    { L(`Array '${arrayName}' incremental update.`); try { while (true) {
-      let data = await amfeixC.methods[arrayName](index).call();
-      await this.setData(tables.eth[arrayName], { index, data });
-      index++;
-      await this.setData(tables.eth.constants, { name: key, value: index });
-    } } catch { L(`Array ${arrayName} stopped at ${index}.`) } }
-    L(`Array '${arrayName}' update completed with ${index} entries.`);
+  async updateInvestorMappedArray({ countTable, dataTable }) {
+
   }
 
-  async getList(numName, mapName, parms) { let length = await amfeixC.methods[numName](...oA(parms)).call();
-  //  return await Promise.all(a().map((d, x) => amfeixC.methods[mapName](...oA(parms), S(x)).call()));
-  } 
-  
-  
-//  async retrieveList() { this.setData(l, await getList(`${l}Length`, l)); }
+  async updateSimpleArray(arrayName, lengthName) { return await this.updateArray(arrayName, tables.eth.constants, lengthName); }  
+  async updateArray(arrayName, countTable, lengthName, parms) { L(`updateArray(${arrayName}, ${countTable}, ${lengthName}, ${S((parms))})`);
+    let lengthNameKey = lengthName || `${arrayName}.length`; 
+    let startIndexName = `${lengthNameKey}.startIndex`; 
+    let length = lengthName ? oO(await this.getData(countTable, { name: lengthNameKey }, async () => ({ name: lengthNameKey, value: (await amfeixC.methods[(lengthName)](...oA(parms)).call()) }))).value : undefined; 
+    let startIndex = oO(await this.getData(countTable, { name: startIndexName })).value || 0;
+    L(`Array '${arrayName}' start index: ${startIndex} (${length ? `known length = ${length}` : 'unknown length'})`)
+    try { for (var index = startIndex; !D(length) || (index < length); index++) {
+      let data = await amfeixC.methods[arrayName](...oA(parms), index).call();
+      await this.setData(tables.eth[arrayName], { index, data }); 
+      await this.setData(countTable, { name: startIndexName, value: index + 1 });
+    } } catch { L(`Array ${arrayName} stopped at ${index}.`) } 
+    L(`Array '${arrayName}' update completed with ${index} entries (count = ${await this.idb.count(tables.eth[arrayName])}).`);
+  }
 
   addObserver(key, onChange, context) { //L(`addObserver(${(key)})`);
     (this.observers[key] = oA(this.observers[key])).push({ onChange, context });
@@ -127,17 +123,16 @@ class Data {
   getKey(table, data) { return (`${table}:[${tableStrucMap[table].keyPath.map(a => data[a]).join(",")}]`) }
 
   async getData(table, data, retriever) { let key = this.getKey(table, data);
-    return this.data[key] = this.data[key] || await this.idb.get(table, data) || (retriever && await this.setData(table, await retriever()));
+    return this.data[key] = (this.data[key]) || (await this.idb.get(table, data)) || (retriever && (await this.setData(table, (await retriever()))));
   }
 
-  async setData(table, data) { let key = this.getKey(table, data);
+  setData(table, data) { let key = this.getKey(table, data);
     this.data[key] = data;
     let obs = oA(this.observers[key]);
     let retain = obs.map(o => o.onChange(data, o.context));
-    if (retain.length > 0) this.observers[key] = obs.filter((o, i) => retain[i]); 
-    return await this.idb.write(table, data); 
+    if (retain.length > 0) this.observers[key] = obs.filter((o, i) => retain[i]);  
+    return this.idb.write(table, data); 
   }
-
   
   retrieveInvestorData(investor) { (async (investor) => { //L(`Retrieving investor ${investor} data`);
     let setData = (k, d) => this.setData(`eth/investorData/${investor}.${k}`, d);
