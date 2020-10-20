@@ -3,8 +3,7 @@ import Highcharts from 'highcharts'; import HighchartsReact from 'highcharts-rea
 import * as serviceWorker from './serviceWorker';
 import { D, E, F, K, L, S, V, oA, oO, oF, singleKeyObject } from './tools'; 
 import { ethInterfaceUrl, btcRpcUrl, btcFields, amfeixFeeFields, ethBasicFields, data } from './data';
-import { Tab, Tabs, Paper } from '@material-ui/core'; 
-
+import { Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Toolbar } from '@material-ui/core';  
 
 let formatDate = date => { let fmt = { year: 'numeric', month: 'short', day: '2-digit', hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false };
   let d = F(E(fmt).map(([k, v]) => [k, new Intl.DateTimeFormat('en', singleKeyObject(k, v)).format(date)])); 
@@ -31,57 +30,29 @@ class Selector extends Component {
   }
 }
 
+function sort(a, comp) { return a.map((e, i) => [e, i]).sort((a, b) => (comp && comp(a[0], b[0])) || (a[1] - b[1])).map(e => e[0]); }
+
 class List extends Component {
+  constructor(p) { super(p); this.state = { page: 0, rowsPerPage: 25 } }
 //  setSelectedIx(selectedIx) { if (this.state.selectedIx !== selectedIx) this.setState({ selectedIx }, () => oF(this.props.onChanged)(selectedIx)); }
   ren(p, s) { return <table style={{height: "100%", overflow: "scroll"}}><thead><tr>{oA(p.headers).map((x, i) => <td key={i}>{captionMap[x] || x}</td>)}</tr></thead>
     <tbody style={{overflow: "scroll"}}>{oA(p.data).map((d, i) => <tr key={i}>{oA(p.headers).map((x, j) => <td key={j}>{(displayFunctions[x] || (e => e))(d[x], d)}</td>)}</tr>)}</tbody></table>
   }
 
-  ren2(p, s) { 
-    /*return <Paper><EnhancedTableToolbar numSelected={selected.length} /><TableContainer>
-      <Table className={classes.table} aria-labelledby="tableTitle" size={true ? 'small' : 'medium'} aria-label="enhanced table" >
-        <EnhancedTableHead classes={classes} numSelected={selected.length} order={order} orderBy={orderBy} onSelectAllClick={handleSelectAllClick} onRequestSort={handleRequestSort} rowCount={rows.length} />
-        <TableBody>
-          {stableSort(rows, getComparator(order, orderBy)).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => {
-              const isItemSelected = isSelected(row.name);
-              const labelId = `enhanced-table-checkbox-${index}`;
-
-              return (
-                <TableRow hover onClick={(event) => handleClick(event, row.name)} role="checkbox" aria-checked={isItemSelected} tabIndex={-1} key={row.name} selected={isItemSelected} >
-                  <TableCell padding="checkbox">
-                    <Checkbox
-                      checked={isItemSelected}
-                      inputProps={{ 'aria-labelledby': labelId }}
-                    />
-                  </TableCell>
-                  <TableCell component="th" id={labelId} scope="row" padding="none">
-                    {row.name}
-                  </TableCell>
-                  <TableCell align="right">{row.calories}</TableCell>
-                  <TableCell align="right">{row.fat}</TableCell>
-                  <TableCell align="right">{row.carbs}</TableCell>
-                  <TableCell align="right">{row.protein}</TableCell>
-                </TableRow>
-              );
-            })}
-          {emptyRows > 0 && (
-            <TableRow style={{ height: (dense ? 33 : 53) * emptyRows }}>
-              <TableCell colSpan={6} />
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </TableContainer>
-    <TablePagination
-      rowsPerPageOptions={[5, 10, 25]}
-      component="div"
-      count={rows.length}
-      rowsPerPage={rowsPerPage}
-      page={page}
-      onChangePage={handleChangePage}
-      onChangeRowsPerPage={handleChangeRowsPerPage}
-    />
-  </Paper> */
+  ren2(p, s) { let classes = {}; let X = d => this.setState(d);
+    let onClick = () => {};
+    let isSelected = r => false;
+    let rows = oA(p.data);
+    let offset = s.page * s.rowsPerPage, end = Math.min(rows.length, offset + s.rowsPerPage), emptyRows = offset + s.rowsPerPage - end;
+    let dense = true;
+    //<EnhancedTableToolbar numSelected={selected.length} />
+    //        <EnhancedTableHead classes={classes} numSelected={selected.length} order={order} orderBy={orderBy} onSelectAllClick={() => {})} onRequestSort={handleRequestSort} rowCount={rows.length} />
+    return <Paper><TableContainer><Table className={classes.table} aria-labelledby="tableTitle" size={true ? 'small' : 'medium'} aria-label="enhanced table" > 
+        <TableBody>{sort(rows).slice(offset, (s.page + 1) * s.rowsPerPage).map((d, i) => <TableRow key={i} hover onClick={e => onClick(e, d)} aria-checked={isSelected(d)} tabIndex={-1} key={d.name} selected={isSelected(d)} >{oA(p.headers).map((x, j) => <TableCell align="center" key={j}>{(displayFunctions[x] || (e => e))(d[x], d)}</TableCell>)}</TableRow>)} 
+          {emptyRows > 0 && <TableRow style={{ height: (dense ? 33 : 53) * emptyRows }}><TableCell colSpan={K(p.headers).length} /></TableRow>}</TableBody>
+      </Table></TableContainer>
+      <TablePagination rowsPerPageOptions={[5, 10, 25]} component="div" count={rows.length} rowsPerPage={s.rowsPerPage} page={s.page} onChangePage={() => {}} onChangeRowsPerPage={() => {}} />
+  </Paper> 
   }
 }  
 
@@ -154,15 +125,6 @@ class InvestorView extends Component {
   }
 }
 
-class BitcoinP2PNet extends Component {
-  componentDidMount() { (btcFields).forEach(f => data.addObserver(`btc.${f}`, d => this.setStateIfMounted((singleKeyObject(f, d))))); }
-  ren(p, s) { return <table><tbody><tr><td>RPC url:</td><td>{btcRpcUrl}</td></tr>{btcFields.map((f, i) => <tr key={i}><td>{f}</td><td>{S(oO(s[f]).result)}</td></tr>)}</tbody></table> }
-}
-
-class EthereumP2PNet extends Component {
-ren(p, s) { return <table><tbody><tr><td>{`Interface url: ${ethInterfaceUrl}`}</td></tr></tbody></table> }
-}
-
 let amfeixAddressLists = ["fundDepositAddresses", "feeAddresses"];
 class EthereumContract extends Component {
   componentDidMount() { amfeixAddressLists.concat(amfeixFeeFields).concat(["owner"]).forEach(k => data.addObserver(k, d => this.setStateIfMounted((singleKeyObject(k, L(d)))))); }
@@ -173,10 +135,19 @@ class EthereumContract extends Component {
   </tbody></table> }
 }
 
+class BitcoinP2PNet extends Component {
+  componentDidMount() { (btcFields).forEach(f => data.addObserver(`btc.${f}`, d => this.setStateIfMounted((singleKeyObject(f, d))))); }
+  ren(p, s) { return <table><tbody><tr><td>RPC url:</td><td>{btcRpcUrl}</td></tr>{btcFields.map((f, i) => <tr key={i}><td>{f}</td><td>{S(oO(s[f]).result)}</td></tr>)}</tbody></table> }
+}
+
+class EthereumP2PNet extends Component {
+ren(p, s) { return <table><tbody><tr><td>{`Interface url: ${ethInterfaceUrl}`}</td><td><EthereumContract /></td></tr></tbody></table> }
+}
+
+class NetworkView extends Component { ren(p, s) { return <TabbedView tabs={{Bitcoin: <BitcoinP2PNet/>, Ethereum: <EthereumP2PNet/> }} /> } }
+
 class MainView extends Component {
-  ren(p, s) { return <TabbedView tabs={{Investment: <InvestorView investor={p.investor}/>, FundView: <FundView/>, BitcoinWallet: <BitcoinWallet/>,
-    BitcoinP2PNet: <BitcoinP2PNet/>, EthereumP2PNet: <EthereumP2PNet/>, EthereumContract: <EthereumContract/>, Admin: <AdminView />
-  }} dev={p.dev}/> }
+  ren(p, s) { return <TabbedView tabs={{Investors: <List data={p.investors} headers={K(oO(oA(p.investors)[0]))}/>, Investment: <InvestorView investor={p.investor}/>, FundView: <FundView/>, BitcoinWallet: <BitcoinWallet/>, Network: <NetworkView/>, Admin: <AdminView /> }} dev={p.dev}/> }
 }
 
 class App extends Component { constructor(p) { super(p); this.initRefs("mode"); }
@@ -193,7 +164,7 @@ class App extends Component { constructor(p) { super(p); this.initRefs("mode"); 
         <p>{`Investors (${investorViewLimit > 0 ? `first ${investorViewLimit}` : S(oA(s.investors.length))})`}</p>
         <Selector options={oA(s.investors).slice(0, investorViewLimit)} onChanged={i => this.setState({ investor: oA(s.investors)[i]})} vertical={true}/>
       </td>
-      <td><MainView investor={s.investor} dev={s.dev} /></td>
+      <td><MainView investor={s.investor} investors={oA(s.investors).slice(0, 30)} dev={s.dev} /></td>
     </tr>
     <tr><td colSpan={2}><table><tbody><tr>{E(oO(s.loadProgress)).map(([k, v], i) => <td key={i}>{`${k} = ${v.msg}`}</td>)}</tr></tbody></table></td></tr>
     </tbody></table></>

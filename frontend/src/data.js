@@ -15,7 +15,7 @@ const amfeixM = amfeixC.methods;
 let amfeixFeeFields = "fee1 fee2 fee3".split(" ");
 let invMap = (countTable, dataTable) => ({countTable, dataTable});
 let arrays = "investorsAddresses time amount".split(" "), indexMaps = "feeAddresses fundDepositAddresses".split(" "), 
-investorMaps = [invMap("ntx", "fundTX"), invMap("rtx", "reqWD")]; 
+investorMaps = [invMap("ntx", "fundTx"), invMap("rtx", "reqWD")]; 
 let ethBasicFields = "owner aum decimals btcPrice".split(" ").concat(amfeixFeeFields).concat(indexMaps.map(k => `${k}Length`));
 const btcFields = "blockcount connectioncount difficulty blockchaininfo".split(" ");
 
@@ -28,8 +28,8 @@ let struc = (keyPath, indices) => [{ keyPath, indices }];
 let tables = hierName({ 
   eth: { ...F(arrays.concat(indexMaps).map(k => [k, struc(["index"], [["data", "data", false]])])), 
     constants: struc(["name"], [["name", "name", true]]), 
-    ntx: struc(["investorIx"]), fundTX: struc(["investorIx", "index"], [["hash", "hash", true]]),
-    rtx: struc(["investorIx"]), reqWD: struc(["investorIx", "index"], [["hash", "hash", true]]),
+    ntx: struc(["investorIx"]), fundTx: struc(["investorIx", "index"]),
+    rtx: struc(["investorIx"]), reqWD: struc(["investorIx", "index"]),
   }, 
   btc: { 
     constants: struc(["name"], [["name", "name", true]]), 
@@ -61,11 +61,12 @@ class Data {
       //    setEthData("dailyChange", parseInt(L(timeData[1][timeData[1].length - 1]))/L(this.getFactor())); 
   //      })()
       ]);  
-//      await Promise.all([...investorMaps.map(m => this.updateInvestorMappedArray(onLoadProgress('investors'), m.dataTable, m))]);
+      L('Load phase 2');
+      await Promise.all([...investorMaps.map(m => this.updateInvestorMappedArray(onLoadProgress(`investors:${m.dataTable}`), m.dataTable, m))]);
     })();
   }
 
-  async getArrayLengthAndStartIndex(onLoadProgress, countTable, countKey, lengthName, parms) { //L(`getArrayLengthAndStartIndex(${countTable}, ${S(countKey)}, ${lengthName}, ${parms})`)
+  async getArrayLengthAndStartIndex(onLoadProgress, countTable, countKey, lengthName, parms) { //L(`galsi(${countTable}, ${S(countKey)}, ${lengthName}, ${parms})`)
     onLoadProgress({ msg: "Starting...", p: undefined });
     let alsi = oO(await this.getData(countTable, countKey, lengthName && (async () => ({ ...countKey, length: parseInt(await amfeixM[lengthName](...oA(parms)).call()) }))));
     this.updateLoadProgress(onLoadProgress, alsi.startIndex, alsi.length);
@@ -78,35 +79,39 @@ class Data {
   }
 
   async updateGenericArray(onLoadProgress, name, { length, startIndex }, countKey, countTable, dataTable, parms) {
-    L(`Array '${name}' ${S({ countTable, dataTable })} start index: ${startIndex} (${length ? `known length = ${length}` : 'unknown length'})`)
+    //L(`Array '${name}' ${S({ countTable, dataTable })} start index: ${startIndex} (${length ? `known length = ${length}` : 'unknown length'})`)
     this.updateLoadProgress(onLoadProgress, startIndex, length);
     let index = startIndex;
-    try { while (!D(length) || (index < length)) { //L(`Processing item ${index} for ${name}`);
-      let data = await amfeixM[name](...oA(parms), index).call();
-      await this.setData(dataTable, ({ index, data })); 
-      await this.setData(countTable, ({ ...countKey, startIndex: ++index, length }));
+    let catchWrap = p => p.catch(e => { throw L(e) });
+    try { while (!D(length) || (index < length)) { //L(`Processing item ${index} for ${name} (${dataTable}) with parms = ${S(parms)}`);
+      let data = await catchWrap(amfeixM[name](...oA(parms), index).call()); //L('C');
+      await this.setData(dataTable, ({ investorIx: countKey.investorIx, index, data })); //L('D');
+      await this.setData(countTable, ({ ...countKey, startIndex: ++index, length })); //L('I'); 
       this.updateLoadProgress(onLoadProgress, index, length);
-    } } catch { L(`Array ${name} stopped at ${index}.`) } 
+    } } catch {} // { L(`Array ${name} stopped at ${index}.`) } 
     this.updateLoadProgress(onLoadProgress, index, length, true);
-    L(`Array '${name}' update completed with ${index} entries (count = ${await this.idb.count(dataTable)})`);
+    //L(`Array '${name}' update completed with ${index} entries (count = ${await this.idb.count(dataTable )})`);
   }
 
   async updateInvestorMappedArray(onLoadProgress, name, { countTable, dataTable }) { L(`uima(${name}, ${countTable}, ${dataTable})`);
-    let investorCount = await this.idb.count("investorsAddresses");
-    for (let investorIx = 0; investorIx < investorCount; ++investorIx) { let countKey = { investorIx };
-      let investor = this.getData("investorsAddresses", { index: investorIx });
-      let parms = [investor.address]; 
-      this.updateLoadProgress(onLoadProgress, investorIx, investorCount);
-      let alsi = await this.getArrayLengthAndStartIndex(() => {}, countTable, countKey, countTable, parms);
-      this.updateGenericArray(() => {}, name, L(alsi), countKey, countTable, dataTable, parms);
+    let investorCount = await this.idb.count(tables.eth.investorsAddresses);
+    for (let investorIx = 0; investorIx < (investorCount); ++investorIx) { let countKey = { investorIx };
+      let investor = await this.getData(tables.eth.investorsAddresses, { index: investorIx });
+      if (investor) {
+         //L({investor})
+        let parms = [investor.data]; 
+        this.updateLoadProgress(onLoadProgress, investorIx, investorCount);
+        let alsi = await this.getArrayLengthAndStartIndex(() => {}, tables.eth[countTable], countKey, countTable, parms);
+        await this.updateGenericArray(() => {}, name, (alsi), countKey, tables.eth[countTable], tables.eth[dataTable], parms);
+      }
     }
   }
 
-  async updateSimpleArray(onLoadProgress, name, lengthName) { return await this.updateArray(onLoadProgress, name, tables.eth.constants, lengthName); }  
+  updateSimpleArray(onLoadProgress, name, lengthName) { return this.updateArray(onLoadProgress, name, tables.eth.constants, lengthName); }  
   async updateArray(onLoadProgress, arrayName, countTable, lengthName, parms) { L(`updateArray(${arrayName}, ${countTable}, ${lengthName}, ${S((parms))})`);
     let countKey = { name: lengthName || `${arrayName}.counts` }; 
     let alsi = (await this.getArrayLengthAndStartIndex(onLoadProgress, countTable, countKey, lengthName, parms)); 
-    this.updateGenericArray(onLoadProgress, arrayName, alsi, countKey, countTable, tables.eth[arrayName], parms);
+    await this.updateGenericArray(onLoadProgress, arrayName, alsi, countKey, countTable, tables.eth[arrayName], parms);
   }
 
   addObserver(key, onChange, context) { //L(`addObserver(${(key)})`);
