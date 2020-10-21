@@ -17,7 +17,7 @@ class IndexedDB {
       onupgradeneeded: e => (async () => {
         let db = e.target.result; L("Upgrading db.");
         await Promise.all((V(tableStrucMap)).map((({ table, keyPath, indices }) => new Promise((resolve, reject) => {
-          let os = db.createObjectStore(table, { keyPath });
+          let os = db.createObjectStore(table, L({ keyPath }));
           oA(indices).forEach(i => os.createIndex(i[0], i[1], { unique: i[2] }));
           os.transaction.oncomplete = () => { L(`Object store created: ${L(K(os))}`); resolve(os); };
           os.transaction.onerror = () => reject(`Creating table '${table}' failed`);
@@ -33,9 +33,13 @@ class IndexedDB {
   act(table, label, input, getData) { return new Promise((resolve, reject) => { this.getOS(table, label, reject)[label](input).onsuccess = e => resolve(getData(e)); }); }
   add(table, data) { return this.act(table, "add", data, () => data); }
   put(table, data) { return this.act(table, "put", data, () => data); }
-  get(table, data) { return this.act(table, "get", [data[tableStrucMap[table].keyPath[0]]], e => e.target.result); }
-  count(table) { return this.act(table, "count", undefined, e => e.target.result); }
+  count(table, data) { return this.act(table, "count", data, e => e.target.result); }
+  getAll(table, data) { return this.act(table, "getAll", data, e => e.target.result); }
+  openCursor(table, data, onCursor) { return this.act(table, "openCursor", data, e => (c => c && onCursor(c))((e.target.result))); }
+  iterateAll(table, data, onData) { return this.openCursor(table, data, c => { if (onData(c.value)) c.continue(); }); }
+  get(table, data) { return this.act(table, "get", (tableStrucMap[table]).keyPath.map(k => data[k]), e => e.target.result); }
   write(table, data) { return this.get(table, data).catch(() => this.add(table, data)).then(() => this.put(table, data)); }
+
 }
 
 export { IndexedDB };
