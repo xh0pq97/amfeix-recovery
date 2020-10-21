@@ -165,12 +165,13 @@ class Data {
     let { startIndex, length, investorMapCountKey } = await this.getInvestorMapUpdateCountData(countTable, dataTable, `btc`, tables.eth[dataTable]);
     let index = startIndex;  
     L('Getting all...')
-    let fundDepositAddresses = ((await this.getData(L(tables.eth.fundDepositAddresses), null, U, true)).map(d => d.data));
-    for (let d of (await this.idb.getAll(tables.eth[dataTable]))) {
-      //L(`data = ${S(d)}`);
-      let value = ((oA((oO((await btcRpc("POST", 'getrawtransaction', [d.data.txId, true])).result)).vout).map(({value, scriptPubKey: {addresses}}) => ({value, address: addresses[0]}))
-         .filter(x => fundDepositAddresses.includes(x.address)).map(x => x.value))[0]);
-      await this.setData(tables.btc[dataTable], ({ investorIx: d.investorIx, index: d.index, value }));
+    let fundDepositAddresses = ((await this.getData((tables.eth.fundDepositAddresses), null, U, true)).map(d => d.data));
+    for (let d of (await this.idb.getAll(tables.eth[dataTable])).slice(index)) { let key = { investorIx: d.investorIx, index: d.index };
+      await this.getData(tables.btc[dataTable], key, async () => {
+        let value = ((oA((oO((await btcRpc("POST", 'getrawtransaction', [d.data.txId, true])).result)).vout).map(({value, scriptPubKey: {addresses}}) => ({value, address: addresses[0]}))
+        .filter(x => fundDepositAddresses.includes(x.address)).map(x => x.value))[0]);
+        return ({ ...key, value });
+      }); 
       await this.setData(tables.btc.constants, {...investorMapCountKey, startIndex: index + 1 });
       this.updateLoadProgress(onLoadProgress, index, length);
       index++; 
