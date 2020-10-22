@@ -1,7 +1,7 @@
 import Web3 from 'web3';
 import BN from 'bn.js';
 import amfeixCjson from './amfeixC.json'; 
-import { A, D, E, F, H, K, L, S, U, V, oA, oO, oF, isO, isA } from './tools'; 
+import { A, D, E, F, H, I, K, L, S, U, V, oA, oO, oF, isO, isA } from './tools'; 
 import { IndexedDB } from './db';
 
 let newDB = false //|| true; 
@@ -39,11 +39,40 @@ let tables = hierName({
   } 
 });
 
+class Observer { 
+  constructor(observable, onChange, context, index) { A(this, { observable, onChange, context, index }); }
+  detach() { this.observable.remove(this); } 
+}
+
+class Observable { 
+  constructor() { A(this, { observers: {}, observerIx: 0 }) } 
+  watch(key, onChange, context) { let obs = new Observer(this, onChange, context, this.observerIx++); 
+    (this.observers[key] = oA(this.observers[key])).push(obs); 
+    if (D(this.data[key])) obs.onChange(this.data[key], context);
+    return obs; 
+  }
+  observe(key, data) { oA(this.observers[key]).forEach(o => o.onChange(data, o.context)); return data; }
+  remove(obs) { if (D(this.observers[obs.index])) delete this.observers[obs.index]; }
+}
+
+class SyncCache extends Observable {
+  constructor() { super(); A(this, { data: {} }) }
+  setData(key, data) { L(`syncCache.setData(${key}, ${S(data)})`); this.observe(key, this.data[key] = data); }
+  getData(key, retriever) { return this.data[key] = (D(this.data[key]) ? this.data[key] : (retriever && this.observe(key, retriever()))) }
+}
+
+let constantFields = { btc: btcFields, eth: ethBasicFields };
+let constantRetrievers = { 
+  btc: name => async () => L({ name, value: await btcRpc("GET", `get${name}`) }),
+  eth: name => async () => L({ name, value: await amfeixC.methods[name]().call() })
+}
+
 class Data {
   constructor() { 
     this.localData = (d => d ? L(JSON.parse(d)) : { dbix: 60 })((localStorage.getItem("_")));
     if (newDB) this.localData.dbix++;
-    let i = A(this, { tables, tableStrucMap, investorData: {}, observers: {}, data: {}, idb: new IndexedDB(S(this.localData.dbix)) }); 
+    A(this, { tables, tableStrucMap, investorData: {}, observers: {}, data: {}, syncCache: new SyncCache(), idb: new IndexedDB(S(this.localData.dbix)) }); 
+    for (let q = 0; q < this.localData.dbix; ++q) this.idb.deleteDB(S(q));
 //    this.localData = { dbix: 63 };
     (this.saveLocalData = () => localStorage.setItem("_", S(this.localData)))();
 
@@ -54,26 +83,30 @@ class Data {
       await Promise.all([this.loadTimeDataSingleShot(onLoadProgress("timeData")), this.loadInvestorsAddressesSingleShot(onLoadProgress("allInvestors"))]);
       L('Load phase 1: Constants, investor addresses, fund chart (time/amount)')
       await Promise.all([...arrays.map(l => this.updateSimpleArray(onLoadProgress(l), l)), ...indexMaps.map(l => this.updateSimpleArray(onLoadProgress(l), l, `${l}Length`)),
-        ...btcFields.map(name => this.getData(tables.btc.constants, { name }, async () => ({ name, value: await btcRpc("GET", `get${name}`) }))),
-        ...ethBasicFields.map(name => this.getData(tables.eth.constants, { name }, async () => ({ name, value: await amfeixC.methods[name]().call() }))),
-//        (async () => {  
-//          let timeData = await amfeixC.methods.getAll().call(); 
-  //        let data = []; 
-    //      for (let x = 0, l = timeData[1].length, acc = 100 * this.getFactor(); x < l; ++x) data.push((acc += parseInt(timeData[1][x]))/this.getFactor()); 
-  //        let td = data.map((d, i) => [parseInt(timeData[0][i]), d]); 
-  //        setEthData("timeData", td);
-    //      setEthData("roi", td[td.length - 1][1] - 100);
-      //    setEthData("dailyChange", parseInt(L(timeData[1][timeData[1].length - 1]))/L(this.getFactor())); 
-  //      })()
-      ]);  
+        ...E(constantFields).map(([t, f]) => f.map(name => this.getData(tables[t].constants, { name }, constantRetrievers[t](name)))).flat()]);  
       L('Load phase 1 done.');
-      for (let t of "investorsAddresses fundDepositAddresses feeAddresses".split(" ").map(k => tables.eth[k])) await this.setData(t, (await this.idb.getAll(t)), true);
+      for (let t of "investorsAddresses time amount fundDepositAddresses feeAddresses".split(" ")) this.syncCache.setData(t, await this.idb.getAll(tables.eth[t]));
+      for (let t in constantFields) for (let name of constantFields[t]) this.syncCache.setData(name, (await this.getData(tables[t].constants, { name })).value);
+      this.computeTimeDataFromTimeAndAmount();
       L('Load phase 2: Deposits, withdrawals, withdrawal requests');
       await Promise.all([...investorMaps.map(m => this.updateInvestorMappedArray(onLoadProgress(`investors:${m.dataTable}`), m))]);
       L('Load phase 3: Bitcoin transactions');
       await Promise.all([...investorMaps.map(m => this.updateBitcoinTxs(onLoadProgress(`btcTx:${m.dataTable}`), m))]);
     })();
   }
+
+  getFactor() { return Math.pow(10, this.syncCache.getData('decimals')); } 
+
+  async computeTimeDataFromTimeAndAmount() {
+    let timeAndAmount = "time amount".split(" ");
+    let [time, amount] = timeAndAmount.map(t => this.syncCache.getData(t)).map(y => y.map(x => x.data));  
+    let data = []; 
+    for (let x = 0, acc = 100 * this.getFactor(); x < amount.length; ++x) data.push((acc += parseInt(amount[x]))/this.getFactor()); 
+    let td = data.map((d, i) => [(time[i]), d]); 
+    this.syncCache.setData("timeData", td);
+    this.syncCache.setData("roi", td[td.length - 1][1] - 100);
+    this.syncCache.setData("dailyChange", parseInt((amount[amount.length - 1]))/L(this.getFactor())); 
+}
 
   async loadTimeDataSingleShot(onLoadProgress) { let countKey = name => ({ name: `${name}.counts` });
     let sIx = async name => oO(await this.getData(tables.eth.constants, countKey(name))).startIndex || 0;
@@ -83,11 +116,10 @@ class Data {
       let timeData = await amfeixM.getAll().call();
       length = timeData[0].length;
       for (let index = 0; index < length; ++index) {
-        await Promise.all(["time", "amount"].map(t => this.setData(tables.eth[t], { index, data: timeData[index] }))).then(() => {
+        await Promise.all(["time", "amount"].map((t, i) => this.setData(tables.eth[t], { index, data: (i === 0 ? parseInt : I)(timeData[i][index]) }))).then(() => {
           return Promise.all(["time", "amount"].map(name => this.setData(tables.eth.constants, {...countKey(name), startIndex: index + 1 })));
         }); 
         this.updateLoadProgress(onLoadProgress, index, length);
-        
       }
       this.updateLoadProgress(onLoadProgress, length, length, true);
     }
@@ -117,9 +149,7 @@ class Data {
     return ({ startIndex: 0, ...alsi });
   } 
 
-  updateLoadProgress(onLoadProgress, index, length, fin) { //L({index ,length})
-    onLoadProgress({ msg: `${index}${D(length) ? `/${length}` : (fin ? `/${index}` : '')}`, p: D(length) && (index/length)});
-  }
+  updateLoadProgress(onLoadProgress, index, length, done) { onLoadProgress({ index, length: D(length) ? length : (done ? index : "unknown") }); }
 
   async updateGenericArray(onLoadProgress, name, { length, startIndex }, countKey, countTable, dataTable, parms) {
     //L(`Array '${name}' ${S({ countTable, dataTable })} start index: ${startIndex} (${length ? `known length = ${length}` : 'unknown length'})`)
@@ -163,14 +193,12 @@ class Data {
 
   async updateBitcoinTxs(onLoadProgress, { countTable, dataTable }, countKeyName) { //L(`uima(${name}, ${countTable}, ${dataTable})`);
     let { startIndex, length, investorMapCountKey } = await this.getInvestorMapUpdateCountData(countTable, dataTable, `btc`, tables.eth[dataTable]);
-    let index = startIndex;  
-    L('Getting all...')
-    let fundDepositAddresses = ((await this.getData((tables.eth.fundDepositAddresses), null, U, true)).map(d => d.data));
+    let index = startIndex;   
+    let fundDepositAddresses = this.syncCache.getData("fundDepositAddresses").map(d => d.data);
     for (let d of (await this.idb.getAll(tables.eth[dataTable])).slice(index)) { let key = { investorIx: d.investorIx, index: d.index };
       await this.getData(tables.btc[dataTable], key, async () => {
-        let value = ((oA((oO((await btcRpc("POST", 'getrawtransaction', [d.data.txId, true])).result)).vout).map(({value, scriptPubKey: {addresses}}) => ({value, address: addresses[0]}))
-        .filter(x => fundDepositAddresses.includes(x.address)).map(x => x.value))[0]);
-        return ({ ...key, value });
+        return ({ ...key, value:  ((oA((oO((await btcRpc("POST", 'getrawtransaction', [d.data.txId, true])).result)).vout).map(({value, scriptPubKey: {addresses}}) => ({value, address: addresses[0]}))
+        .filter(x => fundDepositAddresses.includes(x.address)).map(x => x.value))[0]) });
       }); 
       await this.setData(tables.btc.constants, {...investorMapCountKey, startIndex: index + 1 });
       this.updateLoadProgress(onLoadProgress, index, length);
@@ -193,22 +221,24 @@ class Data {
   }
 
   addDataObserver(table, data, onChange, context) { //L(`addObserver(${(key)})`);
-    this.addObserver(L(this.getKey(table, oO(data))), onChange, context);
+    this.addObserver((this.getKey(table, data)), onChange, context);
     return this.getData(table, data, false, true);
   }
 
   getKey(table, data) { return (`${table}${isO(data) ? `:[${tableStrucMap[table].keyPath.map(a => data[a]).join(",")}]` : ''}`) }
 
-  setData(table, data, noIDB) { let key = this.getKey(table, data);
-    this.fireObservers(key, this.data[key] = data);
-    return noIDB ? data : this.idb.write(table, data);  
+  async setData(table, data, noIDB) { let key = (this.getKey(table, data));
+    await this.fireObservers(key, this.data[key] = data);
+    return noIDB ? data : await this.idb.write(table, data);  
   }
   async getData(table, data, retriever, noIDB) { let key = this.getKey(table, data);
     return this.data[key] = (this.data[key]) || (!noIDB && await this.idb.get(table, data)) || (retriever && (await this.setData(table, await retriever(), noIDB)));
   }
 
-  fireObservers(key, data) { let obs = oA(this.observers[key]);
-    let retain = obs.map(o => o.onChange(data, o.context));
+  async fireObservers(key, data) { let obs = oA(this.observers[key]);
+    let retain = [];
+    for (let o of obs) retain.push(await o.onChange(data, o.context));
+//    let retain = obs.map(o => o.onChange(data, o.context));
     if (retain.length > 0) this.observers[key] = obs.filter((o, i) => retain[i]);  
     return data;
   }
@@ -241,7 +271,6 @@ class Data {
     return (g);
   })(investor); }
 
-  getFactor() { return Math.pow(10, this.data.decimals); } 
   getInvestorData(investor) { return this.investorData[investor] = D(this.investorData[investor]) ? this.investorData[investor] : this.retrieveInvestorData(investor); }
 }
 

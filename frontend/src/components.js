@@ -1,5 +1,5 @@
 import React from 'react';
-import { D, E, F, K, V, oA, oO, oF, singleKeyObject } from './tools';
+import { A, D, E, F, K, L, V, oA, oO, oF, singleKeyObject } from './tools';
 import { Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 
 let formatDate = date => {
@@ -14,21 +14,23 @@ let captionMap = {
 let displayFunctions = { timestamp: formatTimestamp };
 
 class Comp extends React.Component {
-  constructor(p) { super(p); this.state = {}; }
+  constructor(p) { super(p); A(this, { state: {}, observers: [] }); }
   render() { return this.ren(this.props, this.state); }
   initRefs(spacedOutRefString) { this.fers = F(spacedOutRefString.split(" ").map(k => [k, React.createRef()])); }
-  componentWillUnmount() { this.unmounted = true; }
+  componentWillUnmount() { this.unmounted = true; this.observers.map(o => o.detach()); }
   setStateIfMounted(s, onDone) { if (!this.unmounted) this.setState(s, onDone); return !this.unmounted; }
+  addSyncObserver(data, key, context) { this.observers.push(data.syncCache.watch(key, d => this.setState(L(singleKeyObject(key, d))), context)); }
 }
-/*
-class Selector extends Component {
+
+class Selector extends Comp {
   setSelectedIx(selectedIx) { if (this.state.selectedIx !== selectedIx) this.setState({ selectedIx }, () => oF(this.props.onChanged)(selectedIx)); }
   ren(p, s) { let z = (a, b) => s => (s ? a : b), y = (a, b) => i => z(a, b)(i === s.selectedIx);
     let style = i => ({ backgroundColor: y("#AEC", "#000")(i), color: y("#000", "#FFF")(i) });
     let elemF = (x, k) => z(<tr key={k}><td>{x}</td></tr>, <td key={k}>{x}</td>)(p.vertical), wrapF = x => z(x, <tr>{x}</tr>)(p.vertical);
     return <table><tbody>{wrapF(oA(p.options).map((x, i) => elemF(<div style={style((i))} onClick={() => this.setSelectedIx(i)}>{x}</div>, i)))}</tbody></table>
   }
-} */
+} 
+
 function sort(a, comp) { return a.map((e, i) => [e, i]).sort((a, b) => (comp && comp(a[0], b[0])) || (a[1] - b[1])).map(e => e[0]); }
 let styles = ({ visuallyHidden: { border: 0, clip: 'rect(0 0 0 0)', height: 1, margin: -1, overflow: 'hidden', padding: 0, position: 'absolute', top: 20, width: 1, }, });
 let classes = styles;
@@ -51,7 +53,7 @@ class THead extends Comp {
 }
 
 class List extends Comp {
-  constructor(p) { super(p); this.state = { page: 0, rowsPerPage: 5, checked: {} }; }
+  constructor(p) { super(p); this.state = { page: 0, rowsPerPage: 10, checked: {} }; }
   //  setSelectedIx(selectedIx) { if (this.state.selectedIx !== selectedIx) this.setState({ selectedIx }, () => oF(this.props.onChanged)(selectedIx)); } 
   ren(p, s) {
     let headers = p.headers || K(oO(oA(p.data)[0]));
@@ -64,7 +66,7 @@ class List extends Comp {
     let order = "asc", orderBy = 0, onRequestSort = () => { };
     //<EnhancedTableToolbar numSelected={selected.length} />
     //        
-    return <Paper><TableContainer><Table className={classes.table} aria-labelledby="tableTitle" size={undefined && (true ? 'small' : 'medium')} aria-label="enhanced table">
+    return <Paper><TableContainer><Table className={classes.table} aria-labelledby="tableTitle" size={(dense ? 'small' : 'medium')} aria-label="enhanced table">
         <THead headers={headers.map(h => ({ label: h }))} classes={classes} numSelected={V(s.checked).filter(v => D(v)).length} order={order} orderBy={orderBy} onSelectAllClick={() => { }} onRequestSort={onRequestSort} rowCount={rows.length} />
         <TableBody>{sort(rows).slice(offset, (s.page + 1) * s.rowsPerPage).map((d, i) => <TableRow key={i} hover onClick={() => X({ selectedIx: d.index })} aria-checked={isChecked(d)} tabIndex={-1} selected={isSelected(d)}>
           <TableCell padding="checkbox"><Checkbox checked={isChecked(d)} inputProps={{ 'aria-labelledby': i }} /></TableCell>
@@ -82,4 +84,4 @@ class TabbedView extends Comp {
   ren(p, s) { return <><Paper><Tabs value={s.selectedTabIx || 0} indicatorColor="primary" textColor="primary" onChange={(e, selectedTabIx) => this.setState({ selectedTabIx })} aria-label="tabs" centered>{E(p.tabs).map(([title, control], i) => <Tab key={i} label={title.replace(/_/g, ' ')} />)}</Tabs></Paper>{V(p.tabs)[s.selectedTabIx || 0]}</>; }
 }
 
-export { Comp, List, TabbedView, captionMap }
+export { Comp, List, TabbedView, Selector, captionMap }
