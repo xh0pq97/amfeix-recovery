@@ -1,7 +1,7 @@
 import React from 'react'; import ReactDOM from 'react-dom';
 import Highcharts from 'highcharts'; import HighchartsReact from 'highcharts-react-official';
 import * as serviceWorker from './serviceWorker';
-import { D, E, F, I, L, S, U, oA, oO, singleKeyObject } from './tools'; 
+import { D, E, F, I, L, S, U, oA, oF, oO, singleKeyObject } from './tools'; 
 import { ethInterfaceUrl, btcRpcUrl, btcFields, amfeixFeeFields, ethBasicFields, data } from './data';
 import { Box, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 //import { Toolbar } from '@material-ui/core';  
@@ -11,19 +11,19 @@ import { Selector, Comp, TabbedView, List, captionMap } from './components';
 class InvestorView extends Comp {
   componentDidMount() { this.updateInvestor(this.props.investor); }
   componentDidUpdate(prevP) { let investor = this.props.investor; if (prevP.investor !== investor) this.updateInvestor(investor); }
-  updateInvestor(investor) { let fields = "deposits withdrawals withdrawalRequests bitcoinTxs investmentValue timeData".split(" ");
-    if (investor) { L(`New Investor: ${S(investor)}`)
-      data.addDataObserver(data.tables.eth.fundTx, { investorIx: investor.index }, fundTx => this.setStateIfMounted(L({ fundTx }))); 
+  getInvestorKey() { return D(this.props.investor) && `investor_${this.props.investor.index}` }
+  updateInvestor(investor) { //let fields = "deposits withdrawals withdrawalRequests bitcoinTxs investmentValue".split(" ");
+    if (investor) { L(`New Investor: ${S(investor)}`);
+      this.addSyncObserver(data, this.getInvestorKey());
+//      data.addDataObserver(data.tables.eth.fundTx, { investorIx: investor.index }, fundTx => this.setStateIfMounted(L({ fundTx }))); 
 
 //      fields.forEach(k => data.addObserver(data.tables.eth.`${this.getInvestorKey()}.${k}`, (d, ctxInv) => (investor === ctxInv) && this.setStateIfMounted(L(singleKeyObject(k, d))), investor)); 
-      //data.retrieveInvestorData(investor);
-    } else this.setState(F(fields.map(f => [f, false])));
+      data.retrieveInvestorData(investor);
+    } //else this.setState(F(fields.map(f => [f, false])));
   }
-  ren(p, s) { //L(`fundTx length = ${oA(s.fundTx).length}`);
+  ren(p, s) { let i = oO(s[this.getInvestorKey()]);
     return <div style={{ display: D(p.investor) ? "block" : "none" }}><p>{`Investor ${oO(p.investor).data}`}</p><TabbedView tabs={{
-    Deposits: <List data={s.fundTx}/>,
-    Withdrawals: <List />,
-    Withdrawal_Requests: <List />,
+    Deposits: <List data={i.deposits} />, Withdrawals: <List data={i.withdrawals} />, Withdrawal_Requests: <List data={i.withdrawalRequests} />,
   }} /></div> }
 }
 
@@ -43,11 +43,14 @@ class LoadProgressView extends Comp {
   ren(p, s) { return <List data={ E(oO(s.loadProgress)).map(([key, data]) => ({ key, ...data })) } /> }
 }
 
+class InvestorList extends Comp { componentDidMount() { this.addSyncObserver(data, "investorsAddresses"); }
+  ren(p, s) { return <List data={s.investorsAddresses} onChange={d => oF(p.onChangedSelectedInvestor)(oA(s.investorsAddresses)[d.selectedIx]) } /> }
+}
+
 class AdminView extends Comp { 
-//  componentDidMount() { }
   ren(p, s) { return <TabbedView tabs={{ LoadProgress: <LoadProgressView />,
     Investors: <table><tbody>
-      <tr><td><List data={p.investors} onChange={d => this.setState({ investor: oA(p.investors)[d.selectedIx] })} /></td></tr>
+      <tr><td><InvestorList onChangedSelectedInvestor={investor => this.setState({ investor })} /></td></tr>
       <tr><td><InvestorView investor={s.investor} /></td></tr>
     </tbody></table>,
     Change_data: <table><tbody><tr><td></td></tr></tbody></table> 
@@ -77,9 +80,9 @@ class FundView extends Comp {
   ren(p, s) { let changePerc = v => D(v) ? `${v >= 0 ? "+" : "-"}${v}%` : ''; L(`Fundview inv = ${p.investor}`)
   // let txMap = oO(s.bitcoinTxs); 
 //    let transactionList = d => <List headers={["timestamp", "txId", "value", "_"]} data={oA(d).map(({timestamp, txId}) => ({timestamp, txId, value: txMap[txId] || "?", x: "TODO"}))} />
-    let displayTrafo = { dailyChange: changePerc, aum: v => parseInt(v)/Math.pow(10, s.decimals) }
+    let displayTrafo = { dailyChange: changePerc, aum: v => `${parseInt(v)/Math.pow(10, s.decimals)} BTC` }
     return <table><tbody>
-      <tr><td colSpan={3} ><table><tbody><tr><td><Box>{`Investment Value: ${s.investmentValue}`}</Box><Box>{`ROI: ${changePerc(s.roi)}`}</Box></td><td><FundIndexChart /></td></tr></tbody></table></td></tr>
+      <tr><td colSpan={3} ><table><tbody><tr><td>{`Investment Value: ${s.investmentValue}`}</td></tr><tr><td>{`ROI: ${changePerc(s.roi)}`}</td><td><FundIndexChart /></td></tr></tbody></table></td></tr>
       <tr>{"dailyChange aum btcPrice".split(" ").map((v, i) => <td key={i}><Box>{`${v}: ${(displayTrafo[v] || I)(s[v])}`}</Box></td>)}</tr>
       <tr><td colSpan={3}><HighchartsReact highcharts={Highcharts} options={chartOpts('Investment Performance', " BTC", timeDataTrafo(s.timeData), "Investment")} /></td></tr>
       <tr><td colSpan={3}><InvestorView investor={p.investor}/></td></tr>
@@ -87,32 +90,24 @@ class FundView extends Comp {
   }
 }
 
-let amfeixAddressLists = ["fundDepositAddresses", "feeAddresses"];
-class EthereumContract extends Comp {
-  componentDidMount() { amfeixAddressLists.concat(amfeixFeeFields).concat(["owner"]).forEach(k => data.addObserver(k, d => this.setStateIfMounted((singleKeyObject(k, L(d)))))); }
+class BitcoinP2PNet extends Comp { componentDidMount() { btcFields.forEach(f => this.addSyncObserver(data, f)); }
+  ren(p, s) { return <List data={[{ name: "RPC url", value: btcRpcUrl }].concat(btcFields.map(name => ({ name, value: S(oO(s[name]).result) })))} /> }
+}
+let amfeixAddressLists = ["fundDepositAddresses", "feeAddresses"], ethFields = ["owner"].concat(amfeixFeeFields);
+class EthereumP2PNet extends Comp {  componentDidMount() { amfeixAddressLists.concat(ethFields).forEach(f => this.addSyncObserver(data, f)); }
   ren(p, s) { return <table><tbody>
-    <tr><td colSpan={2}><div>{`Owner: ${s.owner}`}</div></td></tr>
-    <tr><td colSpan={2}><table><tbody><tr>{amfeixFeeFields.map((f, i) => <td key={i}><div>{`Fee ${i}: ${s[f]}`}</div></td>)}</tr></tbody></table></td></tr>
-    <tr>{amfeixAddressLists.map((k, i) => <td key={i}><p>{captionMap[k]}</p><List headers={["address"]} data={oA(s[k]).map(address => ({address}))} /></td>)}</tr>
-  </tbody></table> }
+    <tr><td colSpan={2}><List data={[{ name: "RPC url", value: ethInterfaceUrl }].concat(ethFields.map(name => ({ name, value: S(oO(s[name])) })))} /></td></tr> 
+    <tr>{amfeixAddressLists.map((k, i) => <td key={i}><p>{captionMap[k]}</p><List data={L(oA(s[k]))} /></td>)}</tr>
+  </tbody></table> } 
 }
 
-class BitcoinP2PNet extends Comp {
-  componentDidMount() { btcFields.forEach(f => this.addSyncObserver(data, f)); }
-  ren(p, s) { return <List data={btcFields.map(name => ({ name, value: S(oO(s[name]).result) })).concat([{ name: "RPC url", value: btcRpcUrl }])} /> }
-}
-class EthereumP2PNet extends Comp { ren(p, s) { return <table><tbody><tr><td>{`Interface url: ${ethInterfaceUrl}`}</td><td><EthereumContract /></td></tr></tbody></table> } }
 class NetworkView extends Comp { ren(p, s) { return <TabbedView tabs={{Bitcoin: <BitcoinP2PNet/>, Ethereum: <EthereumP2PNet/> }} /> } }
-class MainView extends Comp { 
-  componentDidMount() { this.addSyncObserver(data, "investorsAddresses"); }
-  ren(p, s) { return <TabbedView tabs={{Admin: <AdminView investors={s.investorsAddresses}/>, Bitcoin_Wallet: <BitcoinWallet/>, Impact_Fund: <FundView investor={p.investor}/>, Network: <NetworkView/> }} /> } 
-}
+class MainView extends Comp { ren(p, s) { return <TabbedView tabs={{ Admin: <AdminView/>, Bitcoin_Wallet: <BitcoinWallet/>, Impact_Fund: <FundView investor={p.investor}/>, Network: <NetworkView/> }} /> } }
 
-class App extends Comp {  
-  componentDidMount() { this.addSyncObserver(data, "investorsAddresses"); }
-  ren(p, s) { let invs = oA(s.investorsAddresses).slice(0, 20).map(d => d.data); //L(`inv length = ${invs.length}`); L(`inv[0] = ${S(invs[0])}`);
+class App extends Comp {   
+  ren(p, s) { //let invs = oA(s.investorsAddresses).slice(0, 20).map(d => d.data); //L(`inv length = ${invs.length}`); L(`inv[0] = ${S(invs[0])}`);
     return <table><tbody><tr>
-      <td style={{width: "20%", maxWidth: "20%", verticalAlign: "top"}}><Selector options={invs} onChanged={i => this.setState(L({ investor: invs[i] }))} vertical={true}/></td>
+      <td style={{width: "20%", maxWidth: "20%", verticalAlign: "top"}}><InvestorList onChangedSelectedInvestor={investor => this.setState({ investor })}/></td>
       <td><MainView investor={s.investor} /></td>
     </tr></tbody></table>
   }

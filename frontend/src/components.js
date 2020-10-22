@@ -19,7 +19,7 @@ class Comp extends React.Component {
   initRefs(spacedOutRefString) { this.fers = F(spacedOutRefString.split(" ").map(k => [k, React.createRef()])); }
   componentWillUnmount() { this.unmounted = true; this.observers.map(o => o.detach()); }
   setStateIfMounted(s, onDone) { if (!this.unmounted) this.setState(s, onDone); return !this.unmounted; }
-  addSyncObserver(data, key, context) { this.observers.push(data.syncCache.watch(key, d => this.setState(L(singleKeyObject(key, d))), context)); }
+  addSyncObserver(data, key, context) { this.observers.push(data.syncCache.watch(key, d => this.setState((singleKeyObject(key, d))), context)); }
 }
 
 class Selector extends Comp {

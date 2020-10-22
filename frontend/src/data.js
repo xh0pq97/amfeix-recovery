@@ -1,8 +1,9 @@
 import Web3 from 'web3';
 import BN from 'bn.js';
 import amfeixCjson from './amfeixC.json'; 
-import { A, D, E, F, H, I, K, L, S, U, V, oA, oO, oF, isO, isA } from './tools'; 
+import { A, D, E, F, H, I, K, L, S, U, V, oA, oO, oF, isO, isA, singleKeyObject } from './tools'; 
 import { IndexedDB } from './db';
+import { TextareaAutosize } from '@material-ui/core';
 
 let newDB = false //|| true; 
 
@@ -23,20 +24,14 @@ const btcFields = "blockcount connectioncount difficulty blockchaininfo".split("
 let btcRpc = async (method, func, params) => ((await fetch(`${btcRpcUrl}${func}/${method === "GET" ? `?${E(oO(params)).map(x => x.map(encodeURIComponent).join("=")).join("&")}` : ''}`, 
  { method, mode: 'cors', headers: { "content-type": "application/json" }, ...(method === "POST" ? { body: S({params}) }: {}) })).json());
 
+let invMapDBStruc = ({countTable, dataTable}) => ({ ...singleKeyObject(countTable, struc(["investorIx"])), ...singleKeyObject(dataTable, struc(["investorIx", "index"])) })
+
 export let tableStrucMap = {}
 let hierName = (o, p) => F(E(o).map(([k, v]) => { let q = p ? [p, k].join("-") : k; return [k, isA(v) ? (tableStrucMap[q] = {...v[0], table: q}, q) : hierName(v, q)]; }));
 let struc = (keyPath, indices) => [{ keyPath, indices }];
 let tables = hierName({ 
-  eth: { ...F(arrays.concat(indexMaps).map(k => [k, struc(["index"])])), 
-    constants: struc(["name"], [["name", "name", true]]), 
-    ntx: struc(["investorIx"]), fundTx: struc(["investorIx", "index"]),
-    rtx: struc(["investorIx"]), reqWD: struc(["investorIx", "index"]),
-  }, 
-  btc: { 
-    constants: struc(["name"], [["name", "name", true]]), 
-    ntx: struc(["investorIx"]), fundTx: struc(["investorIx", "index"]),
-    rtx: struc(["investorIx"]), reqWD: struc(["investorIx", "index"]) 
-  } 
+  eth: { ...F(arrays.concat(indexMaps).map(k => [k, struc(["index"])])),  constants: struc(["name"], [["name", "name", true]]), ...invMapDBStruc(investorMaps[0]), ...invMapDBStruc(investorMaps[1]) }, 
+  btc: {  constants: struc(["name"], [["name", "name", true]]), ...invMapDBStruc(investorMaps[0]), ...invMapDBStruc(investorMaps[1])  } 
 });
 
 class Observer { 
@@ -57,14 +52,14 @@ class Observable {
 
 class SyncCache extends Observable {
   constructor() { super(); A(this, { data: {} }) }
-  setData(key, data) { L(`syncCache.setData(${key}, ${S(data)})`); this.observe(key, this.data[key] = data); }
+  setData(key, data) { this.observe(key, this.data[key] = data); } //  L(`syncCache.setData(${key}, ${S(data)})`);
   getData(key, retriever) { return this.data[key] = (D(this.data[key]) ? this.data[key] : (retriever && this.observe(key, retriever()))) }
 }
 
 let constantFields = { btc: btcFields, eth: ethBasicFields };
 let constantRetrievers = { 
-  btc: name => async () => L({ name, value: await btcRpc("GET", `get${name}`) }),
-  eth: name => async () => L({ name, value: await amfeixC.methods[name]().call() })
+  btc: name => async () => ({ name, value: await btcRpc("GET", `get${name}`) }),
+  eth: name => async () => ({ name, value: await amfeixC.methods[name]().call() })
 }
 
 class Data {
@@ -98,15 +93,10 @@ class Data {
   getFactor() { return Math.pow(10, this.syncCache.getData('decimals')); } 
 
   async computeTimeDataFromTimeAndAmount() {
-    let timeAndAmount = "time amount".split(" ");
-    let [time, amount] = timeAndAmount.map(t => this.syncCache.getData(t)).map(y => y.map(x => x.data));  
-    let data = []; 
-    for (let x = 0, acc = 100 * this.getFactor(); x < amount.length; ++x) data.push((acc += parseInt(amount[x]))/this.getFactor()); 
-    let td = data.map((d, i) => [(time[i]), d]); 
-    this.syncCache.setData("timeData", td);
-    this.syncCache.setData("roi", td[td.length - 1][1] - 100);
-    this.syncCache.setData("dailyChange", parseInt((amount[amount.length - 1]))/L(this.getFactor())); 
-}
+    let timeData = [], [time, amount] = "time amount".split(" ").map(t => this.syncCache.getData(t)).map(y => y.map(x => x.data));  
+    for (let x = 0, acc = 100 * this.getFactor(); x < amount.length; ++x) timeData.push([time[x], (acc += parseInt(amount[x]))/this.getFactor()]);  
+    E(({ timeData, roi: timeData[timeData.length - 1][1] - 100, dailyChange: parseInt(amount[amount.length - 1])/this.getFactor() })).map(([k, v]) => this.syncCache.setData(k, v));
+  }
 
   async loadTimeDataSingleShot(onLoadProgress) { let countKey = name => ({ name: `${name}.counts` });
     let sIx = async name => oO(await this.getData(tables.eth.constants, countKey(name))).startIndex || 0;
@@ -156,7 +146,7 @@ class Data {
     this.updateLoadProgress(onLoadProgress, startIndex, length);
     let index = startIndex;
     let catchWrap = p => p.catch(e => { throw L(e) });
-    let masterKeys = F(tableStrucMap[dataTable].keyPath.map(k => [k, countKey[k]]));
+    let masterKeys = F(oA(tableStrucMap[dataTable].keyPath).map(k => [k, countKey[k]]));
     try { while (!D(length) || (index < length)) { //L(`Processing item ${index} for ${name} (${dataTable}) with parms = ${S(parms)}`);
       let data = await (amfeixM[name](...oA(parms), index).call()); //L('C');
       await this.setData(dataTable, ({ ...masterKeys, index, data })); //L('D');
@@ -243,32 +233,28 @@ class Data {
     return data;
   }
 
-  retrieveInvestorData(investor) { (async (investor) => { //L(`Retrieving investor ${investor} data`);
-    let setData = (k, d) => this.setData(`eth/investorData/${investor}.${k}`, d);
+  retrieveInvestorData(investor) { (async (investor) => { let invKey = { investorIx: investor.index }; //L(`Retrieving investor ${investor} data`);
+    let ethDataMap = ({ txId, pubKey, signature, action, timestamp}) => ({ txId, pubKey, signature, action, timestamp});
+    let dataMaps = { eth: ({index, data}) => ({index, ...ethDataMap(data)}), btc: ({index, value}) => ({index, value}) }
+    let getList = async m => { let length = ((oO(await this.idb.get((tables.eth[L(m).countTable]), (invKey)))).length || 0);
+      let [e, b] = await Promise.all(['eth', 'btc'].map(async t => {
+        let r  = []; for (let index = 0; index < length; ++index) r.push(await this.idb.get(tables[t][m.dataTable], ({...invKey, index}))); return r.map(dataMaps[t]);
+      }));
+      for (let index = 0; index < length; ++index) e[index].value = b[index].value;
+      return e;
+    };
+    let [txs, reqWD] = await Promise.all(investorMaps.map(getList));
     let toObj = a => F(a.map(e => [e.txId, e]));
-    let dedup = d => V(toObj(d)); // XXX: does not check if duplicates are identical -- only retains one of them with same txId 
-    let txs = []; (await this.getList("ntx", "fundTx", [investor]));  
-    let data = { ...F(["deposit", "withdrawal"].map((k, i) => [k, dedup(txs.filter(x => x.action === S(i)))])), withdrawalRequest: dedup(await this.getList("rtx", "reqWD", [investor])) }
+    let dedup = d => V(toObj(d)); // XXX: does not check if duplicates are identical -- only retains one of them with same txId  
+    let data = { ...F(["deposit", "withdrawal"].map((k, i) => [k, dedup(txs.filter(x => x.action === S(i)))])), withdrawalRequest: dedup(reqWD) }
     let objs = F(E(data).map(([k, v]) => [k, toObj(v)]));
     let has = F(E(objs).map(([k, v]) => [k, x => D(v[x.txId])]));  
-    let g = { 
-      deposits: data.deposit.map(d => ({...d, hasWithdrawalRequest: has.withdrawalRequest(d) })), 
+    let g = ({ 
+      deposits: data.deposit.map(d => ({...d })),// hasWithdrawalRequest: has.withdrawalRequest(d) })), 
       withdrawalRequests: data.withdrawalRequest.filter(x => has.deposit(x) && !has.withdrawal(x)), 
       withdrawals: data.withdrawal.filter(x => has.deposit(x) && has.withdrawalRequest(x)) 
-    };
-    K(g).forEach(k => setData(k, g[k]));
-    let allTxIds = g.deposits.map(d => d.txId); 
-    g.bitcoinTxs = F(await Promise.all(allTxIds.map(async txId => [txId, 
-       (oA((oO((await btcRpc("POST", 'getrawtransaction', [txId, true])).result)).vout).map(({value, scriptPubKey: {addresses}}) => ({value, address: addresses[0]}))
-         .filter(x => this.data.fundDepositAddresses.includes(x.address)).map(x => x.value))])));
-    setData("bitcoinTxs", g.bitcoinTxs);
-
-    // Compute cumulative investment
-//    let btcValueToBN = v => { let p = v.indexOf("."); let ten = new BN(10);
-  //    let int = (new BN(v.substr(0, p), 10)).mul(ten.pown()), fracS = v.substr(p + 1), fracLength = fracS.length(), frac = (new BN(fracS, 10)).mul(ten.pown(18 - fracLength));
-    //  frac = 
-   // }
-    return (g);
+    });
+    this.syncCache.setData(`investor_${investor.index}`, g);
   })(investor); }
 
   getInvestorData(investor) { return this.investorData[investor] = D(this.investorData[investor]) ? this.investorData[investor] : this.retrieveInvestorData(investor); }
