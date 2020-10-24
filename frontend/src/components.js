@@ -1,6 +1,6 @@
 import React from 'react';
 import { A, D, E, F, K, L, V, oA, oO, oF, singleKeyObject } from './tools';
-import { RadioGroup, Radio, FormContolLabel, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
+import { RadioGroup, Radio, FormContolLabel, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter, withStyles } from '@material-ui/core';
 
 let formatDate = date => {
   let fmt = { year: 'numeric', month: 'short', day: '2-digit', hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false };
@@ -19,7 +19,8 @@ class Comp extends React.Component {
   initRefs(spacedOutRefString) { this.fers = F(spacedOutRefString.split(" ").map(k => [k, React.createRef()])); }
   componentWillUnmount() { for (let o of this.observers) o.detach(); }
   setStateKV(k, v, onDone) { this.setState(singleKeyObject(k, v, onDone)) }
-  addSyncObserver(data, key, context) { this.observers.push(data.syncCache.watch(key, d => this.setStateKV(key, d), context)); }
+  addSyncKeyObserver(data, key, context) { this.addSyncObserver(data, key, d => this.setStateKV(key, d), context); }
+  addSyncObserver(data, key, onChange, context) { this.observers.push(data.syncCache.watch(key, onChange, context)); }
 } 
 
 class Selector extends Comp { constructor(p) { super(p, { selectedIx: 0 }) }
@@ -49,34 +50,31 @@ class THead extends Comp {
   }
 }
 
+let nullArray = length => { let r = []; for (let q = 0; q < length; ++q) r.push(null); return r; }
 class List extends Comp {
   constructor(p) { super(p); this.state = { page: 0, rowsPerPage: 10, checked: {}, selectedIx: null }; } 
   ren(p, s) {
     let headers = (p.headers || K(oO(oA(p.data)[0]))).map(h => ({ label: h }));
     let X = d => this.setState(d, oF(p.onChange)(d));
-    let isChecked = d => s.checked[d.index];
-    let isSelected = i => s.selectedIx === i;
-    let rows = oA(p.data);
+    let isChecked = d => s.checked[d.index], isSelected = i => s.selectedIx === i;
+    let rows = oA(p.data), columnCount = headers.length - (p.checkable ? 1 : 0);
     let offset = s.page * s.rowsPerPage, end = Math.min(rows.length, offset + s.rowsPerPage), emptyRows = offset + s.rowsPerPage - end;
-    let dense = true;
-    let order = "asc", orderBy = 0, onRequestSort = () => { }; 
-    return <Paper>{p.caption ? <p>{p.caption}</p> : null}
-      <TableContainer><Table className={classes.table} aria-labelledby="tableTitle" size={(dense ? 'small' : 'medium')} aria-label="enhanced table">
+    let dense = true, order = "asc", orderBy = 0, onRequestSort = () => { }; 
+    return <TableContainer component={Paper}><p>{p.caption || null}</p><Table className={classes.table} aria-labelledby="tableTitle" size={(dense ? 'small' : 'medium')} aria-label="enhanced table">
         <THead headers={headers} classes={classes} checkable={p.checkable} numSelected={V(s.checked).filter(v => D(v)).length} order={order} orderBy={orderBy} onSelectAllClick={() => { }} onRequestSort={onRequestSort} rowCount={rows.length} />
         <TableBody>{sort(rows).slice(offset, (s.page + 1) * s.rowsPerPage).map((d, i) => <TableRow key={i} hover onClick={() => X({ selectedIx: i })} aria-checked={isChecked(d)} tabIndex={-1} selected={isSelected(i)}>
           {p.checkable ? <TableCell padding="checkbox"><Checkbox checked={isChecked(d)} inputProps={{ 'aria-labelledby': i }} /></TableCell> : null}
           {headers.map((h, j) => <TableCell key={j} align="center">{(displayFunctions[h.label] || (e => e))(d[h.label], d)}</TableCell>)}
-        </TableRow>)}
-        {emptyRows > 0 && <TableRow style={{ height: (dense ? 33 : 53) * emptyRows }}><TableCell colSpan={(K(oO(p.headers))).length + 1} /></TableRow>}</TableBody>
-      </Table></TableContainer>
-      <TablePagination component="div" rowsPerPageOptions={[5, 10, 25]} count={rows.length} rowsPerPage={s.rowsPerPage} page={s.page} onChangePage={(e, page) => X({ page })} onChangeRowsPerPage={e => X({ rowsPerPage: parseInt(e.target.value, 10) })} />
-    </Paper> 
+        </TableRow>)}</TableBody>
+        <TableFooter>
+      <TableRow><TablePagination colSpan={columnCount} SelectProps={{width: "10em"}} rowsPerPageOptions={[5, 10, 25]} count={rows.length} rowsPerPage={s.rowsPerPage} page={s.page} onChangePage={(e, page) => X({ page })} onChangeRowsPerPage={e => X({ rowsPerPage: parseInt(e.target.value, 10) })} /></TableRow></TableFooter>
+      </Table></TableContainer>   
   }
 }
 
 class TabbedView extends Comp {
   componentDidMount() { this.setState({ selectTabIx: 0 }); }
-  ren(p, s) { return <Paper><Tabs value={s.selectedTabIx || 0} indicatorColor="primary" textColor="primary" onChange={(e, selectedTabIx) => this.setState({ selectedTabIx })} aria-label="tabs" centered>{E(p.tabs).map(([title, control], i) => <Tab key={i} label={title.replace(/_/g, ' ')} />)}</Tabs>{V(p.tabs)[s.selectedTabIx || 0]}</Paper>; }
+  ren(p, s) { return <Paper><Tabs value={s.selectedTabIx || 0} indicatorColor="primary" textColor="primary" onChange={(e, selectedTabIx) => this.setState({ selectedTabIx })} aria-label="tabs" centered>{E(p.tabs).map(([title, control], i) => <Tab  key={i} label={title.replace(/_/g, ' ')} />)}</Tabs>{V(p.tabs)[s.selectedTabIx || 0]}</Paper>; }
 }
 
 export { Comp, List, TabbedView, Selector, captionMap }

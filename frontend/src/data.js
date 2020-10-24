@@ -1,9 +1,9 @@
 import Web3 from 'web3';
-import BigNumber from 'bignumber.js';
+import BigNumber from 'bignumber.js'; 
 import amfeixCjson from './amfeixC.json'; 
 import { A, D, E, F, H, I, K, L, S, U, V, oA, oO, oF, isO, isA, singleKeyObject } from './tools'; 
-import { IndexedDB } from './db';
-import { TextareaAutosize } from '@material-ui/core';
+import { IndexedDB } from './db'; 
+let BN = v => new BigNumber(v);
 
 let newDB = false //|| true; 
 
@@ -101,12 +101,26 @@ class Data {
     })();
   }
 
-  getFactor() { return Math.pow(10, this.syncCache.getData('decimals')); } 
+  getFactor() { return BN(10).pow(this.syncCache.getData('decimals')); } 
 
-  async computeTimeDataFromTimeAndAmount() {
-    let timeData = [], [time, amount] = "time amount".split(" ").map(t => this.syncCache.getData(t)).map(y => y.map(x => x.data));  
-    for (let x = 0, acc = 100 * this.getFactor(); x < amount.length; ++x) timeData.push([time[x], (acc += parseInt(amount[x]))/this.getFactor()]);  
-    E(({ timeData, roi: timeData[timeData.length - 1][1] - 100, dailyChange: parseInt(amount[amount.length - 1])/this.getFactor() })).map(([k, v]) => this.syncCache.setData(k, v));
+  computeTimeDataFromTimeAndAmount() {
+    let performance = [], [time, amount] = "time amount".split(" ").map(t => this.syncCache.getData(t)).map(y => y.map(x => x.data));  
+    let f = this.getFactor(), ff = f.times(100);// L({factor: f})
+    for (let x = 0, acc = BN(1.0); x < amount.length; ++x) performance.push([time[x], (acc = (acc.times((BN(amount[x])).plus(ff))).div(ff)).plus(0)]);  
+    E(({ timeData: performance.map(([t, d]) => [t, parseFloat(d.times(100).toString())]), roi: parseFloat(performance[performance.length - 1][1].times(100).minus(100).toString()), dailyChange: parseFloat((BN(amount[amount.length - 1]).div(f)).toString()) }))
+    .map(([k, v]) => this.syncCache.setData(k, v));
+    this.performance = performance;
+  }
+
+  getPerformanceIndex(time, lowIndex, highIndex) { let p = this.performance;
+    let low = lowIndex || 0, high = highIndex || (p.length - 1); // L(`gpi(${time}, ${low}, ${high})`)
+    while (high > low) { let m = low + ((high - low) >> 1); 
+//      L(`low = ${low} m = ${m} high = ${high}`);
+    //  L(`low = ${low} (${p[low][0]}) m = ${m} (${p[m][0]}) high = ${high} (${p[high][0]})`);
+      if (p[m][0] > time) { high = m; } else if (low < m) { low = m; } else break;
+    }
+  //  L(`gpi result = ${high} (${p[high][0]}) for time (${time}) [-1: (${(high > 0) && p[high - 1][0]})] | +1: (${(high + 1 < p.length) && p[high + 1][0]})]`)
+    return high;
   }
 
   async loadTimeDataSingleShot(onLoadProgress) { let countKey = name => ({ name: `${name}.counts` });
@@ -201,7 +215,7 @@ class Data {
         return ({ ...key, value:  ((oA((oO((await btcRpc("POST", 'getrawtransaction', [d.data.txId, true])).result)).vout).map(({value, scriptPubKey: {addresses}}) => ({value, address: addresses[0]}))
         .filter(x => fundDepositAddresses.includes(x.address)).map(x => x.value))[0]) });
       }); 
-      await this.setData(tables.btc.constants, {...investorMapCountKey, startIndex: index + 1 });
+      await this.setData(tables.btc.constants, { ...investorMapCountKey, startIndex: index + 1 });
       this.updateLoadProgress(onLoadProgress, index, length);
       index++; 
     }
@@ -219,14 +233,12 @@ class Data {
   getKey(table, data) { return (`${table}${isO(data) ? `:[${tableStrucMap[table].keyPath.map(a => data[a]).join(",")}]` : ''}`) }
 
   setData(table, data) { return this.idb.write(table, data); }
-  async getData(table, data, retriever) { //let key = this.getKey(table, data);
-    return (await this.idb.get(table, data)) || (retriever && (await this.setData(table, await retriever())));
-  } 
+  async getData(table, data, retriever) { return (await this.idb.get(table, data)) || (retriever && (await this.setData(table, await retriever()))); } 
 
-  retrieveInvestorData(investor) { (async (investor) => { let invKey = { investorIx: investor.index }; //L(`Retrieving investor ${investor} data`);
+  async retrieveInvestorData(investor) { let invKey = { investorIx: investor.index }; //L(`Retrieving investor ${investor} data`);
     let ethDataMap = x => ({ txId: x.txId, pubKey: x.pubKey, signature: x.signature, action: x.action, timestamp: parseInt(x.timestamp) });
     let dataMaps = { eth: x => ({index: x.index, ...ethDataMap(oO(x.data))}), btc: x => ({index: x.index, value: x.value}) }
-    let getList = async m => { let length = ((oO(await this.idb.get((tables.eth[L(m).countTable]), (invKey)))).length || 0);
+    let getList = async m => { let length = ((oO(await this.idb.get((tables.eth[(m).countTable]), (invKey)))).length || 0);
       let [e, b] = await Promise.all(['eth', 'btc'].map(async t => {
         let r  = []; for (let index = 0; index < length; ++index) r.push(await this.idb.get(tables[t][m.dataTable], ({...invKey, index}))); return r.map(oO).map(dataMaps[t]);
       }));
@@ -240,24 +252,43 @@ class Data {
     let objs = F(E(data).map(([k, v]) => [k, toObj(v)]));
     let has = F(E(objs).map(([k, v]) => [k, x => D(v[x.txId])]));  
     let g = ({ 
-      deposits: data.deposit.map(d => ({...d })),// hasWithdrawalRequest: has.withdrawalRequest(d) })), 
-      withdrawalRequests: data.withdrawalRequest.filter(x => has.deposit(x) && !has.withdrawal(x)), 
+      deposits: data.deposit.map(d => d),// hasWithdrawalRequest: has.withdrawalRequest(d) })), 
+      withdrawalRequests: data.withdrawalRequest.filter(x => has.deposit(x)), 
       withdrawals: data.withdrawal.filter(x => has.deposit(x) && has.withdrawalRequest(x)) 
     });
 
-    let oneBtc = (new BigNumber(10)).pow(18);
+//    let oneBtc = (new BigNumber(10)).pow(18);
     let investment = g.deposits.concat(g.withdrawals).sort((a, b) => a.timestamp - b.timestamp);
-    let acc = new BigNumber(0);
-    let toSatoshi = btc => new BigNumber(btc);//).times(oneBtc).toFixed();
-    for (let i of investment) { let v = toSatoshi(i.value);  
-      i.accValue = parseFloat((acc = (i.action === "0" ? acc.plus(v) : acc.minus(v))).toString(10));
-      //L(`${i.action === "0" ? "+" : "-"}${v.toString()} = ${acc.toString()} (${i.accValue})`)
+    //let toSatoshi = btc => new BigNumber(btc);//).times(oneBtc).toFixed();
+
+//    let finalPerf = this.performance[this.performance.length - 1][1];
+    let acc = BN(0), currentValueAcc = BN(0);
+    let makeEnum = soo => Object.freeze(F(soo.split(" ").map(k => [k, k])));
+    let stati = { deposits: makeEnum("active withdrawn withdrawalRequested"), withdrawalRequests: makeEnum("pending withdrawn") }; 
+    for (let d of g.deposits) { d.status = has.withdrawal(d) ? stati.deposits.withdrawn : (has.withdrawalRequest(d) ? stati.deposits.withdrawalRequested : stati.deposits.active);
+        let endIx = (d.status === stati.deposits.active) ? this.performance.length - 1 : this.getPerformanceIndex(oO(objs.withdrawalRequest[d.txId]).timestamp || 0);
+        let startIx = this.getPerformanceIndex(d.timestamp), startPerf = this.performance[startIx];
+        let endPerf = this.performance[endIx][1];
+        let perf = endPerf.div((startPerf[0] >= d.timestamp) ? startPerf[1] : endPerf);
+        //L(`Deposit timestamp ${d.timestamp} (${new Date(d.timestamp)}) performance starttime ${startPerf[0]} (${new Date(startPerf[0])}) startPerf ${startPerf[1].toString()} endPerf ${endPerf.toString()} f = ${perf}`);
+        d.finalValue = BN(d.value).times(perf);
     }
-    g.timeData = investment.map(x => [x.timestamp, x.accValue]);
-    g.investmentValue = investment[investment.length - 1].accValue;
-    //L(g);
+    for (let wr of g.withdrawalRequests) {
+      wr.status = has.withdrawal(wr) ? stati.withdrawalRequests.withdrawn : stati.withdrawalRequests.pending;
+    }
+    for (let i of investment) { let v = BN(i.value); 
+      i.accValue = parseFloat((acc = (i.action === "0" ? acc.plus(v) : acc.minus(v))).plus(0).toString()); 
+      i.accCurrentValue = parseFloat((currentValueAcc = (i.action === "0" ? currentValueAcc.plus(BN(i.finalValue)) : currentValueAcc.minus(v))).plus(0).toString()); 
+    }
+    g.investment = investment.map(x => [x.timestamp, x.accValue]);
+    g.investmentValue = parseFloat(currentValueAcc.toString());
+    g.value = investment.map(x => [x.timestamp, x.accCurrentValue]);;
+    for (let d of g.deposits) {
+      d.finalValue = d.finalValue.toString();
+    }
+      //L(g);
     this.syncCache.setData(getInvestorDataKey(investor.index), g);
-  })(investor); }
+  }
 
   getInvestorData(investor) { return this.investorData[investor] = D(this.investorData[investor]) ? this.investorData[investor] : this.retrieveInvestorData(investor); }
 }

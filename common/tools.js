@@ -21,6 +21,8 @@ let oA = a => a || [];
 let oF = f => f || (() => {});
 let oO = o => o || {};
 
+let asA = a => (b => isA(b) ? b : [b])(oA(a))
+
 let singleKeyObject = (k, v) => { let o = {}; o[k] = v; return o; }
 
-export { A, D, E, F, H, I, K, L, S, U, V, oA, oO, oF, isA, isO, isF, isP, singleKeyObject }
+export { A, D, E, F, H, I, K, L, S, U, V, oA, oO, oF, isA, isO, isF, isP, asA, singleKeyObject }
