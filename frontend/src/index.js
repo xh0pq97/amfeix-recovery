@@ -73,7 +73,7 @@ let chartOpts = (title, valueSuffix, datas) => ({ title: { text: title }, rangeS
   series: datas.map((series, i) => ({ name: series.name, type: "areaspline", tooltip: { valueSuffix }, color: seriesColors(i), data: series.data }))
 })
 
-let timeDataTrafo = (title, data) => ({ title, data: oA(data).map(([t, d]) => [new Date(1000*t), d]) })
+let timeDataTrafo = (name, data) => ({ name, data: oA(data).map(([t, d]) => [new Date(1000*t), d]) })
 
 class FundIndexChart extends Comp { componentDidMount() { this.addSyncKeyObserver(data, "timeData"); }
   ren(p, s) { return <Paper><HighchartsReact highcharts={Highcharts} options={chartOpts('Fund Index', " %", [timeDataTrafo("ROI", s.timeData)], "ROI")} /></Paper> }
