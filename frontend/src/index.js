@@ -3,7 +3,7 @@ import Highcharts from 'highcharts'; import HighchartsReact from 'highcharts-rea
 import * as serviceWorker from './serviceWorker';
 import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from './tools'; 
 import { ethInterfaceUrl, ganacheInterfaceUrl, btcRpcUrl, btcFields, amfeixFeeFields, ethBasicFields, data, getInvestorDataKey, stati } from './data';
-import { AppBar, Toolbar, Button, Box, TextField, Paper } from '@material-ui/core';
+import { Dialog, DialogTitle, AppBar, Toolbar, Button, Box, TextField, Paper } from '@material-ui/core';
 import {   createMuiTheme, ThemeProvider}  from '@material-ui/core/styles';
 import { Selector, Comp, TabbedView, List, captionMap, removeUnderscores, button } from './ui/components'; 
 import { Log_in } from './ui/login';
@@ -145,14 +145,24 @@ class Ethereum_P2P_Network extends Comp { componentDidMount() { amfeixAddressLis
   </tbody></table> } 
 }
 
+class Login_Dialog extends Comp {
+  ren(p, s) { return <Dialog onClose={oF(p.onClose)} aria-labelledby="simple-dialog-title" open={p.open}>
+      <DialogTitle id="simple-dialog-title">Log in dialog</DialogTitle><Log_in onAccept={d => oF(p.onAccept)(d)}/>
+    </Dialog>
+  }
+}
+
 class Network extends Comp { ren(p, s) { return <TabbedView tabs={({Bitcoin_P2P_Network, Ethereum_P2P_Network })} /> } }
-class MainView extends Comp { ren(p, s) { 
-  return <><AppBar position="static"><Toolbar><Button color="inherit" onClick={() => {}}>Login</Button></Toolbar></AppBar>
-  <TabbedView orientation={"vertical"} tabs={{Bitcoin_Wallet, Log_in, Admin, Impact_Fund, Network}} parentProps={{ mode: p.mode, investor: p.investor, wallet: p.wallet }}/></>
+class MainView extends Comp { 
+  constructor(p) { super(p, { loginDialogOpen: false }); } 
+  ren(p, s) { 
+  return <><AppBar position="static"><Toolbar><Button color="inherit" onClick={() => this.setState({ loginDialogOpen: true })}>Login</Button></Toolbar></AppBar>
+  <Login_Dialog open={s.loginDialogOpen} onClose={() => this.setState({ loginDialogOpen: false })} onAccept={d => this.setState({ wallet: new Wallet(oO(d).words), loginDialogOpen: false })}/>
+  <TabbedView orientation={"vertical"} tabs={{Bitcoin_Wallet, Admin, Impact_Fund, Network}} parentProps={{ mode: p.mode, investor: p.investor, wallet: s.wallet }}/></>
 } }
 
 class App extends Comp { 
-  constructor(p) { super(p, { wallet: new Wallet(), theme: createMuiTheme({ palette: { type: darkMode ? 'dark' : 'light' } }) }); } 
+  constructor(p) { super(p, { theme: createMuiTheme({ palette: { type: darkMode ? 'dark' : 'light' } }) }); } 
   ren(p, s) { let mode = {dev: s.dev, admin: s.admin};
     return <ThemeProvider theme={s.theme}>
     <table><tbody><tr>

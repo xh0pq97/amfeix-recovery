@@ -24,9 +24,10 @@ function getBitcoinAddress(node, network) {
 
 export class Wallet {
   constructor(seedWords) { 
+    L(`seedWords = ${S(seedWords)}`)
     seedWords = seedWords || 'gorilla endorse hat lumber old price route put goose sail lemon raise'.split(" ");
     let seed = bip39.mnemonicToSeedSync(seedWords.join(" "));
-    let defaultDerivationPaths = {bitcoin: "m/44'/0'/0'", ethereum: "m/44'/60'/0'"};
+    let defaultDerivationPaths = { bitcoin: "m/44'/0'/0'", ethereum: "m/44'/60'/0'" };
     const root = bip32.fromSeed(seed);
     const coinNodes = F(E(defaultDerivationPaths).map(([k, v]) => [k, root.derivePath(v)]));
     E(coinNodes).forEach(([k, v]) => L(`coinNodes ${k} base58 = ${v.publicKey.toString('hex')}`));

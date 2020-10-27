@@ -4,7 +4,7 @@ import { Comp, TabbedView, TabTimeline, button  } from './components';
 import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
 import * as bip39 from 'bip39';
 
-let wordlist = 'praise you muffin lion enable neck grocery crumble super myself license ghost'.split(" ");
+let wordlist = 'gorilla endorse hat lumber old price route put goose sail lemon raise'.split(" ");
 let preamble = (title, text, warning) => <><h2>{title}</h2><p>{text}</p><p color={"#FF2170"}>{warning}</p></>;
 
 class ValidatableComp extends Comp {
@@ -89,7 +89,7 @@ class Input_seed extends ValidatableComp {
   }
 }
 
-L(`english word list = ${bip39.wordlists.english}`)
+//L(`english word list = ${bip39.wordlists.english}`)
 
 class Unlock_wallet extends Comp { ren(p, s) { return <TabTimeline tabs={{ Enter_credentials }} onAccept={this.props.onAccept}/>; } }
 class Create_wallet extends Comp { ren(p, s) { return <TabTimeline tabs={{ Setup_password, Backup_seed, Verify_seed }} onAccept={this.props.onAccept}/>; } }
