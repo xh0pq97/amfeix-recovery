@@ -7,7 +7,7 @@ let isO = o => typeof o === "object" && o != null && !isA(o);
 let A = Object.assign;
 let D = x => typeof x !== "undefined";
 let E = Object.entries;
-let F = Object.fromEntries;
+let F = Object.fromEntries; 
 let H = (f, o) => F(E(o).map(([k, v], i) => [k, isO(v) ? H(f, v) : f(v, k, i, o)]));
 let I = x => x;
 let K = Object.keys;
@@ -20,9 +20,11 @@ let V = Object.values;
 let oA = a => a || [];
 let oF = f => f || (() => {});
 let oO = o => o || {};
+let oS = s => s || "";
 
 let asA = a => (b => isA(b) ? b : [b])(oA(a))
 
 let singleKeyObject = (k, v) => { let o = {}; o[k] = v; return o; }
+let makeEnum = soo => Object.freeze(F(soo.split(" ").map(k => [k, k])));
 
-export { A, D, E, F, H, I, K, L, S, U, V, oA, oO, oF, isA, isO, isF, isP, asA, singleKeyObject }
+export { A, D, E, F, H, I, K, L, S, U, V, oA, oO, oS, oF, isA, isO, isF, isP, asA, singleKeyObject, makeEnum }

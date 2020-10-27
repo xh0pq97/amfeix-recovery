@@ -3,9 +3,10 @@ import Highcharts from 'highcharts'; import HighchartsReact from 'highcharts-rea
 import * as serviceWorker from './serviceWorker';
 import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from './tools'; 
 import { ethInterfaceUrl, ganacheInterfaceUrl, btcRpcUrl, btcFields, amfeixFeeFields, ethBasicFields, data, getInvestorDataKey, stati } from './data';
-import { SimpleDialog, AppBar, Toolbar, Button, Box, TextField, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
+import { AppBar, Toolbar, Button, Box, TextField, Paper } from '@material-ui/core';
 import {   createMuiTheme, ThemeProvider}  from '@material-ui/core/styles';
 import { Selector, Comp, TabbedView, List, captionMap, removeUnderscores, button } from './ui/components'; 
+import { Log_in } from './ui/login';
 import { Bitcoin_Wallet } from './ui/wallet';
 import ImpactFundIcon from './assets/impactFund.svg'
 import { Wallet } from './core/wallet';
@@ -86,11 +87,11 @@ class Admin extends Comp {
 
   }
   ren(p, s) {  
-    return <TabbedView tabs={{ LoadProgress: <LoadProgressView />, 
-    Investors: simpleTableRows([<InvestorList onChangedSelectedInvestor={investor => this.setState({ investor })} mode={p.mode}/>, <InvestorView investor={s.investor} mode={p.mode}/>]),
-    Withdrawal_Requests: <>{button("Approve all", () => this.approveAllWithdrawalRequests())}<List data={s.withdrawalRequests} headers={V(applyWithdrawalRequestStatus(genHeaders(s.withdrawalRequests)))}/></>,
-    Pending_Deposits: <></>,
-    Change_data: [
+    return <TabbedView tabs={{ LoadProgressView, 
+    Investors: () => simpleTableRows([<InvestorList onChangedSelectedInvestor={investor => this.setState({ investor })} mode={p.mode}/>, <InvestorView investor={s.investor} mode={p.mode}/>]),
+    Withdrawal_Requests: () => <>{button("Approve all", () => this.approveAllWithdrawalRequests())}<List data={s.withdrawalRequests} headers={V(applyWithdrawalRequestStatus(genHeaders(s.withdrawalRequests)))}/></>,
+    Pending_Deposits: () => <></>,
+    Change_data: () => [
       { name: "Chart data for current block", input: <Box><TextField variant="outlined" /></Box>, action: button("Submit", () => this.submitChartDataNow()) },
       { name: "Set AUM", input: <div><TextField variant="outlined" /></div>, action: button("Submit", () => this.submitAUM()) }]
     .map(v => <Paper><table><tbody><tr><td>{v.name}</td><td>{v.input}</td><td>{v.action}</td></tr></tbody></table></Paper>)  
@@ -140,17 +141,18 @@ let amfeixAddressLists = ["fundDepositAddresses", "feeAddresses"], ethFields = [
 class Ethereum_P2P_Network extends Comp { componentDidMount() { amfeixAddressLists.concat(ethFields).forEach(f => this.addSyncKeyObserver(data, f)); }
   ren(p, s) { return <table><tbody>
     <tr><td colSpan={2}><Paper><List data={[{ name: "RPC url", value: <Selector options={[ethInterfaceUrl, ganacheInterfaceUrl]}/> }].concat(ethFields.map(name => ({ name, value: S(oO(s[name])) })))} /></Paper></td></tr> 
-    <tr>{amfeixAddressLists.map((k, i) => <td key={i}><Paper><List caption={captionMap[k]} data={L(oA(s[k]))} /></Paper></td>)}</tr>
+    <tr>{amfeixAddressLists.map((k, i) => <td key={i}><Paper><List caption={captionMap[k]} data={(oA(s[k]))} /></Paper></td>)}</tr>
   </tbody></table> } 
 }
 
 class Network extends Comp { ren(p, s) { return <TabbedView tabs={({Bitcoin_P2P_Network, Ethereum_P2P_Network })} /> } }
 class MainView extends Comp { ren(p, s) { 
   return <><AppBar position="static"><Toolbar><Button color="inherit" onClick={() => {}}>Login</Button></Toolbar></AppBar>
-  <TabbedView orientation={"vertical"} tabs={F(E({Bitcoin_Wallet, Admin, Impact_Fund, Network}).map(([k, V]) => [removeUnderscores(k), () => <V mode={p.mode} investor={p.investor}/>]))}/></>
+  <TabbedView orientation={"vertical"} tabs={{Bitcoin_Wallet, Log_in, Admin, Impact_Fund, Network}} parentProps={{ mode: p.mode, investor: p.investor, wallet: p.wallet }}/></>
 } }
 
-class App extends Comp { constructor(p) { super(p); A(this.state, { theme: createMuiTheme({ palette: { type: darkMode ? 'dark' : 'light' } }) }); } 
+class App extends Comp { 
+  constructor(p) { super(p, { wallet: new Wallet(), theme: createMuiTheme({ palette: { type: darkMode ? 'dark' : 'light' } }) }); } 
   ren(p, s) { let mode = {dev: s.dev, admin: s.admin};
     return <ThemeProvider theme={s.theme}>
     <table><tbody><tr>
@@ -159,7 +161,7 @@ class App extends Comp { constructor(p) { super(p); A(this.state, { theme: creat
     </tr></tbody></table>
     <InvestorList caption={"Choose an investor to simulate the UI"} onChangedSelectedInvestor={investor => this.setState({ investor })} mode={mode}/>
   <p>Future UI (work in progress) below this line.  Numbers shown may be inaccurate or entirely incorrect due to the development process being in progress.</p><hr/>
-  <MainView investor={s.investor} mode={mode} /></ThemeProvider> } 
+  <MainView investor={s.investor} mode={mode} wallet={s.wallet}/></ThemeProvider> } 
 } 
 
 document.body.style.color = getMainColor(true);
