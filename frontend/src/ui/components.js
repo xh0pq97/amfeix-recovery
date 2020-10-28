@@ -1,31 +1,26 @@
 import React from 'react';
 import { A, D, E, F, I, K, L, U, V, S, oA, oF, oO, oS, singleKeyObject } from '../tools';
-import { Box, Button, RadioGroup, Radio, FormContolLabel, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter, withStyles } from '@material-ui/core';
+import { TextField, Dialog, DialogTitle, Box, Button, RadioGroup, Radio, FormContolLabel, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter, withStyles } from '@material-ui/core';
 
 let captionMap = {
   timestamp: "Time", value: "Value", txId: "Transaction ID", deposits: "Deposits", withdrawals: "Withdrawals", withdrawalRequests: "Withdrawal Requests", fundDepositAddresses: "Fund deposit addresses", feeAddresses: "Fee addresses", _: ""
 };
 //let displayFunctions = { timestamp: formatTimestamp };
 
-let removeUnderscores = s => oS(s).replace(/_/g, " ");
+let cleanText = s => oS(s).replace(/_/g, " ").trim();
 
 class Comp extends React.Component {
-  constructor(p, s) { super(p); A(this, { state: {...s}, fers: {}, observers: [] }); }
+  constructor(p, s, sors) { super(p); A(this, { state: {...s}, fers: {}, observers: [] }); this.initRefs(oS(sors)); }
   render() { return this.ren(this.props, this.state); }
+  ren(p, s) { return <div/> }
   initRefs(spacedOutRefString) { this.fers = F(spacedOutRefString.split(" ").map(k => [k, React.createRef()])); }
   updateChildRef(newV) { if (D(this.props.childRef)) this.props.childRef.current = newV; }
   componentDidMount() { this.updateChildRef(this); }
-  componentWillUnmount() { this.updateChildRef(U); for (let o of this.observers) o.detach(); }
+  componentWillUnmount() { this.updateChildRef(U); for (let o of this.observers) o.detach(); this.unmounted = true; }
   setStateKV(k, v, onDone) { this.setState(singleKeyObject(k, v, onDone)) }
   addSyncKeyObserver(data, key, context) { this.addSyncObserver(data, key, d => this.setStateKV(key, d), context); }
   addSyncObserver(data, key, onChange, context) { this.observers.push(data.syncCache.watch(key, onChange, context)); }
-} 
-
-class FunComp extends Comp {
-  constructor(f) { super(); this.fers.childRef = {}; this.f = f; }
-  ren(p, s) { return (C => <C childRef={this.fers.childRef}/>)(this.f()); }
-}
-let FunC = f => new FunComp(f);
+}  
 
 class Selector extends Comp { constructor(p) { super(p); A(this.state, { selectedIx: 0 }); oF(p.onChanged)(this.state.selectedIx) }
   setSelectedIx(selectedIx) { if (this.state.selectedIx !== selectedIx) this.setState({ selectedIx }, () => oF(this.props.onChanged)(selectedIx)); }
@@ -50,8 +45,7 @@ class THead extends Comp {
     </TableRow></TableHead>;
   }
 }
-
-let nullArray = length => { let r = []; for (let q = 0; q < length; ++q) r.push(null); return r; }
+ 
 class List extends Comp {
   constructor(p) { super(p); this.state = { page: 0, rowsPerPage: 5, checked: {}, selectedIx: null }; } 
   ren(p, s) {
@@ -68,40 +62,60 @@ class List extends Comp {
           {p.checkable ? <TableCell padding="checkbox"><Checkbox checked={isChecked(d)} inputProps={{ 'aria-labelledby': i }} /></TableCell> : null}
           {headers.map((h, j) => <TableCell key={j} align={h.align || "center"}>{(h.displayFunc || I)(d[h.label], d)}</TableCell>)}
         </TableRow>)}</TableBody>
-        <TableFooter>
-      <TableRow><TablePagination component={TableCell} colSpan={L(columnCount - 1)} rowsPerPageOptions={[5, 10, 25]} count={rows.length} rowsPerPage={s.rowsPerPage} page={s.page} onChangePage={(e, page) => X({ page })} onChangeRowsPerPage={e => X({ rowsPerPage: parseInt(e.target.value, 10) })} /></TableRow></TableFooter>
+        {oA(p.data).length > 5 ? <TableFooter><TableRow><TablePagination component={TableCell} colSpan={L(columnCount - 1)} rowsPerPageOptions={[5, 10, 25]} count={rows.length} rowsPerPage={s.rowsPerPage} page={s.page} onChangePage={(e, page) => X({ page })} onChangeRowsPerPage={e => X({ rowsPerPage: parseInt(e.target.value, 10) })} /></TableRow></TableFooter> : null}
       </Table></TableContainer>   
   }
 }
-
-let expandTabs = I;//o => F(E(o).map(([k, V]) => [k, V]));
+ 
 
 class TabbedView extends Comp { constructor(p) { super(p); this.fers.visibleTab = {}; }
   componentDidMount() { super.componentDidMount(); this.setSelectedTabIx(0); }
   setSelectedTabIx(selectedTabIx, onDone) { this.setState({ selectedTabIx }, onDone); }
   getVisibleTab() { L(`gvt = ${K(this.fers.visibleTab)}:${S(this.fers.visibleTab)}`); return this.fers.visibleTab.current; }
   ren(p, s) { return <Paper>
-    <Tabs value={s.selectedTabIx || 0} indicatorColor="primary" textColor="primary" onChange={(e, selectedTabIx) => this.setState({ selectedTabIx })} aria-label="tabs" centered>{E(p.tabs).map(([title, control], i) => <Tab key={i} label={removeUnderscores(title)} />)}</Tabs>
-    {React.createElement(V(expandTabs(p.tabs))[s.selectedTabIx || 0], {...p.parentProps, childRef: this.fers.visibleTab})}
-  </Paper>; }
+    <Tabs value={s.selectedTabIx || 0} indicatorColor="primary" textColor="primary" onChange={(e, selectedTabIx) => this.setState({ selectedTabIx })} aria-label="tabs" centered>{E(p.tabs).map(([title, control], i) => <Tab key={i} label={cleanText(title)} />)}</Tabs>
+    {React.createElement(V(p.tabs)[s.selectedTabIx || 0], {...p.parentProps, childRef: this.fers.visibleTab})}
+  </Paper> }
 }
 
-let button = (caption, onClick) => <Button variant="contained" color="primary" onClick={onClick}>{caption}</Button>
+let button = (caption, onClick, color) => <Button variant="contained" color={["primary", "secondary"][color || 0]} onClick={onClick}>{caption}</Button>
 
 class TabTimeline extends Comp { constructor(p) { super(p); this.fers.tabbedView = React.createRef();  this.fers.visibleTab = {}; }
   getTabbedView() { return this.fers.tabbedView.current; } 
   getVisibleTab() { return this.fers.visibleTab.current; }
   setSelectedTabIx(i, onDone) { this.getTabbedView().setSelectedTabIx(i, onDone); }
   ren(p, s) { let last = (i, o) => (i === (K(o).length - 1));
-    let f = o => F(E(o).map(([k, V], i) => [k, () => <><Box><V childRef={this.fers.visibleTab}/></Box><Box>
-      {(i > 0) && button("Start over", () => this.setSelectedTabIx(0))}
-      {!last(i, o) && button("Next", () => { let r = this.getVisibleTab().validate(); if (r) { 
+    let f = o => F(E(o).map(([k, V], i) => [k, () => <table style={{ borderSpacing: `${1/2}em` }}><tbody><tr><td><Box><V childRef={this.fers.visibleTab}/></Box><Box><table style={{ borderSpacing: `${1/2}em` }}><tbody><tr>
+      {p.onCancel && <td>{button("Cancel", oF(p.onCancel))}</td>}
+      {(i > 0) && <td>{button("Start over", () => this.setSelectedTabIx(0))}</td>}
+      {!last(i, o) && <td>{button("Next", () => { let r = this.getVisibleTab().validate(); if (r) { 
         this.setSelectedTabIx(L(this.getTabbedView().state.selectedTabIx + 1), () => (t => oF(t.setPrecedingResult).bind(t)(r))(this.getVisibleTab())); 
-      }})} 
-      {last(i, o) && button("Finish", () => { let r = this.getVisibleTab().validate(); L(`>> r = ${S(r)}`); if (r) oF(this.props.onAccept)(r); })} 
-    </Box></>]));
-    return <TabbedView ref={this.fers.tabbedView} tabs={f(p.tabs)} parentProps={p.parentProps}/>
+      }})}</td>}
+      {last(i, o) && <td>{button(p.acceptText || "Finish", () => { let vt = this.getVisibleTab(); if (vt) { let r = vt.validate(); L(`>> r = ${S(r)}`); if (L(r)) oF(L(p.onAccept))(r); } })}</td>}
+      </tr></tbody></table></Box></td></tr></tbody></table>]));
+    return <TabbedView ref={this.fers.tabbedView} tabs={f(oO(p.tabs))} parentProps={p.parentProps}/>
   }
 }
 
-export { Comp, List, TabbedView, Selector, captionMap, removeUnderscores, TabTimeline, button }
+class ValidatableComp extends Comp {
+  constructor(p, s, fers) { super(p, { values: {}, errors: {}, ...s }, fers);  }
+  setErrors(errors) { this.setState({ errors }, () => L(`New errors = ${S(this.state.errors)}`)); return L(L(L(K(errors).filter(I)).length) === 0); } 
+  validate() { return true; }
+  genTextField(k, helper, defaultValue) { let s = this.state; return <TextField error={L(D(s.errors[k]))} variant="outlined" defaultValue={L(defaultValue)} ref={this.fers[k]} id={k} label={cleanText(k)} helperText={s.errors[k] || helper} onChange={e => this.setState({ values: { ...s.values, ...singleKeyObject(k, e.target.value)}})}/> }
+}
+
+let formTable = (cells) => <table style={{borderSpacing: "1.5em"}}><tbody>{cells.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody></table> 
+let form = (preamble, cells) => <form noValidate autoComplete="off">{preamble}{formTable(cells)}</form>
+
+class DialogWrap extends Comp { constructor(p, s) { super(p, {...s, open: false}); }
+  show() { this.setState({ open: true }); }
+  ren(p, s) { let C = p.comp; let id = cleanText(p.id);
+    return <Dialog aria-labelledby={id} open={s.open} onClose={() => { oF(p.onClose)(); this.setState({ open: false }); }}><h2>{id}</h2>
+      <C onCancel={() => { oF(p.onCancel)(); this.setState({ open: false }); }} onAccept={d => { this.setState(L({ open: false }), () => oF(p.onAccept)(d));; }}/></Dialog> }
+} 
+
+class OpenDialogButton extends Comp { constructor(p, s) { super(p, s, "dlg"); }
+  ren(p, s) { return <>{button(cleanText(p.id), () => this.fers.dlg.current.show())}<DialogWrap ref={this.fers.dlg} comp={p.comp} id={p.id} onAccept={p.onAccept} onCancel={p.onCancel}/></> }
+}
+
+export { Comp, ValidatableComp, DialogWrap, List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, formTable, form }

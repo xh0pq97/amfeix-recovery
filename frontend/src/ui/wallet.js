@@ -1,11 +1,22 @@
 import React from 'react';
 import { Box, TextField } from '@material-ui/core';
-import { Comp, TabbedView, TabTimeline, button  } from './components'; 
+import { OpenDialogButton, DialogWrap, Comp, ValidatableComp, form, formTable, TabbedView, TabTimeline, button, List  } from './components'; 
 import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
 
-class Account extends Comp { ren(p, s) { return <p>{S(p.wallet)}</p> } }
-class History extends Comp { ren(p, s) { return <Box/> } }
-class Invest extends Comp { ren(p, s) { return <Box/> } }
-class Withdraw extends Comp { ren(p, s) { return <Box/> } }
+class WithdrawDialog extends Comp { ren(p, s) { return <TabTimeline tabs={{ Withdraw, Review, Done }} onCancel={p.onCancel} onAccept={p.onAccept}/>; } }
 
-export class Bitcoin_Wallet extends Comp { ren(p, s) { return <TabbedView tabs={{ Account, History, Invest, Withdraw }} parentProps={{ wallet: p.wallet }}/>; } }
+class Account extends Comp { constructor(p, s) { super(p, s, "dlgWithdraw"); }
+ren(p, s) { return formTable([[<List data={E(oO(p.wallet)).map(([key, value]) => ({key, value}))} />], [<OpenDialogButton id="Withdraw" comp={WithdrawDialog} onAccept={I} onCancel={I}/>]])   
+  }
+}
+
+class History extends Comp { ren(p, s) { return <Box/> } }
+class Invest extends ValidatableComp { ren(p, s) { return form(null, [[this.genTextField("Bitcoin personal Investment address", U, p.bitcoinAddress)]]) } } 
+
+class Done extends ValidatableComp { ren(p, s) { return <Box/>; } }
+class Review extends ValidatableComp { ren(p, s) { return <Box/>; } }
+class Withdraw extends ValidatableComp { ren(p, s) { return form(null, [[this.genTextField("To", "The address of the recipient")], [this.genTextField("Amount", "Amount to be sent")], [this.genTextField("Fees")]]); } }
+
+export class Bitcoin_Wallet extends Comp { ren(p, s) { return !D(p.wallet) ? <Box/> :
+  <>{formTable([[<Account wallet={p.wallet} />, <Invest bitcoinAddress={oO(p.wallet).bitcoinAddress}/>]])}<History /></> 
+} }

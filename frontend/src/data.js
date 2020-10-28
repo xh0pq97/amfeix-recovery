@@ -124,7 +124,7 @@ class Data {
     let performance = [], [time, amount] = "time amount".split(" ").map(t => this.syncCache.getData(t)).map(y => y.map(x => x.data));  
     let f = this.getFactor(), ff = f.times(100);// L({factor: f})
     for (let x = 0, acc = BN(1.0); x < amount.length; ++x) performance.push([time[x], (acc = (acc.times((BN(amount[x])).plus(ff))).div(ff)).plus(0)]);  
-    E(({ timeData: performance.map(([t, d]) => [t, parseFloat(d.times(100).toString())]), roi: parseFloat(performance[performance.length - 1][1].times(100).minus(100).toString()), dailyChange: parseFloat((BN(amount[amount.length - 1]).div(f)).toString()) }))
+    E(({ timeData: performance.map(([t, d]) => [1000*t, parseFloat(d.times(100).toString())]), roi: parseFloat(performance[performance.length - 1][1].times(100).minus(100).toString()), dailyChange: parseFloat((BN(amount[amount.length - 1]).div(f)).toString()) }))
     .map(([k, v]) => this.syncCache.setData(k, v));
     this.performance = performance;
   }
@@ -272,7 +272,7 @@ class Data {
     let objs = F(E(data).map(([k, v]) => [k, toObj(v)]));
     let has = F(E(objs).map(([k, v]) => [k, x => D(v[x.txId])]));  
     let g = ({ 
-      Deposits: data.Deposits.map(d => d),// hasWithdrawalRequest: has.withdrawalRequest(d) })), 
+      Deposits: data.Deposits,// hasWithdrawalRequest: has.withdrawalRequest(d) })), 
       Withdrawal_Requests: data.Withdrawal_Requests.filter(x => has.Deposits(x) && !has.Withdrawals(x)), 
       Withdrawals: data.Withdrawals.filter(x => has.Deposits(x) && has.Withdrawal_Requests(x)) 
     });
@@ -304,9 +304,9 @@ class Data {
       i.accValue = parseFloat((acc = (i.action === "0" ? acc.plus(v) : acc.minus(v))).plus(0).toString()); 
       i.accCurrentValue = parseFloat((currentValueAcc = (i.action === "0" ? currentValueAcc.plus(i.finalValue) : currentValueAcc.minus(v))).plus(0).toString()); 
     }
-    g.investment = investment.map(x => [x.timestamp, x.accValue]);
+    g.investment = investment.map(x => [1000*x.timestamp, x.accValue]);
     g.investmentValue = parseFloat(currentValueAcc.toString());
-    g.value = investment.map(x => [x.timestamp, x.accCurrentValue]);;
+    g.value = investment.map(x => [1000*x.timestamp, x.accCurrentValue]);;
     for (let d of g.Deposits) d.finalValue = d.finalValue.toString();
       //L(g);
     return this.syncCache.setData(getInvestorDataKey(investor.index), g);

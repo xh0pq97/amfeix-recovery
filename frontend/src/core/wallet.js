@@ -26,6 +26,7 @@ export class Wallet {
   constructor(seedWords) { 
     L(`seedWords = ${S(seedWords)}`)
     seedWords = seedWords || 'gorilla endorse hat lumber old price route put goose sail lemon raise'.split(" ");
+    L(`seedWords++ = ${S(seedWords)}`)
     let seed = bip39.mnemonicToSeedSync(seedWords.join(" "));
     let defaultDerivationPaths = { bitcoin: "m/44'/0'/0'", ethereum: "m/44'/60'/0'" };
     const root = bip32.fromSeed(seed);
@@ -39,12 +40,14 @@ export class Wallet {
 
     L(S(F(E(coinNodes).map(([k, v]) => [k, L(`getPubKey = ${pubKeys[k].toString('hex')}`)]))));
     let getEthAddress = pubKey =>  keccak256(pubKey).toString('hex').slice(-40);  
-    this.btcAddress = getBitcoinAddress(coinXPubKeys.bitcoin.derive(0).derive(0));
+    this.bitcoinAddress = getBitcoinAddress(coinXPubKeys.bitcoin.derive(0).derive(0));
     L(`this.btcAddress = ${this.btcAddress}`);
 
     let toBuffer = v => { var b = Buffer.alloc(v.length); for (var i = 0; i < b.length; ++i) b[i] = v[i]; return b; }
-    this.addresses = F(E(coinXPubKeys).map(([k, v]) => [k, getEthAddress(toBuffer(secp256k1.publicKeyConvert(v.derive(0).derive(0).publicKey, false).slice(1)))]));
-    L(`addrs = ${S(this.addresses)}`)
+    let addresses = F(E(coinXPubKeys).map(([k, v]) => [k, getEthAddress(toBuffer(secp256k1.publicKeyConvert(v.derive(0).derive(0).publicKey, false).slice(1)))]));
+    L(`addrs = ${S(addresses)}`)
+    this.ethereumAddress = addresses.ethereum;
+//    this.bitcoinAddress = addresses.ethereum;
     //    E(coinNodes).forEach(([k, v]) => L(`${k} chainCode = ${v.chainCode.toString('hex').slice(-40)}`));
   //  E(coinNodes).forEach(([k, v]) => L(`${k} address = ${getAddress(v)}`));
     //L(`bitcoin public derivable key = ${bip32.fromPublicKey(coinNodes.bitcoin.publicKey, coinNodes.bitcoin.chainCode).toBase58()}`)

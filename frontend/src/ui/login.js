@@ -1,23 +1,16 @@
 import React from 'react';
 import { Box, TextField } from '@material-ui/core';
-import { Comp, TabbedView, TabTimeline, button  } from './components'; 
+import { Comp, ValidatableComp, TabbedView, TabTimeline, button, formTable, form } from './components'; 
 import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
 import * as bip39 from 'bip39';
 
-let wordlist = 'gorilla endorse hat lumber old price route put goose sail lemon raise'.split(" ");
-let preamble = (title, text, warning) => <><h2>{title}</h2><p>{text}</p><p color={"#FF2170"}>{warning}</p></>;
+let defaultWords = 'gorilla endorse hat lumber old price route put goose sail lemon raise'.split(" ");
+let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{title}</h2><p style={{textAlign: "left"}}>{text}</p><p style={{textAlign: "left", color: "#FF2170"}}>{warning}</p></>;
 
-class ValidatableComp extends Comp {
-  constructor(p, s, fers) { super(p, { values: {}, errors: {}, ...s }); this.initRefs(oS(fers)); }
-  setErrors(errors) { this.setState({ errors }, () => L(`New errors = ${S(this.state.errors)}`)); return L(L(L(K(errors).filter(I)).length) === 0); } 
-  validate() { return false; }
-  genTextField(k, helper, defaultValue) { let s = this.state; return <TextField error={L(D(s.errors[k]))} variant="outlined" defaultValue={defaultValue} ref={this.fers[k]} id={k} label={k} helperText={s.errors[k] || helper} onChange={e => this.setState({ values: { ...s.values, ...singleKeyObject(k, e.target.value)}})}/> }
-}
-
-export class SeedView extends ValidatableComp {
+class SeedView extends ValidatableComp {
   constructor(p, s) { super(p, s); 
-    let mnemonic = 'praise you muffin lion enable neck grocery crumble super myself license ghost'.split(" ");
-    for (let q = 0; q < 12; ++q) this.state.values[this.getKey(q)] = mnemonic[q];  
+//    let mnemonic = 'praise you muffin lion enable neck grocery crumble super myself license ghost'.split(" ");
+    for (let q = 0; q < 12; ++q) this.state.values[this.getKey(q)] = defaultWords[q];  
     this.initRefs(K(this.state).join(" "));
   }
   checkWordsInList(wordList) { L(`checkWordsInList: ${wordList}`);
@@ -31,15 +24,12 @@ export class SeedView extends ValidatableComp {
   }
   getKey(x) { return `Word_${x}`}
   getWords() { let result = []; for (let q = 0; q < 12; ++q) result.push(this.state.values[this.getKey(q)]); L(`getWords = ${result}`); return result; }
-  ren(p, s) { return <table style={{borderSpacing: "1.5em"}}><tbody>
-    {[0, 1, 2].map(a => <tr key={a}>{[0, 1, 2, 3].map(b => <td key={b}>{this.genTextField(this.getKey(4*a + b), U, wordlist[4*a + b])}</td>)}</tr>)}</tbody></table>
-  }
+  ren(p, s) { return formTable([0, 1, 2].map(a => [0, 1, 2, 3].map(b => this.genTextField(this.getKey(4*a + b), U, defaultWords[4*a + b])))) }
 }
 
-class Setup_password extends ValidatableComp {
-  constructor(p, s) { super(p, s, "Wallet Password Confirm_password"); }
-  ren(p, s) { let tf = v => <tr><td>{this.genTextField(v)}</td></tr>
-    return <form noValidate autoComplete="off">{preamble("Setup password", "Your wallet will be password protected and encrypted. Please, choose a strong password.")}<table style={{borderSpacing: "1.5em"}}><tbody>{tf("Wallet")}{tf("Password")}{tf("Confirm_password")}</tbody></table></form> }
+class Setup_password extends ValidatableComp { constructor(p, s) { super(p, s, "Wallet Password Confirm_password"); }
+  ren(p, s) { return form(preamble("Setup password", "Your wallet will be password protected and encrypted. Please, choose a strong password."), 
+    [[this.genTextField("Wallet")], [this.genTextField("Password")], [this.genTextField("Confirm_password")]]) }
   validate() { let e = {};
     if (this.state.values.Password !== this.state.values.Confirm_password) { e["Password"] = "Passwords don't match"; e["Confirm_password"] = "Passwords don't match"; } 
     if (oS(this.state.values.Password).length < 8) e["Password"] = "Please use at least 8 characters";
@@ -48,11 +38,8 @@ class Setup_password extends ValidatableComp {
   }
 }
 
-class Enter_credentials extends ValidatableComp {
-  constructor(p, s) { super(p, s, "Wallet Password"); }
-  ren(p, s) {
-    return <form noValidate autoComplete="off">{this.genTextField("Wallet")}{this.genTextField("Password")}</form>;
-  }
+class Enter_credentials extends ValidatableComp { constructor(p, s) { super(p, s, "Wallet Password"); }
+  ren(p, s) { return formTable([[this.genTextField("Wallet")], [this.genTextField("Password")]]) }
   validate() { let e = {};
     if (oS(this.state.values.Password).length < 1) e["Password"] = "Please enter your password";
     if (oS(this.state.values.Wallet).length < 1) e["Wallet"] = "Please choose a wallet";
@@ -70,8 +57,7 @@ class Backup_seed extends ValidatableComp {
   }
 }
 
-class Verify_seed extends ValidatableComp {
-  constructor(p, s) { super(p, s, "seedView"); }
+class Verify_seed extends ValidatableComp { constructor(p, s) { super(p, s, "seedView"); }
   setPrecedingResult(input) { L(`Verify_seed: precedingresult: ${S(input)}`); this.setState({ input }) }
   validate() { let sv = this.fers.seedView.current; return sv.checkWordsEqual(oA(oO(this.state.input).words)) && { words: sv.getWords() }; }
   ren(p, s) {
@@ -80,18 +66,15 @@ class Verify_seed extends ValidatableComp {
   }
 }
 
-class Input_seed extends ValidatableComp {
-  constructor(p, s) { super(p, s, "seedView"); }
+class Input_seed extends ValidatableComp { constructor(p, s) { super(p, s, "seedView"); }
   setPrecedingResult(input) { L(`Input_seed: precedingresult: ${S(input)}`); this.setState({ input }) }
   validate() { let sv = this.fers.seedView.current; return sv.checkWordsInList(bip39.wordlists.english) && { words: sv.getWords() }; } 
   ren(p, s) { return <form noValidate autoComplete="off">{preamble('Input seed', 'Restore your wallet from your previously backed up seed.', 'Never give your seed keys to anyone, we will never ask you to share them with us.')}
     <SeedView ref={this.fers.seedView}/></form>;
   }
-}
+} 
 
-//L(`english word list = ${bip39.wordlists.english}`)
-
-class Unlock_wallet extends Comp { ren(p, s) { return <TabTimeline tabs={{ Enter_credentials }} onAccept={this.props.onAccept}/>; } }
+class Unlock_wallet extends Comp { ren(p, s) { return <TabTimeline tabs={{ Enter_credentials }} onAccept={this.props.onAccept} acceptText="Unlock"/>; } }
 class Create_wallet extends Comp { ren(p, s) { return <TabTimeline tabs={{ Setup_password, Backup_seed, Verify_seed }} onAccept={this.props.onAccept}/>; } }
 class Seed_Login extends Comp { ren(p, s) { return <TabTimeline tabs={{ Setup_password, Input_seed }} onAccept={this.props.onAccept}/>; } }
 
