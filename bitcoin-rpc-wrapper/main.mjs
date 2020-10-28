@@ -13,7 +13,8 @@ const verbose = true;
 let LOG = d => verbose ? L(d) : d; 
 
 // DB Init
-const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: 5 });
+let groupSize = 16;
+const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: groupSize + 5 });
 let objGenesis = [ "USE transfers",
   "CREATE TABLE IF NOT EXISTS block (id INT PRIMARY KEY AUTO_INCREMENT, height INT, hash VARBINARY(32), processed BOOL, INDEX height (height), INDEX hash (hash))",
   "CREATE TABLE IF NOT EXISTS transaction (id INT PRIMARY KEY AUTO_INCREMENT, v VARBINARY(32), INDEX v (v))",
@@ -40,21 +41,21 @@ let rpcRequest = (method, params) => new Promise((resolve, reject) => {
 });
 let rpc = async (method, params) => (await rpcRequest(method, params)).result;
 
-(async () => { let conn = await pool.getConnection(); LOG('DB connection opened.') // Create db
+let blockScan = (async (offset) => { let conn = await pool.getConnection(); LOG('DB connection opened.') // Create db
   try {
-    for (let x of objGenesis) await conn.query(LOG(x));
+    for (let x of objGenesis) await conn.query((x));
     L(`DB initialized.`);
     // Block background scan;
     let blockCount = await rpc("getblockcount", []);
-    let blockHash = await rpc("getblockhash", [blockCount]);
-    LOG({blockCount, blockHash}); 
-    for (let height = blockCount; height > 0; height--) { L(`[${height}]`);
+    for (let height = blockCount - (blockCount % groupSize) - groupSize + offset; height > 0; height -= groupSize) { L(`[${height}]`);
       let htb = h => Buffer.from(h, "hex");
+      let blockHash = await rpc("getblockhash", [blockCount]);
       let binBlockHash = htb(blockHash);
       let r = await conn.query("SELECT * FROM block WHERE height = ? AND hash = ?", [height, (binBlockHash)]); 
 //      L(`processed = ${oO(r[0]).processed}`)
-      let idBlock = (r.length === 0) ? oO(await conn.query("INSERT INTO block (height, hash, processed) VALUES (?, ?, ?)", [height, (binBlockHash), false])).insertId : r[0].id; 
+      let idBlock = (r.length === 0) ? oO(await conn.query("INSERT INTO block (height, hash, processed) VALUES (?, ?, ?)", [height, (binBlockHash), 0])).insertId : r[0].id; 
       let coin = (new BigNumber(10)).pow(18);
+      //L(`${typeof oO(r[0]).processed}`)
       if (D(idBlock) && !(oO(r[0]).processed === 1)) {
         let block = await rpc("getblock", [blockHash]);
         for (let txHash of block.tx) { //LOG({txHash});
@@ -83,11 +84,13 @@ let rpc = async (method, params) => (await rpcRequest(method, params)).result;
           }
         }
         let updateR = await conn.query("UPDATE block SET processed = 1 WHERE id = ?", [idBlock]);
-        L(`updateR = ${S(updateR)}`)
+//        L(`updateR = ${S(updateR)}`)
       }
     }
   } finally { if (conn) conn.release(); }
-})();
+});
+
+for (let q = 0; q < groupSize; ++q) blockScan(q);
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
