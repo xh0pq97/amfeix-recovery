@@ -1,6 +1,6 @@
 import React from 'react';
 import { A, D, E, F, I, K, L, U, V, S, oA, oF, oO, oS, singleKeyObject } from '../tools';
-import { TextField, Dialog, DialogTitle, Box, Button, RadioGroup, Radio, FormContolLabel, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter, withStyles } from '@material-ui/core';
+import { CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 
 let captionMap = {
   timestamp: "Time", value: "Value", txId: "Transaction ID", deposits: "Deposits", withdrawals: "Withdrawals", withdrawalRequests: "Withdrawal Requests", fundDepositAddresses: "Fund deposit addresses", feeAddresses: "Fee addresses", _: ""
@@ -91,7 +91,7 @@ class TabTimeline extends Comp { constructor(p) { super(p); this.fers.tabbedView
       {!last(i, o) && <td>{button("Next", () => { let r = this.getVisibleTab().validate(); if (r) { 
         this.setSelectedTabIx(L(this.getTabbedView().state.selectedTabIx + 1), () => (t => oF(t.setPrecedingResult).bind(t)(r))(this.getVisibleTab())); 
       }})}</td>}
-      {last(i, o) && <td>{button(p.acceptText || "Finish", () => { let vt = this.getVisibleTab(); if (vt) { let r = vt.validate(); L(`>> r = ${S(r)}`); if (L(r)) oF(L(p.onAccept))(r); } })}</td>}
+      {last(i, o) && <td>{button(p.acceptText || "Finish", () => { let vt = this.getVisibleTab(); if (vt) { let r = vt.validate(); L(`>> r = ${S(r)}`); if (L(r)) oF((p.onAccept))(r); } })}</td>}
       </tr></tbody></table></Box></td></tr></tbody></table>]));
     return <TabbedView ref={this.fers.tabbedView} tabs={f(oO(p.tabs))} parentProps={p.parentProps}/>
   }
@@ -99,23 +99,30 @@ class TabTimeline extends Comp { constructor(p) { super(p); this.fers.tabbedView
 
 class ValidatableComp extends Comp {
   constructor(p, s, fers) { super(p, { values: {}, errors: {}, ...s }, fers);  }
-  setErrors(errors) { this.setState({ errors }, () => L(`New errors = ${S(this.state.errors)}`)); return L(L(L(K(errors).filter(I)).length) === 0); } 
+  setErrors(errors) { this.setState({ errors }, () => L(`New errors = ${S(this.state.errors)}`)); return (((K(errors).filter(I)).length) === 0); } 
   validate() { return true; }
-  genTextField(k, helper, defaultValue) { let s = this.state; return <TextField error={L(D(s.errors[k]))} variant="outlined" defaultValue={L(defaultValue)} ref={this.fers[k]} id={k} label={cleanText(k)} helperText={s.errors[k] || helper} onChange={e => this.setState({ values: { ...s.values, ...singleKeyObject(k, e.target.value)}})}/> }
+  genTextField(k, p) { let s = this.state; return <TextField error={(D(s.errors[k]))} variant="outlined" ref={this.fers[k]} id={k} label={cleanText(k)} onChange={e => this.setState({ values: { ...s.values, ...singleKeyObject(k, e.target.value)}})} {...p} helperText={s.errors[k] || oO(p).helperText}/> }
 }
 
-let formTable = (cells) => <table style={{borderSpacing: "1.5em"}}><tbody>{cells.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody></table> 
+let tabulize = (borderSpacing, cells) => <table style={{borderSpacing: `${borderSpacing || 0}em`}}><tbody>{cells.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody></table> 
+let formTable = cells => tabulize(1.5, cells)
 let form = (preamble, cells) => <form noValidate autoComplete="off">{preamble}{formTable(cells)}</form>
 
 class DialogWrap extends Comp { constructor(p, s) { super(p, {...s, open: false}); }
   show() { this.setState({ open: true }); }
   ren(p, s) { let C = p.comp; let id = cleanText(p.id);
     return <Dialog aria-labelledby={id} open={s.open} onClose={() => { oF(p.onClose)(); this.setState({ open: false }); }}><h2>{id}</h2>
-      <C onCancel={() => { oF(p.onCancel)(); this.setState({ open: false }); }} onAccept={d => { this.setState(L({ open: false }), () => oF(p.onAccept)(d));; }}/></Dialog> }
+      <C onCancel={() => { oF(p.onCancel)(); this.setState({ open: false }); }} onAccept={d => { this.setState(({ open: false }), () => oF(p.onAccept)(d));; }}/></Dialog> }
 } 
 
 class OpenDialogButton extends Comp { constructor(p, s) { super(p, s, "dlg"); }
   ren(p, s) { return <>{button(cleanText(p.id), () => this.fers.dlg.current.show())}<DialogWrap ref={this.fers.dlg} comp={p.comp} id={p.id} onAccept={p.onAccept} onCancel={p.onCancel}/></> }
 }
 
-export { Comp, ValidatableComp, DialogWrap, List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, formTable, form }
+class ProgressDialog extends Comp { //constructor(p, s) { super(p, { ...s, open: false }); }
+  //show() { this.setState({ open: true }); }
+  ren(p, s) { let id = cleanText(p.title); 
+    return <Dialog aria-labelledby={id} open={p.open} onClose={oF(p.onClose)}><h2>{cleanText(id)}</h2>{tabulize(3, [[<CircularProgress  value={p.progress} />]])}</Dialog> }
+}
+
+export { Comp, ValidatableComp, DialogWrap, ProgressDialog, List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }

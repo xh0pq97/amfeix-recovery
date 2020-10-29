@@ -1,11 +1,11 @@
 import React from 'react'; import ReactDOM from 'react-dom';
 import Highcharts from 'highcharts/highstock'; import HighchartsReact from 'highcharts-react-official';
 import * as serviceWorker from './serviceWorker';
-import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from './tools'; 
+import { A, D, E, F, G, H, I, K, L, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from './tools'; 
 import { ethInterfaceUrl, ganacheInterfaceUrl, btcRpcUrl, btcFields, amfeixFeeFields, ethBasicFields, data, getInvestorDataKey, stati } from './data';
 import { AppBar, Toolbar, Button, Box, TextField, Paper } from '@material-ui/core';
 import {   createMuiTheme, ThemeProvider}  from '@material-ui/core/styles';
-import { OpenDialogButton, DialogWrap, Selector, ValidatableComp, Comp, TabbedView, List, captionMap, cleanText, button, formTable, TabTimeline } from './ui/components'; 
+import { ProgressDialog, OpenDialogButton, DialogWrap, Selector, ValidatableComp, Comp, TabbedView, List, captionMap, cleanText, button, tabulize, formTable, TabTimeline } from './ui/components'; 
 import { Log_in } from './ui/login';
 import { Bitcoin_Wallet } from './ui/wallet';
 //import ImpactFundIcon from './assets/impactFund.svg'
@@ -22,14 +22,19 @@ class InvestorDependentView extends Comp {
 
 let formatDate = date => {
   let fmt = { year: 'numeric', month: 'short', day: '2-digit', hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false };
-  let d = F(E(fmt).map(([k, v]) => [k, new Intl.DateTimeFormat('en', { hour12: false, ...singleKeyObject(k, v)}).format(date)])); 
+  let d = G(fmt, (v, k) => new Intl.DateTimeFormat('en', { hour12: false, ...singleKeyObject(k, v)}).format(date)); 
   return `${d.month} ${d.day}, ${d.year} @ ${d.hour}:${d.minute}:${d.second}`;
 }, formatTimestamp = timestamp => formatDate(new Date(1000 * timestamp));
 
 let wrapEllipsisDiv = v => <div style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap"}}>{v}</div>;
-let applyHeaders = h => { E({ txId: { caption: "BTC Tx", displayFunc: wrapEllipsisDiv }, pubKey: { caption: "Pub key", displayFunc: wrapEllipsisDiv },
-    timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp }, value: { caption: "Amount (BTC)", align: "right", alignCaption: "right" }})
-    .map(([k, v]) => A(oO(h[k]), v))
+let displayBtcTransaction = v => <>{wrapEllipsisDiv(<a href={`https://www.blockchain.com/en/btc/tx/${v}`}>{v}</a>)}</>;
+let displayBtcAddress = v => <>{wrapEllipsisDiv(<a href={`https://www.blockchain.com/en/btc/address/${v}`}>{v}</a>)}</>;
+let applyHeaders = h => { E({ 
+txId: { caption: "BTC Tx", displayFunc: displayBtcTransaction }, 
+    pubKey: { caption: "Pub key" },//, displayFunc: wrapEllipsisDiv },
+    timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp }, 
+    value: { caption: "Amount (BTC)", align: "right", alignCaption: "right" }
+  }).forEach(([k, v]) => A(oO(h[k]), v))
   return h;
 }
 let extractHeaders = d => F(K(oO(oA(d)[0])).map(h => [h, { label: h, caption: h }]))
@@ -48,7 +53,7 @@ class InvestorView extends InvestorDependentView {
     if (headers.Deposits.status) A(headers.Deposits.status, { caption: "Action", displayFunc: (v, d) => (v !== stati.Deposits.Active) ? cleanText(v) :
       <OpenDialogButton id="Withdraw" comp={Withdraw} onAccept={I}/>});
     applyWithdrawalRequestStatus(headers.Withdrawal_Requests);
-    headers = F(E(headers).map(([k, v]) => [k, V(v).filter(h => p.mode.dev || "status value txId pubKey timestamp".split(" ").includes(h.label))])); 
+    headers = G(headers, v => V(v).filter(h => p.mode.dev || T("status value txId pubKey timestamp").includes(h.label))); 
     return <TabbedView style={{ display: D(p.investor) ? "block" : "none" }} caption={`Investor ${oO(p.investor).data}`} tabs={F(lists.map(k => [k, () => <List data={i[k]} headers={headers[k]}/>]))} /> } 
 }
 
@@ -105,7 +110,7 @@ class FundIndexChart extends Comp { componentDidMount() { this.addSyncKeyObserve
 }
 
 class Impact_Fund extends InvestorDependentView {
-  componentDidMount() { super.componentDidMount(); ethBasicFields.concat(["roi", "dailyChange", "timeData"]).map(k => this.addSyncKeyObserver(data, k)); } 
+  componentDidMount() { super.componentDidMount(); ethBasicFields.concat(T("roi dailyChange timeData")).map(k => this.addSyncKeyObserver(data, k)); } 
 
   ren(p, s) { let changePerc = v => D(v) ? `${v >= 0 ? "+" : "-"}${v}%` : ''; //L(`Fundview inv = ${S(p.investor)}`);
     let iData = this.getInvestorData(); //L(`p.dark = ${p.dark}`);
@@ -116,7 +121,7 @@ class Impact_Fund extends InvestorDependentView {
         <tr><td style={{align: "right"}}><Paper><p>{D(iData.investmentValue) ? `${iData.investmentValue} BTC` : null}</p><p>{`Investment Value`}</p></Paper></td></tr>
         <tr><td><Paper style={{align: "right"}}><p>{changePerc(s.roi)}</p><p>{`ROI`}</p></Paper></td></tr>
       </tbody></table></td><td><FundIndexChart dark={p.dark}/></td></tr></tbody></table></td></tr>
-      <tr>{"dailyChange aum btcPrice".split(" ").map((v, i) => <td key={i}><Paper>{`${v}: ${(displayTrafo[v] || I)(s[v])}`}</Paper></td>)}</tr>
+      <tr>{T("dailyChange aum btcPrice").map((v, i) => <td key={i}><Paper>{`${v}: ${(displayTrafo[v] || I)(s[v])}`}</Paper></td>)}</tr>
       <tr><td colSpan={3}><HighchartsReact constructorType={"stockChart"} highcharts={Highcharts} options={chartOpts('Investment Performance', " BTC", [timeDataTrafo("Value", iData.value)], p.dark)} /></td></tr>
       <tr><td colSpan={3}><InvestorView investor={p.investor} mode={p.mode}/></td></tr>
     </tbody></table>
@@ -128,26 +133,37 @@ class Bitcoin_P2P_Network extends Comp { componentDidMount() { btcFields.forEach
 }
 let amfeixAddressLists = ["fundDepositAddresses", "feeAddresses"], ethFields = ["owner"].concat(amfeixFeeFields);
 class Ethereum_P2P_Network extends Comp { componentDidMount() { amfeixAddressLists.concat(ethFields).forEach(f => this.addSyncKeyObserver(data, f)); }
-  ren(p, s) { return <table><tbody>
-    <tr><td colSpan={2}><Paper><List data={[{ name: "RPC url", value: <Selector options={[ethInterfaceUrl, ganacheInterfaceUrl]}/> }].concat(ethFields.map(name => ({ name, value: S(oO(s[name])) })))} /></Paper></td></tr> 
-    <tr>{amfeixAddressLists.map((k, i) => <td key={i}><Paper><List caption={captionMap[k]} data={(oA(s[k]))} /></Paper></td>)}</tr>
-  </tbody></table> } 
+  ren(p, s) { return tabulize(2/3, [
+    [<List data={[{ name: "RPC url", value: <Selector options={[ethInterfaceUrl, ganacheInterfaceUrl]}/> }].concat(ethFields.map(name => ({ name, value: S(oO(s[name])) })))} />],
+    [tabulize(1/3, [amfeixAddressLists.map(k => { let h = genHeaders(s[k]);
+      A(oO(h.data), { caption: "Address", displayFunc: displayBtcAddress });
+      return <List caption={captionMap[k]} data={(oA(s[k]))} headers={V(h)} />; })])]
+  ]) } 
 }
+let wallet = new Wallet();
 
 class Network extends Comp { ren(p, s) { return <TabbedView tabs={({Bitcoin_P2P_Network, Ethereum_P2P_Network })} /> } }
-class MainView extends Comp { //constructor(p) { super(p, {}); } 
-ren(p, s) { return <><AppBar position="static"><Toolbar>
-    <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.setState({ wallet: new Wallet(oO(d).words) })}/>
+class MainView extends Comp { constructor(p, s) { super(p, s); this.state.wallets = wallet.wallets; } 
+  startWalletOp(walletOperation, f) { this.setState({ walletOperation, progressDialogOpen: true }, () => setTimeout(async () => { await f(); this.setState({ progressDialogOpen: false, wallets: L(wallet.wallets) }) }, 500));  }
+  acceptLogIn(d) {
+    L(`d = ${S(d)}`)
+    if (d.seedWords) { this.startWalletOp("Encrypting", () => wallet.add(d.creds, d.seedWords, status => { this.setState({ walletCodecProgress: L(status.percent) }); })); }
+    else { this.startWalletOp("Decrypting", () => wallet.check(d.creds, status => this.setState({ walletCodecProgress: status.percent }))); }
+    return true;
+  }
+  ren(p, s) { return <><AppBar position="static"><Toolbar>
+    <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/>
+    <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} />
     {D(s.wallet) ? button("Log out", () => this.setState({ wallet: U })) : null}
   </Toolbar></AppBar>
-  <TabbedView orientation={"vertical"} tabs={{Bitcoin_Wallet, Admin, Impact_Fund, Network}} parentProps={{ mode: p.mode, investor: p.investor, wallet: s.wallet, dark: p.dark }}/></>
+  <TabbedView orientation={"vertical"} tabs={{Bitcoin_Wallet, Admin, Impact_Fund, Network}} parentProps={{ mode: p.mode, investor: p.investor, wallets: s.wallets, dark: p.dark }}/></>
 } }
 
 class App extends Comp { 
   constructor(p) { super(p); this.state.theme = this.createTheme(); } 
   createTheme() { let s = this.state;
     A(document.body.style, { color: getMainColor(true, s.dark), backgroundColor: getMainColor(false, s.dark) });
-    return createMuiTheme({ palette: { type: s.dark ? 'dark' : 'light' } }) 
+    return createMuiTheme({ palette: { type: s.dark ? 'dark' : 'light' } }) ;
   }
   ren(p, s) { let mode = {dev: s.dev, admin: s.admin};
     return <ThemeProvider theme={s.theme}>
