@@ -5,7 +5,7 @@ import { A, D, E, F, G, H, I, K, L, S, T, U, V, oA, oF, oO, oS, asA, singleKeyOb
 import { ethInterfaceUrl, ganacheInterfaceUrl, btcRpcUrl, btcFields, amfeixFeeFields, ethBasicFields, data, getInvestorDataKey, stati } from './data';
 import { AppBar, Toolbar, Button, Box, TextField, Paper } from '@material-ui/core';
 import {   createMuiTheme, ThemeProvider}  from '@material-ui/core/styles';
-import { ProgressDialog, OpenDialogButton, DialogWrap, Selector, ValidatableComp, Comp, TabbedView, List, captionMap, cleanText, button, tabulize, formTable, TabTimeline } from './ui/components'; 
+import { wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, ProgressDialog, OpenDialogButton, DialogWrap, Selector, ValidatableComp, Comp, TabbedView, List, captionMap, cleanText, button, tabulize, formTable, TabTimeline } from './ui/components'; 
 import { Log_in } from './ui/login';
 import { Bitcoin_Wallet } from './ui/wallet';
 //import ImpactFundIcon from './assets/impactFund.svg'
@@ -26,9 +26,6 @@ let formatDate = date => {
   return `${d.month} ${d.day}, ${d.year} @ ${d.hour}:${d.minute}:${d.second}`;
 }, formatTimestamp = timestamp => formatDate(new Date(1000 * timestamp));
 
-let wrapEllipsisDiv = v => <div style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap"}}>{v}</div>;
-let displayBtcTransaction = v => <>{wrapEllipsisDiv(<a href={`https://www.blockchain.com/en/btc/tx/${v}`}>{v}</a>)}</>;
-let displayBtcAddress = v => <>{wrapEllipsisDiv(<a href={`https://www.blockchain.com/en/btc/address/${v}`}>{v}</a>)}</>;
 let applyHeaders = h => { E({ 
 txId: { caption: "BTC Tx", displayFunc: displayBtcTransaction }, 
     pubKey: { caption: "Pub key" },//, displayFunc: wrapEllipsisDiv },
@@ -106,7 +103,7 @@ let chartOpts = (title, valueSuffix, datas, dark) => ({ rangeSelector: {selected
 let timeDataTrafo = (name, data) => ({ name, data })//: oA(data).map(([t, d]) => [1000*t, d]) })
 
 class FundIndexChart extends Comp { componentDidMount() { this.addSyncKeyObserver(data, "timeData"); }
-  ren(p, s) { return <Paper><HighchartsReact constructorType={"stockChart"} highcharts={Highcharts} options={chartOpts('Fund Index', " %", [timeDataTrafo("ROI", s.timeData)], p.dark)} /></Paper> }
+  ren(p, s) { return <Box><HighchartsReact constructorType={"stockChart"} highcharts={Highcharts} options={chartOpts('Fund Index', " %", [timeDataTrafo("ROI", s.timeData)], p.dark)} /></Box> }
 }
 
 class Impact_Fund extends InvestorDependentView {
@@ -118,10 +115,10 @@ class Impact_Fund extends InvestorDependentView {
     let displayTrafo = { dailyChange: changePerc, aum: v => `${parseInt(v)/Math.pow(10, s.decimals)} BTC` }
     return <table><tbody>
       <tr><td colSpan={3}><table><tbody><tr><td><table><tbody>
-        <tr><td style={{align: "right"}}><Paper><p>{D(iData.investmentValue) ? `${iData.investmentValue} BTC` : null}</p><p>{`Investment Value`}</p></Paper></td></tr>
-        <tr><td><Paper style={{align: "right"}}><p>{changePerc(s.roi)}</p><p>{`ROI`}</p></Paper></td></tr>
+        <tr><td style={{align: "right"}}><Box><p>{D(iData.investmentValue) ? `${iData.investmentValue} BTC` : null}</p><p>{`Investment Value`}</p></Box></td></tr>
+        <tr><td><Box style={{align: "right"}}><p>{changePerc(s.roi)}</p><p>{`ROI`}</p></Box></td></tr>
       </tbody></table></td><td><FundIndexChart dark={p.dark}/></td></tr></tbody></table></td></tr>
-      <tr>{T("dailyChange aum btcPrice").map((v, i) => <td key={i}><Paper>{`${v}: ${(displayTrafo[v] || I)(s[v])}`}</Paper></td>)}</tr>
+      <tr>{T("dailyChange aum btcPrice").map((v, i) => <td key={i}><Box>{`${v}: ${(displayTrafo[v] || I)(s[v])}`}</Box></td>)}</tr>
       <tr><td colSpan={3}><HighchartsReact constructorType={"stockChart"} highcharts={Highcharts} options={chartOpts('Investment Performance', " BTC", [timeDataTrafo("Value", iData.value)], p.dark)} /></td></tr>
       <tr><td colSpan={3}><InvestorView investor={p.investor} mode={p.mode}/></td></tr>
     </tbody></table>
@@ -148,7 +145,7 @@ class MainView extends Comp { constructor(p, s) { super(p, s); this.state.wallet
   acceptLogIn(d) {
     L(`d = ${S(d)}`)
     if (d.seedWords) { this.startWalletOp("Encrypting", () => wallet.add(d.creds, d.seedWords, status => { this.setState({ walletCodecProgress: L(status.percent) }); })); }
-    else { this.startWalletOp("Decrypting", () => wallet.check(d.creds, status => this.setState({ walletCodecProgress: status.percent }))); }
+    else { this.startWalletOp("Decrypting", () => wallet.open(d.creds, status => this.setState({ walletCodecProgress: status.percent }))); }
     return true;
   }
   ren(p, s) { return <><AppBar position="static"><Toolbar>

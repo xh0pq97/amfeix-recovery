@@ -8,7 +8,7 @@ let A = Object.assign;
 let D = x => typeof x !== "undefined";
 let E = Object.entries;
 let F = Object.fromEntries; 
-let G = (o, f) => F(E(o).map(([k, v], i) => [k, f(v, k, i, o)]));
+let G = (o, f) => F(E(oO(o)).map(([k, v], i) => [k, f(v, k, i, o)]));
 let H = (f, o) => G(o, (v, k, i, o) => isO(v) ? H(f, v) : f(v, k, i, o));
 let I = x => x;
 let K = Object.keys;

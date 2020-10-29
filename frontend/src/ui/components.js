@@ -1,5 +1,5 @@
 import React from 'react';
-import { A, D, E, F, I, K, L, U, V, S, oA, oF, oO, oS, singleKeyObject } from '../tools';
+import { A, D, E, F, G, I, K, L, U, V, S, oA, oF, oO, oS, singleKeyObject } from '../tools';
 import { CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 
 let captionMap = {
@@ -56,7 +56,7 @@ class List extends Comp {
     let columnCount = headers.length + (p.checkable ? 1 : 0);
     let offset = s.page * s.rowsPerPage, end = Math.min(rows.length, offset + s.rowsPerPage);//, emptyRows = offset + s.rowsPerPage - end;
     let dense = true, order = "asc", orderBy = 0, onRequestSort = () => { }; 
-    return <TableContainer component={Paper}><p>{p.caption || null}</p><Table className={classes.table} aria-labelledby={p.title} size={(dense ? 'small' : 'medium')} aria-label={p.title}>
+    return <TableContainer component={Box}><p>{p.caption || null}</p><Table className={classes.table} aria-labelledby={p.title} size={(dense ? 'small' : 'medium')} aria-label={p.title}>
         <THead headers={headers} classes={classes} checkable={p.checkable} numSelected={V(s.checked).filter(v => D(v)).length} order={order} orderBy={orderBy} onSelectAllClick={() => { }} onRequestSort={onRequestSort} rowCount={rows.length} />
         <TableBody>{sort(rows).slice(offset, (s.page + 1) * s.rowsPerPage).map((d, i) => <TableRow key={i} hover onClick={() => X({ selectedIx: d._id })} aria-checked={isChecked(d)} tabIndex={-1} selected={isSelected(d)}>
           {p.checkable ? <TableCell padding="checkbox"><Checkbox checked={isChecked(d)} inputProps={{ 'aria-labelledby': i }} /></TableCell> : null}
@@ -68,32 +68,29 @@ class List extends Comp {
 }
  
 
-class TabbedView extends Comp { constructor(p) { super(p); this.fers.visibleTab = {}; }
-  componentDidMount() { super.componentDidMount(); this.setSelectedTabIx(0); }
-  setSelectedTabIx(selectedTabIx, onDone) { this.setState({ selectedTabIx }, onDone); }
-  getVisibleTab() { L(`gvt = ${K(this.fers.visibleTab)}:${S(this.fers.visibleTab)}`); return this.fers.visibleTab.current; }
-  ren(p, s) { return <Paper>
-    <Tabs value={s.selectedTabIx || 0} indicatorColor="primary" textColor="primary" onChange={(e, selectedTabIx) => this.setState({ selectedTabIx })} aria-label="tabs" centered>{E(p.tabs).map(([title, control], i) => <Tab key={i} label={cleanText(title)} />)}</Tabs>
-    {React.createElement(V(p.tabs)[s.selectedTabIx || 0], {...p.parentProps, childRef: this.fers.visibleTab})}
-  </Paper> }
+class TabbedView extends Comp { constructor(p) { super(p, { selectedTabIx: 0 }); this.fers.visibleTab = {}; }
+  getVisibleTab() { return this.fers.visibleTab.current; }
+  ren(p, s) {let selTabIx = (D(p.selectedTabIx) ? p.selectedTabIx : s.selectedTabIx) || 0;
+    return <><Tabs value={selTabIx} indicatorColor="primary" textColor="primary" onChange={(e, selectedTabIx) => this.setState({ selectedTabIx }, oF(p.onChangeSelectedTabIx)(selectedTabIx))} aria-label="tabs" centered>{E(p.tabs).map(([title, control], i) => <Tab key={i} label={cleanText(title)} disabled={(oO(p.tabProps)[title])}/>)}</Tabs>
+    {React.createElement(V(p.tabs)[selTabIx], {...p.parentProps, childRef: this.fers.visibleTab})}
+  </> }
 }
 
 let button = (caption, onClick, color) => <Button variant="contained" color={["primary", "secondary"][color || 0]} onClick={onClick}>{caption}</Button>
 
-class TabTimeline extends Comp { constructor(p) { super(p); this.fers.tabbedView = React.createRef();  this.fers.visibleTab = {}; }
+class TabTimeline extends Comp { constructor(p) { super(p, { selectedTabIx: 0 }); this.fers.tabbedView = React.createRef(); this.fers.visibleTab = {}; }
   getTabbedView() { return this.fers.tabbedView.current; } 
   getVisibleTab() { return this.fers.visibleTab.current; }
-  setSelectedTabIx(i, onDone) { this.getTabbedView().setSelectedTabIx(i, onDone); }
   ren(p, s) { let last = (i, o) => (i === (K(o).length - 1));
-    let f = o => F(E(o).map(([k, V], i) => [k, () => <table style={{ borderSpacing: `${1/2}em` }}><tbody><tr><td><Box><V childRef={this.fers.visibleTab}/></Box><Box><table style={{ borderSpacing: `${1/2}em` }}><tbody><tr>
-      {p.onCancel && <td>{button("Cancel", oF(p.onCancel))}</td>}
-      {(i > 0) && <td>{button("Start over", () => this.setSelectedTabIx(0))}</td>}
-      {!last(i, o) && <td>{button("Next", () => { let r = this.getVisibleTab().validate(); if (r) { 
-        this.setSelectedTabIx(L(this.getTabbedView().state.selectedTabIx + 1), () => (t => oF(t.setPrecedingResult).bind(t)(r))(this.getVisibleTab())); 
-      }})}</td>}
-      {last(i, o) && <td>{button(p.acceptText || "Finish", () => { let vt = this.getVisibleTab(); if (vt) { let r = vt.validate(); L(`>> r = ${S(r)}`); if (L(r)) oF((p.onAccept))(r); } })}</td>}
-      </tr></tbody></table></Box></td></tr></tbody></table>]));
-    return <TabbedView ref={this.fers.tabbedView} tabs={f(oO(p.tabs))} parentProps={p.parentProps}/>
+    let f = o => G(o, (V, k, i) => () => tabulize(1/2, [[<Box><V childRef={this.fers.visibleTab}/></Box>], [<Box>{tabulize(1/2, [[
+      p.onCancel && button("Cancel", oF(p.onCancel)), 
+      (i > 0) && button("Start over", () => this.setState({ selectedTabIx: 0 })),
+      !last(i, o) && button("Next", () => { let r = this.getVisibleTab().validate(); if (r) { 
+        this.setState(L({ selectedTabIx: s.selectedTabIx + 1 }), () => (t => oF(t.setPrecedingResult).bind(t)(r))(this.getVisibleTab())); 
+      }}),
+      last(i, o) && button(p.acceptText || "Finish", () => { let vt = this.getVisibleTab(); if (vt) { let r = vt.validate(); L(`>> r = ${S(r)}`); if (L(r)) oF((p.onAccept))(r); } })
+    ].filter(I)])}</Box>]]));
+    return <TabbedView onChangeSelectedTabIx={selectedTabIx => this.setState({selectedTabIx})} selectedTabIx={s.selectedTabIx} ref={this.fers.tabbedView} tabs={f(oO(p.tabs))} tabProps={G((p.tabs), (v, k, i) => (i !== (s.selectedTabIx)))} parentProps={p.parentProps}/>
   }
 }
 
@@ -112,7 +109,7 @@ class DialogWrap extends Comp { constructor(p, s) { super(p, {...s, open: false}
   show() { this.setState({ open: true }); }
   ren(p, s) { let C = p.comp; let id = cleanText(p.id);
     return <Dialog aria-labelledby={id} open={s.open} onClose={() => { oF(p.onClose)(); this.setState({ open: false }); }}><h2>{id}</h2>
-      <C onCancel={() => { oF(p.onCancel)(); this.setState({ open: false }); }} onAccept={d => { this.setState(({ open: false }), () => oF(p.onAccept)(d));; }}/></Dialog> }
+      <C onCancel={() => { oF(p.onCancel)(); this.setState({ open: false }); }} onAccept={d => { this.setState(({ open: false }), () => oF(p.onAccept)(d)); }}/></Dialog> }
 } 
 
 class OpenDialogButton extends Comp { constructor(p, s) { super(p, s, "dlg"); }
@@ -125,4 +122,8 @@ class ProgressDialog extends Comp { //constructor(p, s) { super(p, { ...s, open:
     return <Dialog aria-labelledby={id} open={p.open} onClose={oF(p.onClose)}><h2>{cleanText(id)}</h2>{tabulize(3, [[<CircularProgress  value={p.progress} />]])}</Dialog> }
 }
 
-export { Comp, ValidatableComp, DialogWrap, ProgressDialog, List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }
+let wrapEllipsisDiv = v => <div style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap"}}>{v}</div>;
+let displayBtcTransaction = v => <>{wrapEllipsisDiv(<a href={`https://www.blockchain.com/en/btc/tx/${v}`}>{v}</a>)}</>;
+let displayBtcAddress = v => <>{wrapEllipsisDiv(<a href={`https://www.blockchain.com/en/btc/address/${v}`}>{v}</a>)}</>;
+
+export { wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, Comp, ValidatableComp, DialogWrap, ProgressDialog, List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }

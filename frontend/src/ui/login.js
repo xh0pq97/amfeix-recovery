@@ -42,7 +42,7 @@ class Enter_credentials extends ValidatableComp { constructor(p, s) { super(p, s
   validate() { let e = {};
     if (oS(this.state.values.Password).length < 1) e["Password"] = "Please enter your password";
     if (oS(this.state.values.Wallet).length < 1) e["Wallet"] = "Please choose a wallet";
-    return this.setErrors(e) && this.state.values;
+    return this.setErrors(e) && { creds: this.state.values };
   }
 }
 
@@ -73,10 +73,10 @@ class Input_seed extends ValidatableComp { constructor(p, s) { super(p, s, "seed
   }
 } 
 
-class Unlock_wallet extends Comp { ren(p, s) { return <TabTimeline tabs={{ Enter_credentials }} onAccept={this.props.onAccept} acceptText="Unlock"/>; } }
-class Create_wallet extends Comp { ren(p, s) { return <TabTimeline tabs={{ Setup_password, Backup_seed, Verify_seed }} onAccept={this.props.onAccept}/>; } }
-class Seed_Login extends Comp { ren(p, s) { return <TabTimeline tabs={{ Setup_password, Input_seed }} onAccept={this.props.onAccept}/>; } }
+class Unlock_wallet extends Comp { ren(p, s) { return <TabTimeline tabs={{ Enter_credentials }} onAccept={p.onAccept} onCancel={p.onCancel} acceptText="Unlock"/>; } }
+class Create_wallet extends Comp { ren(p, s) { return <TabTimeline tabs={{ Setup_password, Backup_seed, Verify_seed }} onAccept={p.onAccept} onCancel={p.onCancel}/>; } }
+class Seed_Login extends Comp { ren(p, s) { return <TabTimeline tabs={{ Setup_password, Input_seed }} onAccept={p.onAccept} onCancel={p.onCancel}/>; } }
 
 export class Log_in extends Comp { 
-  ren(p, s) { return <TabbedView tabs={{ Unlock_wallet, Create_wallet, Seed_Login }} parentProps={{ onAccept: p.onAccept }}/>; } 
+  ren(p, s) { return <TabbedView tabs={{ Unlock_wallet, Create_wallet, Seed_Login }} parentProps={{ onAccept: p.onAccept, onCancel: p.onCancel }}/>; } 
 }
