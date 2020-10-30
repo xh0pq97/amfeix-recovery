@@ -14,6 +14,7 @@ import { InvestorList, EthTxView, InvestorDependentView } from './ui/investor';
 //import ImpactFundIcon from './assets/impactFund.svg'
 import { Wallet } from './core/wallet';
 import { basePallette, getMainLightness, seriesColors, getMainColor, darkMode } from './ui/colors';
+import { version } from './version.js'
  
 let chartOpts = (title, valueSuffix, datas, dark) => ({ rangeSelector: {selected: 1}, title: { text: title }, navigator: {enabled: true}, credits: {enabled: false}, chart: { zoomType: "x", ...basePallette(dark)}, plotOptions: { areaspline: { fillColor: `hsla(240, 75%, ${100*getMainLightness(true, dark)}%, 20%)` } }, yAxis: [{ labels: { formatter: function () { return this.axis.defaultLabelFormatter.call(this) + valueSuffix; } } }], series: datas.map((series, i) => ({ name: series.name, type: "areaspline", tooltip: { valueSuffix }, color: seriesColors(i, dark), data: series.data || [] })) })
 
@@ -51,6 +52,7 @@ class MainView extends Comp { constructor(p, s) { super(p, s); this.state.wallet
   }
   ren(p, s) { return <><AppBar position="static"><Toolbar>
     <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/>{D(s.wallet) ? button("Log out", () => this.setState({ wallet: U })) : null}
+<p>{`Version ${version}`}</p>
   </Toolbar></AppBar>
   <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} />
   <TabbedView orientation={"vertical"} tabs={{Bitcoin_Wallet, Admin, Impact_Fund, Network}} parentProps={{ mode: p.mode, investor: p.investor, wallets: s.wallets, dark: p.dark }}/></>
