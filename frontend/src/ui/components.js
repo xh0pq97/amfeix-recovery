@@ -1,6 +1,7 @@
 import React from 'react';
 import { A, D, E, F, G, I, K, L, U, V, S, oA, oF, oO, oS, singleKeyObject } from '../tools';
 import { CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
+import { HistoryIcon, AttachMoneyIcon, CallMadeIcon } from '@material-ui/icons';
 
 let captionMap = {
   timestamp: "Time", value: "Value", txId: "Transaction ID", deposits: "Deposits", withdrawals: "Withdrawals", withdrawalRequests: "Withdrawal Requests", fundDepositAddresses: "Fund deposit addresses", feeAddresses: "Fee addresses", _: ""
@@ -67,7 +68,6 @@ class List extends Comp {
   }
 }
  
-
 class TabbedView extends Comp { constructor(p) { super(p, { selectedTabIx: 0 }); this.fers.visibleTab = {}; }
   getVisibleTab() { return this.fers.visibleTab.current; }
   ren(p, s) {let selTabIx = (D(p.selectedTabIx) ? p.selectedTabIx : s.selectedTabIx) || 0;
@@ -116,14 +116,14 @@ class OpenDialogButton extends Comp { constructor(p, s) { super(p, s, "dlg"); }
   ren(p, s) { return <>{button(cleanText(p.id), () => this.fers.dlg.current.show())}<DialogWrap ref={this.fers.dlg} comp={p.comp} id={p.id} onAccept={p.onAccept} onCancel={p.onCancel}/></> }
 }
 
-class ProgressDialog extends Comp { //constructor(p, s) { super(p, { ...s, open: false }); }
-  //show() { this.setState({ open: true }); }
-  ren(p, s) { let id = cleanText(p.title); 
-    return <Dialog aria-labelledby={id} open={p.open} onClose={oF(p.onClose)}><h2>{cleanText(id)}</h2>{tabulize(3, [[<CircularProgress  value={p.progress} />]])}</Dialog> }
-}
+class ProgressDialog extends Comp { ren(p, s) { let id = cleanText(p.title); 
+  return <Dialog aria-labelledby={id} open={p.open} onClose={oF(p.onClose)}><h2>{cleanText(id)}</h2>{tabulize(3, [[<CircularProgress  value={p.progress} />]])}</Dialog> 
+} }
 
 let wrapEllipsisDiv = v => <div style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap"}}>{v}</div>;
 let displayBtcTransaction = v => <>{wrapEllipsisDiv(<a href={`https://www.blockchain.com/en/btc/tx/${v}`}>{v}</a>)}</>;
 let displayBtcAddress = v => <>{wrapEllipsisDiv(<a href={`https://www.blockchain.com/en/btc/address/${v}`}>{v}</a>)}</>;
 
-export { wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, Comp, ValidatableComp, DialogWrap, ProgressDialog, List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }
+let applyListHeaders = (h, mods)  => { E(mods).forEach(([k, v]) => A(oO(h[k]), v)); return h; };
+
+export { applyListHeaders, wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, Comp, ValidatableComp, DialogWrap, ProgressDialog, List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }

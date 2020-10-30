@@ -3,9 +3,12 @@ import { Box, TextField } from '@material-ui/core';
 import { Comp, ValidatableComp, TabbedView, TabTimeline, button, formTable, form } from './components'; 
 import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
 import * as bip39 from 'bip39';
+import LockIcon from '@material-ui/icons/Lock';
 
 let defaultWords = 'gorilla endorse hat lumber old price route put goose sail lemon raise'.split(" ");
 let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{title}</h2><p style={{textAlign: "left"}}>{text}</p><p style={{textAlign: "left", color: "#FF2170"}}>{warning}</p></>;
+
+let captionIcons = { }
 
 class SeedView extends ValidatableComp {
   constructor(p, s) { super(p, s); 
@@ -14,12 +17,10 @@ class SeedView extends ValidatableComp {
     this.initRefs(K(this.state).join(" "));
   }
   checkWordsInList(wordList) { //L(`checkWordsInList: ${wordList}`);
-    let errs = F(this.getWords().map((w, i) => { if (!(wordList.includes(w))) return `Word '${w}' is not an accepted word.`; }).map((r, i) => [this.getKey(i), (r)]).filter(([k, v]) => D(v)));
-    return this.setErrors(errs);  
+    return this.setErrors(F(this.getWords().map((w, i) => { if (!(wordList.includes(w))) return `Word '${w}' is not an accepted word.`; }).map((r, i) => [this.getKey(i), (r)]).filter(([k, v]) => D(v))));  
   }
   checkWordsEqual(expectedWords) { 
-    let errs = F(this.getWords().map((w, i) => { if (!(w === expectedWords[i])) return `This word is not correct.` }).map((r, i) => [this.getKey(i), r]).filter(([k, v]) => D(v)));
-    return this.setErrors(errs);  
+    return this.setErrors(F(this.getWords().map((w, i) => { if (!(w === expectedWords[i])) return `This word is not correct.` }).map((r, i) => [this.getKey(i), r]).filter(([k, v]) => D(v))));  
   }
   getKey(x) { return `Word_${x}`}
   getWords() { let result = []; for (let q = 0; q < 12; ++q) result.push(this.state.values[this.getKey(q)]); L(`getWords = ${result}`); return result; }
@@ -38,7 +39,8 @@ class Setup_password extends ValidatableComp { constructor(p, s) { super(p, s, "
 }
 
 class Enter_credentials extends ValidatableComp { constructor(p, s) { super(p, s, "Wallet Password"); }
-  ren(p, s) { return formTable([[this.genTextField("Wallet")], [this.genTextField("Password", { type: "password" })]]) }
+  ren(p, s) { return formTable([[preamble("Unlock your wallet", "Select a wallet, type the password and unlock it.")], [<LockIcon fontSize={"large"}/>], 
+    [this.genTextField("Wallet")], [this.genTextField("Password", { type: "password" })]]) }
   validate() { let e = {};
     if (oS(this.state.values.Password).length < 1) e["Password"] = "Please enter your password";
     if (oS(this.state.values.Wallet).length < 1) e["Wallet"] = "Please choose a wallet";

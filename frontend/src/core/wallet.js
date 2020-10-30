@@ -35,21 +35,21 @@ let privKeyBufferToPoint = privKeyBuffer => bitcoin.ECPair.fromPrivateKey(privKe
 
 let encryptKey = (key, password, onProgress) => bip38.encrypt(key, true, password, onProgress);
 let encryptSeedWords = (seedWords, password, onProgress) => { let root = rootFromSeed(seedWords);
-  return L(F(T("privateKey chainCode").map(k => [k, encryptKey(root[k], password, onProgress)])));
+  return (F(T("privateKey chainCode").map(k => [k, encryptKey(root[k], password, onProgress)])));
 }
-let decryptWallet = (encryptedKeys, password, onProgress) => L(G(encryptedKeys, v => bip38.decrypt(v, password, onProgress)));
+let decryptWallet = (encryptedKeys, password, onProgress) => (G(encryptedKeys, v => bip38.decrypt(v, password, onProgress)));
 //let hexToUI8A = h => new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b, 16))); 
 
 export class Wallet {
   constructor() {
-    this.wallets = (d => d ? L(JSON.parse(d)) : { })((localStorage.getItem("wallets")));
+    this.wallets = (d => d ? (JSON.parse(d)) : { })((localStorage.getItem("wallets")));
   }
   save() { localStorage.setItem("wallets", S(G(this.wallets, ({ privateKey, chainCode }) => ({ privateKey, chainCode })))); }
-  async openWallet(creds, wallet) { L(`openWallet: ${S(creds)} wallet: ${S(wallet)}`)
+  async openWallet(creds, wallet) { //L(`openWallet: ${S(creds)} wallet: ${S(wallet)}`)
     let ow = await decryptWallet(wallet, creds.Password); 
     let root = (bip32.fromPrivateKey(privKeyBufferToPoint(ow.privateKey.privateKey), ow.chainCode.privateKey));
     let pub = (deriveFromNode(coinNodesFromRoot(root).bitcoin)).publicKey;
-    return L({ privateKey: ow.privateKey, chainCode: ow.chainCode, publicKey: pub.toString('hex'), btcAddress: btcAddressFromPubKey(pubKeyBufferToPoint(pub)), ethAddress: ethAddressFromPubKey(pub) }); 
+    return ({ privateKey: ow.privateKey, chainCode: ow.chainCode, publicKey: pub.toString('hex'), btcAddress: btcAddressFromPubKey(pubKeyBufferToPoint(pub)), ethAddress: ethAddressFromPubKey(pub) }); 
   }
   async add(creds, seedWords) { 
     let w = await encryptSeedWords(seedWords, creds.Password); 
@@ -59,15 +59,15 @@ export class Wallet {
     let root = rootFromSeed(seedWords);
     if (root.privateKey.toString('hex') !== d.privateKey.privateKey.toString('hex')) throw { err: "Encryption error (private key mismatch)" }
     if (root.chainCode.toString('hex') !== d.chainCode.privateKey.toString('hex')) throw { err: "Encryption error (chainCode mismatch)" }
-    L(`d == ${S(d)}`)
+    //L(`d == ${S(d)}`)
     this.wallets[creds.Wallet] = { privateKey: w.privateKey, chainCode: w.chainCode, publicKey: d.publicKey, btcAddress: d.btcAddress, ethAddress: d.ethAddress };
-    L(`post: ${S(this.wallets)}`);
+    //L(`post: ${S(this.wallets)}`);
     this.save(); 
-    L(`postsave: ${S(this.wallets)}`);
+    //L(`postsave: ${S(this.wallets)}`);
   }
   async open(creds) { 
     let d = await this.openWallet(creds, this.wallets[creds.Wallet]);
-    L(A(this.wallets[creds.Wallet], L({ publicKey: d.publicKey, btcAddress: d.btcAddress, ethAddress: d.ethAddress })));
+    (A(this.wallets[creds.Wallet], ({ publicKey: d.publicKey, btcAddress: d.btcAddress, ethAddress: d.ethAddress })));
     return d; 
   }
 }
