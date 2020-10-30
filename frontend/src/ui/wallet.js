@@ -1,13 +1,24 @@
 import React from 'react';
 import { Box, TextField } from '@material-ui/core';
-import { wrapEllipsisDiv, OpenDialogButton, DialogWrap, Comp, ValidatableComp, form, formTable, TabbedView, TabTimeline, button, List  } from './components'; 
+import { wrapEllipsisDiv, applyListHeaders, OpenDialogButton, DialogWrap, Comp, ValidatableComp, form, formTable, TabbedView, TabTimeline, button, List  } from './components'; 
 import { A, D, E, F, H, I, K, L, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
 
 class WithdrawDialog extends Comp { ren(p, s) { return <TabTimeline tabs={{ Withdraw, Review, Done }} onCancel={p.onCancel} onAccept={p.onAccept}/>; } }
 
+let applyHeaders = h => applyListHeaders(h, {
+//  txId: { caption: "BTC Transaction", displayFunc: displayBtcTransaction },
+  name: { caption: "Wallet name" },
+  privateKey: { caption: "Encrypted Private Key", displayFunc: wrapEllipsisDiv },
+  chainCode: { caption: "Encrypted Chain Code", displayFunc: wrapEllipsisDiv },
+  publicKey: { caption: "Public Key", displayFunc: wrapEllipsisDiv },
+  btcAddress: { caption: "Bitcoin Wallet Address", displayFunc: wrapEllipsisDiv },
+  ethAddress: { caption: "Ethereum Investor address", displayFunc: wrapEllipsisDiv },
+//  value: { caption: "Amount (BTC)", align: "right", alignCaption: "right" }
+});
+
 class Account extends Comp { constructor(p, s) { super(p, s, "dlgWithdraw"); }
-  ren(p, s) { I(`account: ${S(p.wallets)}`); return formTable([
-    [<List data={(E(oO(p.wallets)).map(([name, wallet]) => ({ name, ...wallet})))} headers={T("name privateKey chainCode publicKey btcAddress ethAddress").map(k => ({ label: k, caption: k }))}/>], 
+  ren(p, s) { I(`account: ${S(p.wallets)}`); let headers = V(applyHeaders(F(T("name privateKey chainCode publicKey btcAddress ethAddress").map(k => [k, ({ label: k, caption: k })]))));
+  return formTable([[<List data={(E(oO(p.wallets)).map(([name, wallet]) => ({ name, ...wallet})))} headers={headers}/>], 
   //  [<OpenDialogButton id="Withdraw" comp={WithdrawDialog} onAccept={I} onCancel={I}/>]
   ])}
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { A, D, E, F, G, I, K, L, U, V, S, oA, oF, oO, oS, singleKeyObject } from '../tools';
-import { CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
+import { Stepper, Step, StepLabel, CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 import { HistoryIcon, AttachMoneyIcon, CallMadeIcon } from '@material-ui/icons';
 
 let captionMap = {
@@ -91,6 +91,15 @@ class TabTimeline extends Comp { constructor(p) { super(p, { selectedTabIx: 0 })
       last(i, o) && button(p.acceptText || "Finish", () => { let vt = this.getVisibleTab(); if (vt) { let r = vt.validate(); L(`>> r = ${S(r)}`); if (L(r)) oF((p.onAccept))(r); } })
     ].filter(I)])}</Box>]]));
     return <TabbedView onChangeSelectedTabIx={selectedTabIx => this.setState({selectedTabIx})} selectedTabIx={s.selectedTabIx} ref={this.fers.tabbedView} tabs={f(oO(p.tabs))} tabProps={G((p.tabs), (v, k, i) => (i !== (s.selectedTabIx)))} parentProps={p.parentProps}/>
+  }
+}
+
+class TabTimelineNew extends Comp { constructor(p) { super(p, { selectedTabIx: 0 }); this.fers.visibleTab = {}; }
+  ren(p, s) { let C = V(p.tabs)[s.selectedTabIx];
+    return K(p.tabs).length === 1 ? <C childRef={this.fers.visibleTab} {...p.parentProps}/> :
+    <><Stepper activeStep={s.selectedTabIx} alternativeLabel>{K(oO(p.tabs)).map(label => (<Step key={label}><StepLabel>{label}</StepLabel></Step>))}</Stepper>
+    <C childRef={this.fers.visibleTab} {...p.parentProps}/>
+    </>
   }
 }
 

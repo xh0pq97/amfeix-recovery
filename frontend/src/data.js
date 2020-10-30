@@ -100,7 +100,10 @@ class Data {
       await Promise.all([...investorMaps.map(m => this.updateInvestorMappedArray(onLoadProgress(`investors:${m.dataTable}`), m))]);
       L('Load phase 3: Bitcoin transactions');
       await Promise.all([...investorMaps.map(m => this.updateBitcoinTxs(onLoadProgress(`btcTx:${m.dataTable}`), m))]);
-      L('Load phase 4: Computing data');
+      L('Load phase 4: Fund deposits');
+      let funDepositAddresses = L(this.syncCache.getData("fundDepositAddresses").map(x => x.data));
+      L(await Promise.all(funDepositAddresses.map(a => btcRpc("GET", `gettransfers/toAddress/${a}`))));
+      L('Load phase 5: Computing data');
       (async () => {
         this.investors = {};
         this.withdrawalRequests = [];

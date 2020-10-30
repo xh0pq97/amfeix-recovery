@@ -44,8 +44,7 @@ let wallet = new Wallet();
 
 class MainView extends Comp { constructor(p, s) { super(p, s); this.state.wallets = wallet.wallets; } 
   startWalletOp(walletOperation, f) { this.setState({ walletOperation, progressDialogOpen: true }, () => setTimeout(async () => { await f(); this.setState({ progressDialogOpen: false, wallets: (wallet.wallets) }) }, 500));  }
-  acceptLogIn(d) {
-//    L(`d = ${S(d)}`)
+  acceptLogIn(d) { 
     if (d.seedWords) { this.startWalletOp("Encrypting", () => wallet.add(d.creds, d.seedWords, status => { this.setState({ walletCodecProgress: L(status.percent) }); })); }
     else { this.startWalletOp("Decrypting", () => wallet.open(d.creds, status => this.setState({ walletCodecProgress: status.percent }))); }
     return true;

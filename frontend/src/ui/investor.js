@@ -18,7 +18,7 @@ let formatDate = date => {
 
 let applyHeaders = h => applyListHeaders(h, {
   txId: { caption: "BTC Transaction", displayFunc: displayBtcTransaction },
-  pubKey: { caption: "Public key", displayFunc: wrapEllipsisDiv },
+//  pubKey: { caption: "Public key", displayFunc: wrapEllipsisDiv },
   timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp },
   value: { caption: "Amount (BTC)", align: "right", alignCaption: "right" }
 });
