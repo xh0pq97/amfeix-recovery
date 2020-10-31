@@ -1,8 +1,12 @@
 import React from 'react';
+// eslint-disable-next-line
 import { Box, TextField } from '@material-ui/core';
+// eslint-disable-next-line
 import { wrapEllipsisDiv, applyListHeaders, OpenDialogButton, DialogWrap, Comp, ValidatableComp, form, formTable, TabbedView, TabTimeline, button, List  } from './components'; 
+// eslint-disable-next-line
 import { A, D, E, F, H, I, K, L, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
 
+// eslint-disable-next-line
 class WithdrawDialog extends Comp { ren(p, s) { return <TabTimeline tabs={{ Withdraw, Review, Done }} onCancel={p.onCancel} onAccept={p.onAccept}/>; } }
 
 let applyHeaders = h => applyListHeaders(h, {
@@ -24,6 +28,7 @@ class Account extends Comp { constructor(p, s) { super(p, s, "dlgWithdraw"); }
 }
 
 class History extends Comp { ren(p, s) { return <Box/> } }
+// eslint-disable-next-line
 class Invest extends ValidatableComp { ren(p, s) { return form(null, [[this.genTextField("Bitcoin personal Investment address", U, p.bitcoinAddress)]]) } } 
 
 class Done extends ValidatableComp { ren(p, s) { return <Box/>; } }

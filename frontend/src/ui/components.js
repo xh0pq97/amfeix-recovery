@@ -1,6 +1,9 @@
 import React from 'react';
+// eslint-disable-next-line
 import { A, D, E, F, G, I, K, L, U, V, S, oA, oF, oO, oS, singleKeyObject } from '../tools';
-import { Stepper, Step, StepLabel, CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
+// eslint-disable-next-line
+import { Hidden, Drawer, Stepper, Step, StepLabel, CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
+// eslint-disable-next-line
 import { HistoryIcon, AttachMoneyIcon, CallMadeIcon } from '@material-ui/icons';
 
 let captionMap = {
@@ -19,7 +22,7 @@ class Comp extends React.Component {
   componentDidMount() { this.updateChildRef(this); }
   componentWillUnmount() { this.updateChildRef(U); for (let o of this.observers) o.detach(); this.unmounted = true; }
   setStateKV(k, v, onDone) { this.setState(singleKeyObject(k, v, onDone)) }
-  addSyncKeyObserver(data, key, context) { this.addSyncObserver(data, key, d => this.setStateKV(key, d), context); }
+  addSyncKeyObserver(data, key, context) { this.addSyncObserver(data, key, d => { if (!this.unmounted) this.setStateKV(key, d) }, context); }
   addSyncObserver(data, key, onChange, context) { this.observers.push(data.syncCache.watch(key, onChange, context)); }
 }  
 
@@ -71,9 +74,10 @@ class List extends Comp {
 class TabbedView extends Comp { constructor(p) { super(p, { selectedTabIx: 0 }); this.fers.visibleTab = {}; }
   getVisibleTab() { return this.fers.visibleTab.current; }
   ren(p, s) {let selTabIx = (D(p.selectedTabIx) ? p.selectedTabIx : s.selectedTabIx) || 0;
-    return <><Tabs value={selTabIx} indicatorColor="primary" textColor="primary" onChange={(e, selectedTabIx) => this.setState({ selectedTabIx }, oF(p.onChangeSelectedTabIx)(selectedTabIx))} aria-label="tabs" centered>{E(p.tabs).map(([title, control], i) => <Tab key={i} label={cleanText(title)} disabled={(oO(p.tabProps)[title])}/>)}</Tabs>
-    {React.createElement(V(p.tabs)[selTabIx], {...p.parentProps, childRef: this.fers.visibleTab})}
-  </> }
+    return K(p.tabs).length > 0 ? <><Tabs value={selTabIx} indicatorColor="primary" textColor="primary" onChange={(e, selectedTabIx) => this.setState({ selectedTabIx }, oF(p.onChangeSelectedTabIx)(selectedTabIx))} aria-label="tabs" centered>{E(p.tabs).map(([title, control], i) => <Tab key={i} label={cleanText(title)} disabled={(oO(p.tabProps)[title])}/>)}</Tabs>
+      {React.createElement(V(p.tabs)[selTabIx], {...p.parentProps, childRef: this.fers.visibleTab})}
+    </> : null 
+  }
 }
 
 let button = (caption, onClick, color) => <Button variant="contained" color={["primary", "secondary"][color || 0]} onClick={onClick}>{caption}</Button>
@@ -129,10 +133,60 @@ class ProgressDialog extends Comp { ren(p, s) { let id = cleanText(p.title);
   return <Dialog aria-labelledby={id} open={p.open} onClose={oF(p.onClose)}><h2>{cleanText(id)}</h2>{tabulize(3, [[<CircularProgress  value={p.progress} />]])}</Dialog> 
 } }
 
+let formatDate = date => {
+  let fmt = { year: 'numeric', month: 'short', day: '2-digit', hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false };
+  let d = G(fmt, (v, k) => new Intl.DateTimeFormat('en', { hour12: false, ...singleKeyObject(k, v) }).format(date));
+  return `${d.month} ${d.day}, ${d.year} @ ${d.hour}:${d.minute}:${d.second}`;
+}, formatTimestamp = timestamp => formatDate(new Date(1000 * timestamp));
+
+
 let wrapEllipsisDiv = v => <div style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap"}}>{v}</div>;
 let displayBtcTransaction = v => <>{wrapEllipsisDiv(<a href={`https://www.blockchain.com/en/btc/tx/${v}`}>{v}</a>)}</>;
 let displayBtcAddress = v => <>{wrapEllipsisDiv(<a href={`https://www.blockchain.com/en/btc/address/${v}`}>{v}</a>)}</>;
+let extractHeaders = d => F(K(oO(oA(d)[0])).map(h => [h, { label: h, caption: h }]));
+let genHeaders = d => applyListHeaders(extractHeaders(d), commonTableHeaders);
 
 let applyListHeaders = (h, mods)  => { E(mods).forEach(([k, v]) => A(oO(h[k]), v)); return h; };
 
-export { applyListHeaders, wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, Comp, ValidatableComp, DialogWrap, ProgressDialog, List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }
+let commonTableHeaders = {
+  txId: { caption: "BTC Transaction", displayFunc: displayBtcTransaction },
+  timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp },
+  pubKey: { caption: "Public key", displayFunc: wrapEllipsisDiv },
+  value: { caption: "Amount (BTC)", align: "right", alignCaption: "right" }
+}
+
+class Sidebar extends Comp {
+  ren(p, s) { let openMobile = true;
+    const container = D(window) && window.document.body;
+    return <Drawer container={container} variant="persistent" anchor={'left'} open={openMobile} onClose={() => {}} ModalProps={{ keepMounted: true, }}>
+      {<p>{'Drawer'}</p>}
+    </Drawer>; }
+}
+
+/*
+<div>
+      <div className={classes.toolbar} />
+      <Divider />
+      <List>
+        {['Inbox', 'Starred', 'Send email', 'Drafts'].map((text, index) => (
+          <ListItem button key={text}>
+            <ListItemIcon>{index % 2 === 0 ? <InboxIcon /> : <MailIcon />}</ListItemIcon>
+            <ListItemText primary={text} />
+          </ListItem>
+        ))}
+      </List>
+      <Divider />
+      <List>
+        {['All mail', 'Trash', 'Spam'].map((text, index) => (
+          <ListItem button key={text}>
+            <ListItemIcon>{index % 2 === 0 ? <InboxIcon /> : <MailIcon />}</ListItemIcon>
+            <ListItemText primary={text} />
+          </ListItem>
+        ))}
+      </List>
+    </div>
+*/
+
+        let loadingComponent = (data, c) => D(data) ? c  : tabulize(5, [[<CircularProgress/>]]);
+
+export { loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }

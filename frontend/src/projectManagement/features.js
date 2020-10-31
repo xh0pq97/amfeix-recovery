@@ -1,42 +1,55 @@
-let features = [
-  ["Log in page",
-    ["Unlock wallet",
+import { L } from "../tools";
+
+let mapFeature = ([name, subFeatures]) => ({ name, subFeatures: subFeatures && subFeatures.map(mapFeature) })
+
+let features = mapFeature(["App", [
+  ["Log in page", [
+    ["Unlock wallet", [
       ["Header icon"],
       ["Title"],
       ["Text"],
-      ["Enter wallet name",
+      ["Enter wallet name", [
         ["Select name from available wallets"]
-      ],
+      ]],
       ["Enter password"]
-    ],
-    ["Create wallet",
+    ]],
+    ["Create wallet", [
       ["Header icon"],
       ["Setup password"],
       ["Backup seed"],
       ["Verify seed"],
-    ],
-    ["Seed import",
+    ]],
+    ["Seed import", [
       ["Setup password"],
       ["Input seed"],
-    ]
-  ],
-  ["Bitcoin wallet",
-    ["Transactions", 
+    ]]
+  ]],
+  ["Bitcoin wallet", [
+    ["Transactions", [
       ["Deposits"],
       ["Withdrawals"]
-    ],
+    ]],
     ["Invest"],
     ["Withdraw"]
-  ],
-  ["AMFEIX Fund",
-    ["Investment value"],
+  ]],
+  ["AMFEIX Fund", [
+    ["Investment value", [
+      ['']
+    ]],
     ["ROI"],
     ["Fund index chart"],
     ["Investment value chart"],
-    ["Transactions",
+    ["Transactions", [
       ["Deposits"],
       ["Withdrawals"],
       ["Pending withdrawals"]
-    ],  
-  ],
-]
+    ]],  
+  ]],
+  ['Profile', [
+    ['KYC', [
+      ['']
+    ]]
+  ]]
+]])
+
+export { features }

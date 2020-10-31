@@ -1,8 +1,8 @@
 import React from 'react';
 import { A, S, V, oA, oO } from '../tools';
 import { ethInterfaceUrl, ganacheInterfaceUrl, btcRpcUrl, btcFields, amfeixFeeFields, data } from '../data';
-import { displayBtcAddress, Selector, Comp, TabbedView, List, captionMap, tabulize } from './components';
-import { genHeaders } from './investor';
+import { genHeaders, displayBtcAddress, Selector, Comp, TabbedView, List, captionMap, tabulize } from './components';
+//import { genHeaders } from './investor';
 
 class Bitcoin_P2P_Network extends Comp {
   componentDidMount() { btcFields.forEach(f => this.addSyncKeyObserver(data, f)); }

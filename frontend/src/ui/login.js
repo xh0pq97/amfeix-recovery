@@ -1,6 +1,9 @@
 import React from 'react';
+// eslint-disable-next-line
 import { Box, TextField } from '@material-ui/core';
+// eslint-disable-next-line
 import { Comp, ValidatableComp, TabbedView, TabTimeline, button, formTable, form } from './components'; 
+// eslint-disable-next-line
 import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
 import * as bip39 from 'bip39';
 import LockIcon from '@material-ui/icons/Lock';

@@ -13,8 +13,8 @@ const verbose = true;
 let LOG = d => verbose ? L(d) : d; 
 
 // DB Init
-let groupSize = 16;
-const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: groupSize + 5 });
+let groupSize = 8;
+const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: groupSize + 8 });
 let objGenesis = [ "USE transfers",
   "CREATE TABLE IF NOT EXISTS block (id INT PRIMARY KEY AUTO_INCREMENT, height INT, time TIMESTAMP, hash BINARY(32), processed BOOL, INDEX height (height), INDEX hash (hash))",
   "CREATE TABLE IF NOT EXISTS transaction (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(32), INDEX v (v))",
@@ -72,8 +72,7 @@ let blockScan = (async (offset) => { let conn = await pool.getConnection(); //LO
             if (tx.vin.length === 1) {
               let asm = oS(oO(tx.vin[0].scriptSig).asm);
               let k = "[ALL] ";
-              let p = asm.indexOf(k); 
-              let pubKey = asm.substr(p + k.length);
+              let pubKey = asm.substr(asm.indexOf(k) + k.length);
               if (pubKey.length === 66) {
                 let binPubKey = htb(pubKey);
                 let rPubKey = await conn.query("SELECT * FROM pubKey WHERE v = ?", [binPubKey]);
@@ -90,11 +89,8 @@ let blockScan = (async (offset) => { let conn = await pool.getConnection(); //LO
                           if (D(idToAddress)) {
                             let rTransfer = await conn.query("SELECT * FROM transfer WHERE idToAddress = ? AND idBlock = ? AND idTransaction = ? AND idPubKey = ?", [idToAddress, idBlock, idTransaction, idPubKey]); 
                             let value = (new BigNumber(new BigNumber(vout.value).multipliedBy(coin).toFixed())).toString(16);
-                            while (value.length < 32) value = '0' + value;
-//                            L(`valueLength = ${S(htb(value))}`)
-  //                          L(`vout = ${vout.value}  ${(new BigNumber(htb(value).toString('hex'), 16)).toString(10)}`)
-                            let idTransfer = (rTransfer.length === 0) ? oO(await conn.query("INSERT INTO transfer (idToAddress, idBlock, idTransaction, idPubKey, value) VALUES (?, ?, ?, ?, ?)", [idToAddress, idBlock, idTransaction, idPubKey, htb(value)])).insertId : rTransfer[0].id;
-                          // L(`tx ${tx.txid}: ${value} to ${toAddress} (${toAddress.length}) --> ${bs58check.decode(toAddress).toString('hex')} (${bs58check.decode(toAddress).length})`)
+                            while (value.length < 32) value = '0' + value; 
+                            let idTransfer = (rTransfer.length === 0) ? oO(await conn.query("INSERT INTO transfer (idToAddress, idBlock, idTransaction, idPubKey, value) VALUES (?, ?, ?, ?, ?)", [idToAddress, idBlock, idTransaction, idPubKey, htb(value)])).insertId : rTransfer[0].id; 
                           }
                         }
                       }
@@ -119,18 +115,24 @@ for (let q = 0; q < groupSize; ++q) blockScan(q);
 const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.json());
-
-app.use(function(req, res, next) {
+/*
+let addCorsHeaders = ans => {
+  ans.header("Access-Control-Allow-Origin", "*"); // update to match the domain you will make the request from
+  ans.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+}
+if (false) app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*"); // update to match the domain you will make the request from
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   next();
 });
-
+*/
 //let getMethods = "getblockcount getbestblockhash getconnectioncount getdifficulty getblockchaininfo getmininginfo getpeerinfo getrawmempool".split(" ");
 let getMethods = "getblockcount getconnectioncount getdifficulty getblockchaininfo".split(" ");
 let postMethods = "getrawtransaction".split(" ");
 
-let generateCall = (method) => async (req, ans) => { try { ans.send(await rpcRequest(method, LOG(req.body && req.body.params))); } catch(e) { ans.send(e); } };
+let generateCall = (method) => async (req, ans) => { try { 
+  ans.send(await rpcRequest(method, LOG(req.body && req.body.params))); 
+} catch(e) { ans.send(e); } };
 
 getMethods.forEach(method => app.get(`/${method}/`, generateCall(method)));
 postMethods.forEach(method => app.post(`/${method}/`, generateCall(method)));
@@ -156,7 +158,9 @@ let commonTables = "transfer, transaction, block";
 let trimLeadingZeroes = v => { while ((v.length > 0) && (v[0] === '0')) v = v.substr(1); return v; }
 let compressValue = v => htb(trimLeadingZeroes(v)).toString('base64');
 
-app.get(`/gettransfers/toAddress/:toAddress/`, async (req, a) => { let conn = await pool.getConnection(); 
+
+app.get(`/gettransfers/toAddress/:toAddress/`, async (req, a) => { L(`req = ${req.params}`); //addCorsHeaders(a);
+  let conn = await pool.getConnection(); 
   //let [txHashes, depositAddresses] = req.body && req.body.params;
   try { let binToAddress = bs58check.decode(req.params.toAddress);
     try { let r = await conn.query("USE transfers");
@@ -168,9 +172,11 @@ app.get(`/gettransfers/toAddress/:toAddress/`, async (req, a) => { let conn = aw
       } catch(e) { a.send(S({ err: `Failed to open db: ${S(e)}` })) }
     } catch(e) { a.send(S({ err: `DB error: ${S(e)}` })) }
   } catch(e) { a.send(S({ err: `Invalid address: ${S(e)}` })) }
+  finally { if (conn) conn.close(); }
 });
 
-app.get(`/gettransfers/fromPubKey/:pubKey/`, async (req, a) => { let conn = await pool.getConnection(); 
+app.get(`/gettransfers/fromPubKey/:pubKey/`, async (req, a) => { L(`req = ${req.params}`); //addCorsHeaders(a);
+  let conn = await pool.getConnection(); 
   try { let binPubKey = htb(req.params.pubKey);
     try { let r = await conn.query("USE transfers");
       let rPubKey = await conn.query("SELECT * FROM pubKey WHERE v = ?", [binPubKey]);
@@ -180,6 +186,11 @@ app.get(`/gettransfers/fromPubKey/:pubKey/`, async (req, a) => { let conn = awai
       } else { a.send(S({ err: "Address not found" })) }  
     } catch(e) { a.send(S({ err: `DB error: ${S(e)}` })) }
   } catch(e) { a.send(S({ err: `Invalid pub key: ${S(e)}` })) }
+  finally { if (conn) conn.close(); }
+});
+
+app.get(`/gettransfers/fromPubKey/:pubKey/toAddress/:toAddress/`, async (req, a) => { 
+  let conn = await pool.getConnection(); 
 });
 
 (p => app.listen(p, () => L(`Server running on port ${p}`)))(cfg.port = cfg.port || 4444)
