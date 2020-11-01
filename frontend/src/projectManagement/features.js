@@ -3,7 +3,7 @@ import { L } from "../tools";
 let mapFeature = ([name, subFeatures]) => ({ name, subFeatures: subFeatures && subFeatures.map(mapFeature) })
 
 let features = mapFeature(["App", [
-  ["Log in page", [
+  ["Log in dialog", [
     ["Unlock wallet", [
       ["Header icon"],
       ["Title"],

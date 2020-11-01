@@ -4,7 +4,7 @@ import * as serviceWorker from './serviceWorker';
 import { A, D, H, I, L, S, T, U, oA, oS, asA } from './tools'; 
 //import { ethBasicFields, data } from './data';
 // eslint-disable-next-line
-import { List, ListItem, ListItemText, ListItemIcon, AppBar, Toolbar, Typography, Button, Box, TextField, Paper, Accordion, AccordionSummary, AccordionDetails } from '@material-ui/core';
+import { FormControlLabel, Switch, List, ListItem, ListItemText, ListItemIcon, AppBar, Toolbar, Typography, Button, Box, TextField, Paper, Accordion, AccordionSummary, AccordionDetails } from '@material-ui/core';
 import { createMuiTheme, ThemeProvider}  from '@material-ui/core/styles';
 // eslint-disable-next-line
 import { Sidebar, ProgressDialog, OpenDialogButton, DialogWrap, Selector, ValidatableComp, Comp, TabbedView, button, tabulize, formTable } from './ui/components'; 
@@ -38,7 +38,10 @@ class Settings extends Comp {
 
 class Features extends Comp {  
   ren(p, s) { 
-    let mapFeature = (f, i) =>  <Accordion key={i}><AccordionSummary><Typography><div style={{textAlign: "left", backgroundColor: 'hsla(0, 0, 0, 10%)'}}>{f.name}</div></Typography></AccordionSummary>
+//    <Typography><div style={{textAlign: "left", backgroundColor: 'hsla(0, 0, 0, 10%)'}}>{f.name}</div></Typography>
+    let mapFeature = (f, i) =>  <Accordion key={i} expanded={true}>
+      <AccordionSummary>{tabulize(1/3, [[<div style={{textAlign: "left"}}>{f.name}</div>, <FormControlLabel control={<Switch/>} label={"Done"}/>, <FormControlLabel control={<Switch/>} label={"Tested"}/>]])}
+      </AccordionSummary>
     {D(f.subFeatures) ? <AccordionDetails>{tabulize(1/3, (f.subFeatures ? mapFeatures(f.subFeatures) : []).map(x => [x]))}</AccordionDetails> : null}</Accordion>;
     let mapFeatures = v => oA(v).map(mapFeature); 
     return mapFeatures([features]);
@@ -56,7 +59,7 @@ class MainView extends Comp { constructor(p, s) { super(p, s); this.state.wallet
     <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/>{D(s.wallet) ? button("Log out", () => this.setState({ wallet: U })) : null}
   </Toolbar></AppBar> 
   <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} />
-  <TabbedView orientation={"vertical"} tabs={{ Admin, Bitcoin_Wallet, Impact_Fund, Network, Settings }} parentProps={{ mode: p.mode, investor: p.investor, wallets: s.wallets, dark: p.dark }}/></>
+  <TabbedView orientation={"vertical"} tabs={{ Admin, Bitcoin_Wallet, Impact_Fund, Network, Settings, Features }} parentProps={{ mode: p.mode, investor: p.investor, wallets: s.wallets, dark: p.dark }}/></>
 } }
 
 class App extends Comp { constructor(p) { super(p, { investor: U, dark: darkMode }); this.state.theme = this.createTheme(); } 
