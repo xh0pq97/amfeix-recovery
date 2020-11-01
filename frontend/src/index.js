@@ -4,7 +4,7 @@ import * as serviceWorker from './serviceWorker';
 import { A, D, H, I, L, S, T, U, oA, oS, asA } from './tools'; 
 //import { ethBasicFields, data } from './data';
 // eslint-disable-next-line
-import { AppBar, Toolbar, Typography, Button, Box, TextField, Paper, Accordion, AccordionSummary, AccordionDetails } from '@material-ui/core';
+import { List, ListItem, ListItemText, ListItemIcon, AppBar, Toolbar, Typography, Button, Box, TextField, Paper, Accordion, AccordionSummary, AccordionDetails } from '@material-ui/core';
 import { createMuiTheme, ThemeProvider}  from '@material-ui/core/styles';
 // eslint-disable-next-line
 import { Sidebar, ProgressDialog, OpenDialogButton, DialogWrap, Selector, ValidatableComp, Comp, TabbedView, button, tabulize, formTable } from './ui/components'; 
@@ -36,13 +36,12 @@ class Settings extends Comp {
   }
 }
 
-class Features extends Comp { //</Accordion><AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="panel1bh-content" id="panel1bh-header" >
-ren(p, s) { 
-  let mapFeature = (f, i) => <><div style={{display: "block"}}><table key={i}><tbody><tr><td style={{width: "1.5em", verticalAlign: "top"}}>{'•'}</td><td><Accordion expanded={true}>
-    <AccordionSummary><Typography>{f.name}</Typography></AccordionSummary>
-    <AccordionDetails>{oA(f.subFeatures).map(mapFeature)}</AccordionDetails>
-  </Accordion></td></tr></tbody></table></div><br/></>;
-  return mapFeature(features) 
+class Features extends Comp {  
+  ren(p, s) { 
+    let mapFeature = (f, i) =>  <Accordion key={i}><AccordionSummary><Typography><div style={{textAlign: "left", backgroundColor: 'hsla(0, 0, 0, 10%)'}}>{f.name}</div></Typography></AccordionSummary>
+    {D(f.subFeatures) ? <AccordionDetails>{tabulize(1/3, (f.subFeatures ? mapFeatures(f.subFeatures) : []).map(x => [x]))}</AccordionDetails> : null}</Accordion>;
+    let mapFeatures = v => oA(v).map(mapFeature); 
+    return mapFeatures([features]);
   }
 }
 

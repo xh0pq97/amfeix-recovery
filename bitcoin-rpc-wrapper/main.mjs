@@ -5,23 +5,17 @@ import * as bip32 from 'bip32';
 import JSONBig from 'json-bigint';
 import BigNumber from 'bignumber.js';
 import bs58check from 'bs58check'; 
-import { D, E, F, I, K, L, S, V, oA, oO, oS, oF, singleKeyObject } from './tools.mjs'; 
+import { A, D, E, F, I, K, L, P, S, T, U, V, oA, oO, oS, oF, singleKeyObject } from './tools.mjs'; 
 import mariadb from  'mariadb';
 dotenv.config(); const cfg = process.env;  
 
 const verbose = true; 
 let LOG = d => verbose ? L(d) : d; 
 
-// DB Init
-let groupSize = 8;
-const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: groupSize + 8 });
-let objGenesis = [ "USE transfers",
-  "CREATE TABLE IF NOT EXISTS block (id INT PRIMARY KEY AUTO_INCREMENT, height INT, time TIMESTAMP, hash BINARY(32), processed BOOL, INDEX height (height), INDEX hash (hash))",
-  "CREATE TABLE IF NOT EXISTS transaction (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(32), INDEX v (v))",
-  "CREATE TABLE IF NOT EXISTS pubKey (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(33), INDEX v (v))",
-  "CREATE TABLE IF NOT EXISTS address (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(21), INDEX v (v))",
-  "CREATE TABLE IF NOT EXISTS transfer (id INT PRIMARY KEY AUTO_INCREMENT, idToAddress INT, idBlock INT, idTransaction INT, idPubKey INT, value BINARY(16), INDEX idToAddress (idToAddress), INDEX idBlock (idBlock), INDEX idTransaction (idTransaction), INDEX idPubKey (idPubKey))",
-]
+L(`args = ${process.argv}`);
+ 
+// DB Init 
+const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: 7 }); 
  
 const url = `http://${cfg.rpcuser}:${cfg.rpcpassword}@127.0.0.1:8332/`;
 const headers = { "content-type": "text/plain;" };
@@ -42,75 +36,15 @@ let rpcRequest = (method, params) => new Promise((resolve, reject) => {
   request(getRPCRequestOptions(method, params), (err, r, body) => (!err  && r.statusCode == 200) ? resolve((JSONBig.parse((body)))) : reject(LOG({ err, statusCode: oO(r).statusCode, body })));  
 });
 let rpc = async (method, params) => (await rpcRequest(method, params)).result;
-//02f1b2a982dbe744305a37f9dfd69d7d7c6eeaa5c34c1aba3bd277567df5b972fb
-let blockScan = (async (offset) => { let conn = await pool.getConnection(); //LOG('DB connection opened.') // Create db
-  try {
-    for (let x of objGenesis) await conn.query((x));
-    //L(`DB initialized.`);
-    // Block background scan;
-    let blockHeights = [570802, 617005];
-    let blockCount = await rpc("getblockcount", []);
-    for (let height = blockHeights[0] - (blockHeights[0] % groupSize) + offset; height <= blockCount; height += groupSize) if (height <= blockCount) { process.stdout.write(`[${height}]`);
-//    for (let height = blockCount - (blockCount % groupSize) + offset; height > 0; height -= groupSize) if (height <= blockCount) { L(`[${height}]`);
-      let blockHash = await rpc("getblockhash", [height]);
-      //L(`blockHash ${blockHash}`)
-      let binBlockHash = htb(blockHash);
-      let r = await conn.query("SELECT * FROM block WHERE height = ? AND hash = ?", [height, (binBlockHash)]); 
-//      L(`processed = ${oO(r[0]).processed}`)
-      let idBlock = (r.length === 0) ? oO(await conn.query("INSERT INTO block (height, hash, processed) VALUES (?, ?, ?)", [height, (binBlockHash), 0])).insertId : r[0].id; 
-      let coin = (new BigNumber(10)).pow(18);
-      //L(`${typeof oO(r[0]).processed}`)
-      if (D(idBlock) && !(oO(r[0]).processed === 1)) {
-        let block = await rpc("getblock", [blockHash]);
-        await conn.query("UPDATE block SET time = FROM_UNIXTIME(?)", [block.time]);
-        for (let txHash of block.tx) { //LOG({txHash});
-          let tx = await rpc("decoderawtransaction", [await rpc("getrawtransaction", [txHash])]);
-          let binTxid = htb(tx.txid);
-          let rTx = await conn.query("SELECT * FROM transaction WHERE v = ?", [(binTxid)]);
-          let idTransaction = (rTx.length === 0) ? oO(await conn.query("INSERT INTO transaction (v) VALUES (?)", [(binTxid)])).insertId : rTx[0].id;
-          if (D(idTransaction)) {
-            if (tx.vin.length === 1) {
-              let asm = oS(oO(tx.vin[0].scriptSig).asm);
-              let k = "[ALL] ";
-              let pubKey = asm.substr(asm.indexOf(k) + k.length);
-              if (pubKey.length === 66) {
-                let binPubKey = htb(pubKey);
-                let rPubKey = await conn.query("SELECT * FROM pubKey WHERE v = ?", [binPubKey]);
-                let idPubKey = (rPubKey.length === 0) ? oO(await conn.query("INSERT INTO pubKey (v) VALUES (?)", [(binPubKey)])).insertId : rPubKey[0].id;
-                if (D(idPubKey)) {
-                  for (let vout of oA(tx.vout)) { let spk = vout.scriptPubKey;
-//                    if (oA(oO(spk).addresses).includes("33ns4GGpz7vVAfoXDpJttwd7XkwtnvtTjw")) L(`toAddress: ${33ns4GGpz7vVAfoXDpJttwd7XkwtnvtTjw}`);
-                    if (D(spk)) {
-                      for (let toAddress of oA(spk.addresses)) {
-                        if ((toAddress[0] === "1") || (toAddress === "33ns4GGpz7vVAfoXDpJttwd7XkwtnvtTjw")) {
-                          let binToAddress = bs58check.decode(toAddress);
-                          let rToAddress = await conn.query("SELECT * FROM address WHERE v = ?", [binToAddress]);
-                          let idToAddress = (rToAddress.length === 0) ? oO(await conn.query("INSERT INTO address (v) VALUES (?)", [binToAddress])).insertId : rToAddress[0].id;
-                          if (D(idToAddress)) {
-                            let rTransfer = await conn.query("SELECT * FROM transfer WHERE idToAddress = ? AND idBlock = ? AND idTransaction = ? AND idPubKey = ?", [idToAddress, idBlock, idTransaction, idPubKey]); 
-                            let value = (new BigNumber(new BigNumber(vout.value).multipliedBy(coin).toFixed())).toString(16);
-                            while (value.length < 32) value = '0' + value; 
-                            let idTransfer = (rTransfer.length === 0) ? oO(await conn.query("INSERT INTO transfer (idToAddress, idBlock, idTransaction, idPubKey, value) VALUES (?, ?, ?, ?, ?)", [idToAddress, idBlock, idTransaction, idPubKey, htb(value)])).insertId : rTransfer[0].id; 
-                          }
-                        }
-                      }
-                    }
-                  }
-                } 
-              }
-            }
-          }
-        } 
-//        L('Done');
-  //      break;
-        let updateR = await conn.query("UPDATE block SET processed = 1 WHERE id = ?", [idBlock]);
-//        L(`updateR = ${S(updateR)}`)
-      }
-    }
-  } finally { if (conn) conn.release(); }
-});
 
-for (let q = 0; q < groupSize; ++q) blockScan(q);
+let select = (conn, table, obj) => conn.query(`SELECT * FROM ${table} WHERE ${K(obj).map(k => `${k} = ?`).join(" AND ")}`, V(obj));
+let insertIfNotExists = async (conn, table, obj, idKeys) => { let r = await select(conn, table, P(obj, idKeys || K(obj)));
+  return (r.length === 0) ? { ...obj, id: oO(await conn.query(`INSERT INTO ${table} (${K(obj).join(", ")}) VALUES (${K(obj).map(() => '?').join(", ")})`, V(obj))).insertId } : r[0]
+}
+
+let coin = (new BigNumber(10)).pow(18);
+
+let pubKeyFromScriptSig = ss => { let asm = oS(oO(ss).asm), k = "[ALL] "; let p = asm.indexOf(k); return p >= 0 ? asm.substr(p + k.length) : U; }
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -137,38 +71,43 @@ let generateCall = (method) => async (req, ans) => { try {
 getMethods.forEach(method => app.get(`/${method}/`, generateCall(method)));
 postMethods.forEach(method => app.post(`/${method}/`, generateCall(method)));
 
-/*
-app.get(`/getincomingtxdata/`, (req, ans) => {
-
-});*/
-async processBlockTransactions => {
-
-}
-
-//app.get(`/getTxValueForOutput/`, )
-/*
-"CREATE TABLE IF NOT EXISTS block (id INT PRIMARY KEY AUTO_INCREMENT, height INT, hash VARBINARY(32), processed BOOL, INDEX height (height), INDEX hash (hash))",
-"CREATE TABLE IF NOT EXISTS transaction (id INT PRIMARY KEY AUTO_INCREMENT, v VARBINARY(32), INDEX v (v))",
-"CREATE TABLE IF NOT EXISTS pubKey (id INT PRIMARY KEY AUTO_INCREMENT, v VARBINARY(33), INDEX v (v))",
-"CREATE TABLE IF NOT EXISTS address (id INT PRIMARY KEY AUTO_INCREMENT, v VARBINARY(21), INDEX v (v))",
-"CREATE TABLE IF NOT EXISTS transfer (id INT PRIMARY KEY AUTO_INCREMENT, idToAddress INT, idBlock INT, idTransaction INT, idPubKey INT, value VARBINARY(16), INDEX idToAddress (idToAddress), INDEX idBlock (idBlock), INDEX idTransaction (idTransaction), INDEX idPubKey (idPubKey))",
-*/
-let commonFields = "UNIX_TIMESTAMP(block.time) as time, (transaction.v) as transaction, HEX(transfer.value) as value";
-let commonTables = "transfer, transaction, block";
+let commonFields = "UNIX_TIMESTAMP(block.time) as time, transaction.v as txid";
+//, HEX(transfer.value) as value";
+let commonTables = "transaction, block";
 let trimLeadingZeroes = v => { while ((v.length > 0) && (v[0] === '0')) v = v.substr(1); return v; }
 let compressValue = v => htb(trimLeadingZeroes(v)).toString('base64');
 
-
-app.get(`/gettransfers/toAddress/:toAddress/`, async (req, a) => { L(`req = ${req.params}`); //addCorsHeaders(a);
+/*
+  "CREATE TABLE IF NOT EXISTS block (id INT PRIMARY KEY AUTO_INCREMENT, height INT, time TIMESTAMP, hash BINARY(32), processed BOOL, INDEX height (height), INDEX hash (hash))",
+  "CREATE TABLE IF NOT EXISTS transaction (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(32), INDEX v (v))",
+  "CREATE TABLE IF NOT EXISTS pubKey (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(33), INDEX v (v))",
+  "CREATE TABLE IF NOT EXISTS vout (id INT PRIMARY KEY AUTO_INCREMENT, ix INT, idToAddress INT, idBlock INT, idTransaction INT, value VARBINARY(16), INDEX ix (ix), INDEX idToAddress (idToAddress), INDEX idBlock (idBlock), INDEX idTransaction (idTransaction), INDEX value (value))",
+  "CREATE TABLE IF NOT EXISTS vin (id INT PRIMARY KEY AUTO_INCREMENT, idSourceTransaction INT, voutIx INT, idPubKey INT, INDEX idSourceTransaction (idSourceTransaction), INDEX voutIx (voutIx), INDEX idPubKey (idPubKey))",
+  "CREATE TABLE IF NOT EXISTS address (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(21), INDEX v (v))",
+*/
+app.get(`/gettransfers/toAddress/:toAddress/`, async (req, a) => { L(`req = ${S(req.params)}`); //addCorsHeaders(a);
   let conn = await pool.getConnection(); 
   //let [txHashes, depositAddresses] = req.body && req.body.params;
+  if (conn) {
+    try { let binToAddress = bs58check.decode(req.params.toAddress);
+      try { let r = await conn.query("USE transfers");
+        let q;
+        try { q = await conn.query(L(`SELECT ${commonFields}, pubKey.v as pubKey, vout.value as value, vout.ix as voutIx FROM ${commonTables}, address, pubKey, vout, vin WHERE address.v = ? AND address.id = idToAddress AND pubKey.id = idPubKey AND transaction.id = vin.idTransaction AND transaction.id = vout.idTransaction AND block.id = idBlock`), [binToAddress]); } 
+        catch(e) { a.send(S({ err: `Query failed: ${S(e)}` })) }
+        try { a.send(S(({ data: q.map(v => [v.time, compressValue(v.value), v.txid.toString('base64'), v.pubKey.toString('base64'), v.voutIx]) }))); } 
+        catch(e) { a.send(S({ err: `Send failed: ${S(e)}` })) }
+      } catch(e) { a.send(S({ err: `DB error: ${S(e)}` })) }
+    } catch(e) { a.send(S({ err: `Invalid address: ${S(e)}` })) }
+    finally { if (conn) conn.close(); }
+  } else { a.send(S({ err: `No db connection` })); }
+});
+
+app.get(`/getAddressId/:toAddress/`, async (req, a) => { L(`req = ${req.params}`); //addCorsHeaders(a);
+  let conn = await pool.getConnection(); 
   try { let binToAddress = bs58check.decode(req.params.toAddress);
     try { let r = await conn.query("USE transfers");
-      try { let rToAddress = await conn.query("SELECT * FROM address WHERE v = ?", [binToAddress]);
-        if (rToAddress.length > 0) { let idToAddress = rToAddress[0].id;
-          let q = await conn.query(`SELECT ${commonFields}, (pubKey.v) as pubKey FROM ${commonTables}, pubKey WHERE idToAddress = ? AND idPubKey = pubKey.id AND transaction.id = idTransaction AND block.id = idBlock`, [idToAddress]);
-          a.send(S({ data: q.map(v => [v.time, compressValue(v.value), v.transaction.toString('base64'), v.pubKey.toString('base64')]) }));
-        } else { a.send(S({ data: [] })) } 
+      try { let q = await conn.query(`SELECT * FROM address WHERE v = ?`, [binToAddress]);
+        a.send(S(q));
       } catch(e) { a.send(S({ err: `Failed to open db: ${S(e)}` })) }
     } catch(e) { a.send(S({ err: `DB error: ${S(e)}` })) }
   } catch(e) { a.send(S({ err: `Invalid address: ${S(e)}` })) }
@@ -192,5 +131,5 @@ app.get(`/gettransfers/fromPubKey/:pubKey/`, async (req, a) => { L(`req = ${req.
 app.get(`/gettransfers/fromPubKey/:pubKey/toAddress/:toAddress/`, async (req, a) => { 
   let conn = await pool.getConnection(); 
 });
-
+ 
 (p => app.listen(p, () => L(`Server running on port ${p}`)))(cfg.port = cfg.port || 4444)

@@ -14,6 +14,7 @@ let H = (f, o) => G(o, (v, k, i, o) => isO(v) ? H(f, v) : f(v, k, i, o));
 let I = x => x;
 let K = Object.keys;
 let L = x => { console.log(S(x)); return x; }
+let P = (o, keys) => F(keys.map(k => [k, o[k]]));
 let R = (msg, data) => A(new Error(msg), oO(data));
 let S = JSON.stringify;
 let T = s => oS(s).split(" ");
@@ -31,4 +32,4 @@ let asA = a => (b => isA(b) ? b : [b])(oA(a))
 let singleKeyObject = (k, v) => { let o = {}; o[k] = v; return o; }
 let makeEnum = soo => Object.freeze(F(T(soo).map(k => [k, k])));
 
-export { A, D, E, F, G, GA, H, I, K, L, R, S, T, U, V, oA, oO, oS, oF, isA, isO, isF, isP, asA, singleKeyObject, makeEnum }
+export { A, D, E, F, G, GA, H, I, K, L, P, R, S, T, U, V, oA, oO, oS, oF, isA, isO, isF, isP, asA, singleKeyObject, makeEnum }

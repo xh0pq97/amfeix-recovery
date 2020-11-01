@@ -75,6 +75,12 @@ let schedule = (action, interval) => {
     setTimeout(() => schedule(action, interval), interval);
   };
 }
+
+let timeFunc = async f => {
+  let startTime = Date.now();
+  let result = await f();
+  return { result, time: Date.now() - startTime };
+}
  
 let getInvestorDataKey = investorIx => `investor_${investorIx}`;
 
@@ -115,26 +121,27 @@ class Data {
     this.syncCache.setData("fundDeposits", (fundDeposits));
 //    htb(trimLeadingZeroes(v)).toString('base64');
     L('Load phase 5: Computing data');
-    (async () => {
-      let startTime = Date.now();
+    (async () => { 
       let processedDepositsTxIds = [];
       this.investors = {};
       this.withdrawalRequests = [];
       let investorsAddresses = this.syncCache.getData("investorsAddresses"); let olp = onLoadProgress("investorData");
-      for (let ix = 0; ix < investorsAddresses.length; ++ix) { this.updateLoadProgress(olp, ix, investorsAddresses.length);
-        let investor = await this.retrieveInvestorData(investorsAddresses[ix]);
-        let i = { index: investorsAddresses[ix].index, address: investorsAddresses[ix].data, investmentValue: investor.investmentValue, Withdrawal_Requests: investor.Withdrawal_Requests };
-        this.investors[i.index] = i;
-        this.withdrawalRequests.push(i.Withdrawal_Requests);
-        processedDepositsTxIds.push(investor.Deposits.map(d => d.txId));
-      } 
-      this.loadProgress["Computing investors time"] = Date.now() - startTime;
+      this.loadProgress.Compute_investorData = (await timeFunc(async () => {
+        for (let ix = 0; ix < investorsAddresses.length; ++ix) { this.updateLoadProgress(olp, ix, investorsAddresses.length);
+          let investor = await this.retrieveInvestorData(investorsAddresses[ix]);
+          let i = { index: investorsAddresses[ix].index, address: investorsAddresses[ix].data, investmentValue: investor.investmentValue, Withdrawal_Requests: investor.Withdrawal_Requests };
+          this.investors[i.index] = i;
+          this.withdrawalRequests.push(i.Withdrawal_Requests);
+          processedDepositsTxIds.push(investor.Deposits.map(d => d.txId));
+        } 
+      })).time; 
       this.syncCache.setData("investors", V(this.investors));
       this.syncCache.setData("withdrawalRequests", this.withdrawalRequests.flat());
-      startTime = Date.now();
-      processedDepositsTxIds = processedDepositsTxIds.flat();
-      let pendingDeposits = G(fundDeposits, v => v.filter(d => !processedDepositsTxIds.includes(d.txId)));
-      this.loadProgress["Computing pending deposits"] = Date.now() - startTime;
+      let pendingDeposits;
+      this.loadProgress.Compute_pending_deposits = (await timeFunc(() => { 
+        processedDepositsTxIds = processedDepositsTxIds.flat();
+        pendingDeposits = G(fundDeposits, v => v.filter(d => !processedDepositsTxIds.includes(d.txId))); 
+      })).time; 
       this.syncCache.setData("pendingDeposits", pendingDeposits);
       this.updateLoadProgress(olp, investorsAddresses.length, investorsAddresses.length);
     })();
