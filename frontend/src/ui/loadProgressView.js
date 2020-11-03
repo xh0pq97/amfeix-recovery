@@ -1,10 +1,10 @@
 import React from 'react';
 // eslint-disable-next-line
 import { D, E, L, S, oO } from '../tools';
-import { data } from '../data';
+import { data } from '../core/data';
 import { Comp } from './components';
 
-export class LoadProgressView extends Comp {
+export class Load_Progress extends Comp {
   componentDidMount() {
     //L("componentDidMount: LoadProgressView");
     let displayDelay = 500, lastUpdate = (Date.now() - displayDelay);

@@ -2,13 +2,33 @@ import React from 'react';
 // eslint-disable-next-line
 import { A, D, E, F, G, I, K, L, U, V, S, oA, oF, oO, oS, singleKeyObject } from '../tools';
 // eslint-disable-next-line
-import { Hidden, Drawer, Stepper, Step, StepLabel, CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
+import { List, ListItem, ListItemText, ListItemIcon, Hidden, Drawer, Stepper, Step, StepLabel, CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, Typography, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 // eslint-disable-next-line
 import { HistoryIcon, AttachMoneyIcon, CallMadeIcon } from '@material-ui/icons';
+import AccountBalanceWalletOutlinedIcon from '@material-ui/icons/AccountBalanceWalletOutlined';
+import SettingsIcon from '@material-ui/icons/Settings';
+import EqualizerIcon from '@material-ui/icons/Equalizer';
+import LockOpenIcon from '@material-ui/icons/LockOpen';
+import AdbIcon from '@material-ui/icons/Adb';
+import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount';
+import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
+import VpnKeyIcon from '@material-ui/icons/VpnKey';
+import HourglassEmptyIcon from '@material-ui/icons/HourglassEmpty';
 
 let captionMap = {
   timestamp: "Time", value: "Value", txId: "Transaction ID", deposits: "Deposits", withdrawals: "Withdrawals", withdrawalRequests: "Withdrawal Requests", fundDepositAddresses: "Fund deposit addresses", feeAddresses: "Fee addresses", _: ""
 };
+
+let captionIconMap = {
+  Bitcoin_Wallet: AccountBalanceWalletOutlinedIcon,
+  Impact_Fund: EqualizerIcon,
+  Settings: SettingsIcon,
+  Load_Progress: HourglassEmptyIcon,
+  Unlock_wallet: LockOpenIcon,
+  Create_wallet: AddCircleOutlineIcon,
+  Log_in: VpnKeyIcon,
+  Admin: SupervisorAccountIcon
+}
 //let displayFunctions = { timestamp: formatTimestamp };
 
 let cleanText = s => oS(s).replace(/_/g, " ").trim();
@@ -50,7 +70,7 @@ class THead extends Comp {
   }
 }
  
-class List extends Comp {
+class ListView extends Comp {
   constructor(p) { super(p); this.state = { page: 0, rowsPerPage: 5, checked: {}, selectedIx: null }; } 
   ren(p, s) {
     let headers = p.headers || K(oO(oA(p.data)[0])).map(h => ({ label: h, caption: h }));
@@ -71,12 +91,26 @@ class List extends Comp {
   }
 }
  
+class Sidebar extends Comp {
+  ren(p, s) {  
+    return <List>{E(p.tabs).map(([title, control], i) => { let color = p.value === i ? "secondary" : "primary";
+      return <ListItem button onClick={() => oF(p.onChange)(U, i)} key={i}>{tabulize(0, [[
+        <ListItemIcon>{(C => D(C) ? <C color={color}/> : null)(captionIconMap[title])}</ListItemIcon>, 
+        <Typography color={color}>{cleanText(title)}</Typography>
+      ]], [[{width: "2em"}, U]])}</ListItem>})}
+    </List>; 
+  }
+}
+
 class TabbedView extends Comp { constructor(p) { super(p, { selectedTabIx: 0 }); this.fers.visibleTab = {}; }
   getVisibleTab() { return this.fers.visibleTab.current; }
   ren(p, s) {let selTabIx = (D(p.selectedTabIx) ? p.selectedTabIx : s.selectedTabIx) || 0;
-    return K(p.tabs).length > 0 ? <><Tabs value={selTabIx} indicatorColor="primary" textColor="primary" onChange={(e, selectedTabIx) => this.setState({ selectedTabIx }, oF(p.onChangeSelectedTabIx)(selectedTabIx))} aria-label="tabs" centered>{E(p.tabs).map(([title, control], i) => <Tab key={i} label={cleanText(title)} disabled={(oO(p.tabProps)[title])}/>)}</Tabs>
-      {React.createElement(V(p.tabs)[selTabIx], {...p.parentProps, childRef: this.fers.visibleTab})}
-    </> : null 
+    let TabsControl = D(p.tabsControl) ? p.tabsControl : U;
+    let horizontal = p.horizontal;
+    let tabsProps = { value: selTabIx, onChange: (e, selectedTabIx) => this.setState({ selectedTabIx }, oF(p.onChangeSelectedTabIx)(selectedTabIx)) };
+    let tabs = p.TabsControl ? p.TabsControl(tabsProps) : <Tabs indicatorColor="primary" textColor="primary" {...tabsProps} aria-label="tabs" centered>{E(p.tabs).map(([title, control], i) => <Tab key={i} label={cleanText(title)} disabled={(oO(p.tabProps)[title])}/>)}</Tabs>;
+    let activeTab = K(p.tabs).length > 0 ? React.createElement(V(p.tabs)[selTabIx], {...p.parentProps, childRef: this.fers.visibleTab}) : null;
+    return tabulize(0, horizontal ? [[tabs, activeTab]] : [[tabs], [activeTab]], horizontal ? [[{width: "13em", verticalAlign: "top"}, U]] : [[U], [U]]);
   }
 }
 
@@ -111,10 +145,11 @@ class ValidatableComp extends Comp {
   constructor(p, s, fers) { super(p, { values: {}, errors: {}, ...s }, fers);  }
   setErrors(errors) { this.setState({ errors }, () => L(`New errors = ${S(this.state.errors)}`)); return (((K(errors).filter(I)).length) === 0); } 
   validate() { return true; }
-  genTextField(k, p) { let s = this.state; return <TextField error={(D(s.errors[k]))} variant="outlined" ref={this.fers[k]} id={k} label={cleanText(k)} onChange={e => this.setState({ values: { ...s.values, ...singleKeyObject(k, e.target.value)}})} {...p} helperText={s.errors[k] || oO(p).helperText}/> }
+  genTextField(k, p) { let s = this.state; return <TextField error={(D(s.errors[k]))} variant="outlined" ref={this.fers[k]} id={k} label={cleanText(k)} onChange={e => this.setState({ values: { ...s.values, ...singleKeyObject(k, e.target.value)}})} value={oS(s.values[k])} {...p} helperText={s.errors[k] || oO(p).helperText}/> }
 }
 
-let tabulize = (borderSpacing, cells) => <table style={{borderSpacing: `${borderSpacing || 0}em`}}><tbody>{cells.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody></table> 
+let tabulize = (borderSpacing, cells, cellStyles) => <table style={{borderSpacing: `${borderSpacing || 0}em`}}><tbody>{cells.map((r, i) => <tr key={i}>{r.map((c, j) => 
+  <td key={j} style={oO(oA(oA(cellStyles)[i])[j])}>{c}</td>)}</tr>)}</tbody></table> 
 let formTable = cells => tabulize(1.5, cells)
 let form = (preamble, cells) => <form noValidate autoComplete="off">{preamble}{formTable(cells)}</form>
 
@@ -154,39 +189,9 @@ let commonTableHeaders = {
   pubKey: { caption: "Public key", displayFunc: wrapEllipsisDiv },
   value: { caption: "Amount (BTC)", align: "right", alignCaption: "right" }
 }
-
-class Sidebar extends Comp {
-  ren(p, s) { let openMobile = true;
-    const container = D(window) && window.document.body;
-    return <Drawer container={container} variant="persistent" anchor={'left'} open={openMobile} onClose={() => {}} ModalProps={{ keepMounted: true, }}>
-      {<p>{'Drawer'}</p>}
-    </Drawer>; }
-}
-
-/*
-<div>
-      <div className={classes.toolbar} />
-      <Divider />
-      <List>
-        {['Inbox', 'Starred', 'Send email', 'Drafts'].map((text, index) => (
-          <ListItem button key={text}>
-            <ListItemIcon>{index % 2 === 0 ? <InboxIcon /> : <MailIcon />}</ListItemIcon>
-            <ListItemText primary={text} />
-          </ListItem>
-        ))}
-      </List>
-      <Divider />
-      <List>
-        {['All mail', 'Trash', 'Spam'].map((text, index) => (
-          <ListItem button key={text}>
-            <ListItemIcon>{index % 2 === 0 ? <InboxIcon /> : <MailIcon />}</ListItemIcon>
-            <ListItemText primary={text} />
-          </ListItem>
-        ))}
-      </List>
-    </div>
-*/
+ 
+let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{title}</h2><p style={{textAlign: "left"}}>{text}</p><p style={{textAlign: "left", color: "#FF2170"}}>{warning}</p></>;
 
         let loadingComponent = (data, c) => D(data) ? c  : tabulize(5, [[<CircularProgress/>]]);
 
-export { loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }
+export { preamble, loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, ListView as List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }

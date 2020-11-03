@@ -1,15 +1,22 @@
 import React from 'react';
 // eslint-disable-next-line
 import { D, E, F, G, L, S, V, oO } from '../tools';
-import { data } from '../data';
+import { w3, data } from '../core/data';
+
 // eslint-disable-next-line
-import { loadingComponent, applyListHeaders, commonTableHeaders, genHeaders, ValidatableComp, OpenDialogButton, Comp, TabbedView, List, tabulize, TabTimeline } from './components';
-import { LoadProgressView } from './loadProgressView'
+import { loadingComponent, applyListHeaders, commonTableHeaders, genHeaders, ValidatableComp, OpenDialogButton, Comp, TabbedView, List, tabulize, TabTimeline, form, preamble } from './components';
 import { InvestorList, EthTxView, applyWithdrawalRequestStatus } from './investor';
 import { Typography } from '@material-ui/core';
 
-class Approve_all_pending_deposits extends Comp { ren(p, s) { return <TabTimeline tabs={{ ValidatableComp }} onAccept={p.onAccept} />; } }
+class Approve_deposits_form extends Comp {
+  ren(p, s) {
+    return form(preamble("Approve deposits", "Approve all pending deposits"), [[]])
+  }
+}
+class Approve_all_pending_deposits extends Comp { ren(p, s) { return <TabTimeline tabs={{ Approve_deposits_form }} onAccept={p.onAccept} />; } }
+
 class Approve_all_pending_withdrawals extends Comp { ren(p, s) { return <TabTimeline tabs={{ ValidatableComp }} onAccept={p.onAccept} />; } }
+
 class Set_chart_data extends Comp { ren(p, s) { return <TabTimeline tabs={{ ValidatableComp }} onAccept={p.onAccept} />; } }
 class Set_AUM extends Comp { ren(p, s) { return <TabTimeline tabs={{ ValidatableComp }} onAccept={p.onAccept} />; } }
 
@@ -19,8 +26,8 @@ class Deposits extends Comp {
 }
 
 class Investors extends Comp { 
-  ren(p, s) { return tabulize(1/3, [[<InvestorList onChangedSelectedInvestor={investor => this.setState({ investor })} mode={p.mode} />], 
-    [D(s.investor) ? <EthTxView investor={s.investor} mode={p.mode} /> : tabulize(5/3, [[<Typography>{'Select an investor to show their transactions'}</Typography>]])]]) }
+  ren(p, s) { return tabulize(1/3, [[<InvestorList onChangedSelectedInvestor={investor => this.setState({ investor })} EDeveloperMode={p.EDeveloperMode} />], 
+    [D(s.investor) ? <EthTxView investor={s.investor} EDeveloperMode={p.EDeveloperMode} /> : tabulize(5/3, [[<Typography>{'Select an investor to show their transactions'}</Typography>]])]]) }
 }
 
 class Change_data extends Comp { 
@@ -29,8 +36,13 @@ class Change_data extends Comp {
 
 class Pending_Deposits extends Comp {
   componentDidMount() { this.addSyncKeyObserver(data, "pendingDeposits"); }
+  approveAll() {
+    for (let d in data) {
+//      w3.web3.accounts.sign(w3.amfeixM().depositAdmin(address, txid, publicKey), password)
+    }
+  }
   ren(p, s) { return loadingComponent(s.pendingDeposits, tabulize(5/3, [
-    [<OpenDialogButton id="Approve_all_pending_deposits" comp={Approve_all_pending_deposits} />],
+    [<OpenDialogButton id="Approve_all_pending_deposits" comp={Approve_all_pending_deposits} onAccept={() => this.approveAll()}/>],
     [<TabbedView tabs={F(E(s.pendingDeposits).map(([k, v], i) => [`Deposit address #${i}`, () => <List data={v} headers={V(genHeaders(v))}/>]))}/>]
   ])) }
 }
@@ -44,5 +56,5 @@ class Withdrawal_Requests extends Comp {
 }
 
 export class Admin extends Comp { 
-  ren(p, s) { return <TabbedView tabs={{ LoadProgressView, Investors, Withdrawal_Requests, Deposits, Pending_Deposits, Change_data }} parentProps={{ mode: p.mode }}/>; }
+  ren(p, s) { return <TabbedView tabs={{ Investors, Withdrawal_Requests, Deposits, Pending_Deposits, Change_data }} parentProps={{ EDeveloperMode: p.EDeveloperMode }}/>; }
 }

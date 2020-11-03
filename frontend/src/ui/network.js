@@ -1,6 +1,6 @@
 import React from 'react';
 import { A, S, V, oA, oO } from '../tools';
-import { ethInterfaceUrl, ganacheInterfaceUrl, btcRpcUrl, btcFields, amfeixFeeFields, data } from '../data';
+import { ethInterfaceUrl, ganacheInterfaceUrl, btcRpcUrl, btcFields, amfeixFeeFields, data } from '../core/data';
 import { genHeaders, displayBtcAddress, Selector, Comp, TabbedView, List, captionMap, tabulize } from './components';
 //import { genHeaders } from './investor';
 

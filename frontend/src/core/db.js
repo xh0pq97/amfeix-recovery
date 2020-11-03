@@ -1,4 +1,4 @@
-import { A, D, I, K, L, V, oA } from './tools';
+import { A, D, I, K, L, V, oA } from '../tools';
 import { tableStrucMap } from './data';
 
 //L({tables}); L({tableStrucMap});

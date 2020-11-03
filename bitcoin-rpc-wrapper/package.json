@@ -17,6 +17,7 @@
     "json-bigint": "^1.0.0",
     "json-bignumber": "^1.0.2",
     "mariadb": "^2.5.1",
+    "memcached": "^2.2.2",
     "node-fetch": "^2.6.1",
     "request": "^2.88.2"
   }

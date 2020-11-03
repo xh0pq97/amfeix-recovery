@@ -2,32 +2,36 @@ import React from 'react';
 // eslint-disable-next-line
 import { Box, TextField } from '@material-ui/core';
 // eslint-disable-next-line
-import { Comp, ValidatableComp, TabbedView, TabTimeline, button, formTable, form } from './components'; 
+import { Comp, ValidatableComp, TabbedView, TabTimeline, button, formTable, form, preamble } from './components'; 
 // eslint-disable-next-line
 import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
 import * as bip39 from 'bip39';
 import LockIcon from '@material-ui/icons/Lock';
+import { generateSeedWords } from '../core/wallet';
 
-let defaultWords = 'gorilla endorse hat lumber old price route put goose sail lemon raise'.split(" ");
-let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{title}</h2><p style={{textAlign: "left"}}>{text}</p><p style={{textAlign: "left", color: "#FF2170"}}>{warning}</p></>;
-
-let captionIcons = { }
+//let defaultWords = 'gorilla endorse hat lumber old price route put goose sail lemon raise'.split(" ");
 
 class SeedView extends ValidatableComp {
-  constructor(p, s) { super(p, s); 
-//    let mnemonic = 'praise you muffin lion enable neck grocery crumble super myself license ghost'.split(" ");
-    for (let q = 0; q < 12; ++q) this.state.values[this.getKey(q)] = defaultWords[q];  
+  constructor(p, s) { super(p, s);  
+    this.setNewInitialWords();
     this.initRefs(K(this.state).join(" "));
+    this.constructed = true;
+  }
+  setNewInitialWords() {  
+     let values = {};
+     for (let q = 0; q < 12; ++q) values[this.getKey(q)] = oS(oA(this.props.initialWords)[q]);  
+     if (this.constructed) { this.setState({ values }); } else { this.state.values = values; }
   }
   checkWordsInList(wordList) { //L(`checkWordsInList: ${wordList}`);
     return this.setErrors(F(this.getWords().map((w, i) => { if (!(wordList.includes(w))) return `Word '${w}' is not an accepted word.`; }).map((r, i) => [this.getKey(i), (r)]).filter(([k, v]) => D(v))));  
   }
-  checkWordsEqual(expectedWords) { 
-    return this.setErrors(F(this.getWords().map((w, i) => { if (!(w === expectedWords[i])) return `This word is not correct.` }).map((r, i) => [this.getKey(i), r]).filter(([k, v]) => D(v))));  
+  checkWordsEqual(expectedWords) { let gotWords = this.getWords(); L(`gotWords = ${gotWords} =?= ${expectedWords} = expectedWords`);
+    return this.setErrors(F(gotWords.map((w, i) => { if (!(w === expectedWords[i])) { return `This word is not correct.`; } }).map((r, i) => [this.getKey(i), r]).filter(([k, v]) => D(v))));  
   }
+  componentDidUpdate(prevP) { if (prevP.initialWords !== this.props.initialWords) this.setNewInitialWords(); }
   getKey(x) { return `Word_${x}`}
   getWords() { let result = []; for (let q = 0; q < 12; ++q) result.push(this.state.values[this.getKey(q)]); L(`getWords = ${result}`); return result; }
-  ren(p, s) { return formTable([0, 1, 2].map(a => [0, 1, 2, 3].map(b => this.genTextField(this.getKey(4*a + b), { defaultValue: defaultWords[4*a + b] })))) }
+  ren(p, s) { return formTable([0, 1, 2].map(a => [0, 1, 2, 3].map(b => this.genTextField(this.getKey(4*a + b), { disabled: p.disabled })))) }
 }
 
 class Setup_password extends ValidatableComp { constructor(p, s) { super(p, s, "Wallet Password Confirm_password"); }
@@ -51,19 +55,20 @@ class Enter_credentials extends ValidatableComp { constructor(p, s) { super(p, s
   }
 }
 
-class Backup_seed extends ValidatableComp {
-  validate() { return L(this.state.input); }
-  setPrecedingResult(input) { I(`Backup_seed: precedingresult: ${S(input)}`); this.setState({ input }) }
+class Backup_seed extends ValidatableComp { constructor(p, s) { super(p, s, "seedView"); }
+  validate() { return { creds: this.state.creds, words: this.state.words }; }
+  componentDidMount() { super.componentDidMount(); this.setState({ words: generateSeedWords() }) }
+  setPrecedingResult(creds) { L(`Backup_seed: precedingresult: ${S(creds)}`); this.setState({ creds }) }
   ren(p, s) {
     return <form noValidate autoComplete="off">
       {preamble("Backup seed", "Please write these 12 words down, in order, and keep them somewhere safe offline. With them you will be able to recover your wallet.", "Never give your seed keys to anyone, we will never ask you to share them with us.")}
-      <SeedView /></form>;
+      <SeedView ref={this.fers.seedView} initialWords={s.words} disabled={true} /></form>;
   }
 }
 
 class Verify_seed extends ValidatableComp { constructor(p, s) { super(p, s, "seedView"); }
-  setPrecedingResult(input) { L(`Verify_seed: precedingresult: ${S(input)}`); this.setState({ input }) }
-  validate() { let sv = this.fers.seedView.current; return sv.checkWordsEqual(oA(oO(this.state.input).words)) && { seedWords: sv.getWords() }; }
+  setPrecedingResult(input) { L(`Verify_seed: precedingresult: ${S(input)}`); this.setState({ ...input }) }
+  validate() { let sv = this.fers.seedView.current; return sv.checkWordsEqual(oA(this.state.words)) && { creds: this.state.creds, seedWords: this.state.words }; }
   ren(p, s) {
     return <form noValidate autoComplete="off">{preamble("Verify seed", "Your seed is very important! If your lose your seed your funds will be permantently lost.")}
       <SeedView ref={this.fers.seedView}/></form>;

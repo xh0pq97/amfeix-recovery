@@ -92,7 +92,7 @@ app.get(`/gettransfers/toAddress/:toAddress/`, async (req, a) => { L(`req = ${S(
     try { let binToAddress = bs58check.decode(req.params.toAddress);
       try { let r = await conn.query("USE transfers");
         let q;
-        try { q = await conn.query(L(`SELECT ${commonFields}, pubKey.v as pubKey, vout.value as value, vout.ix as voutIx FROM ${commonTables}, address, pubKey, vout, vin WHERE address.v = ? AND address.id = idToAddress AND pubKey.id = idPubKey AND transaction.id = vin.idTransaction AND transaction.id = vout.idTransaction AND block.id = idBlock`), [binToAddress]); } 
+        try { q = await conn.query((`SELECT ${commonFields}, pubKey.v as pubKey, vout.value as value, vout.ix as voutIx FROM ${commonTables}, address, pubKey, vout, vin WHERE address.v = ? AND address.id = idToAddress AND pubKey.id = idPubKey AND transaction.id = vin.idTransaction AND transaction.id = vout.idTransaction AND block.id = idBlock`), [binToAddress]); } 
         catch(e) { a.send(S({ err: `Query failed: ${S(e)}` })) }
         try { a.send(S(({ data: q.map(v => [v.time, compressValue(v.value), v.txid.toString('base64'), v.pubKey.toString('base64'), v.voutIx]) }))); } 
         catch(e) { a.send(S({ err: `Send failed: ${S(e)}` })) }
