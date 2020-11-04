@@ -273,10 +273,11 @@ class Data extends Persistent {
     let masterKeys = F(oA(tableStrucMap[dataTable].keyPath).map(k => [k, countKey[k]]));
     try { while (!D(length) || (index < length)) { //L(`Processing item ${index} for ${name} (${dataTable}) with parms = ${S(parms)}`);
       let data = await (w3.amfeixM()[name](...oA(parms), index).call()); //L('C');
-      await this.setData(dataTable, ({ ...masterKeys, index, data })); //L('D');
-      await this.setData(countTable, ({ ...countKey, startIndex: ++index, length })); //L('I'); 
+      this.idbuf.write(dataTable, ({ ...masterKeys, index: index++, data })); //L('D');
       this.updateLoadProgress(onLoadProgress, index, length);
     } } catch {} // { L(`Array ${name} stopped at ${index}.`) } 
+    this.idbuf.write(countTable, ({ ...countKey, startIndex: length, length })); //L('I'); 
+    await this.idbuf.flush();
     this.updateLoadProgress(onLoadProgress, index, length, true);
     //L(`Array '${name}' update completed with ${index} entries (count = ${await this.idb.count(dataTable )})`);
   }
