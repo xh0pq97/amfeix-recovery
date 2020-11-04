@@ -54,7 +54,7 @@ class MainView extends Comp { constructor(p, s) { super(p, s); this.state.openWa
     else { this.startWalletOp("Decrypting", () => wallet.open(d.creds, status => this.setState({ walletCodecProgress: status.percent }))); }
     return true;
   }
-  ren(p, s) { let tabs = A({ Bitcoin_Wallet, Impact_Fund, Load_Progress }, p.EUserMode.Admin ? ({ Admin, Network, Settings, Features }) : ({}));
+  ren(p, s) { let tabs = A({ Load_Progress, Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Admin, Network, Settings, Features }) : ({}));
 //    {p.EUserMode.Admin ? <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/> : null}
     return <><AppBar position="static"><Toolbar><p>{`Version >= ${version}`}</p><OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/>
       {D(s.wallet) ? button("Log out", () => this.setState({ openWallet: U })) : null}
