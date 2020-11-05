@@ -72,7 +72,8 @@ let blockScan = (async (offset) => { let conn = await pool.getConnection(); //LO
     for (let x of objGenesis) await conn.query((x)); 
     let blockHeights = [570802, 617005];
     let blockCount = await rpc("getblockcount", []);
-    for (let height = blockHeights[0] - (blockHeights[0] % groupSize) + offset; height <= blockCount; height += groupSize) if (height <= blockCount) { process.stdout.write(`[${height}]`);
+//    for (let height = blockHeights[0] - (blockHeights[0] % groupSize) + offset; height <= blockCount; height += groupSize) if (height <= blockCount) { process.stdout.write(`[${height}]`);
+    for (let height = blockCount - (blockCount % groupSize) - groupSize + offset; height >= 0; height -= groupSize) if (height >= 0) { process.stdout.write(`[${height}]`);
       let blockHash = await rpc("getblockhash", [height]);
       let r = (await insertIfNotExists(conn, "block", { height, hash: htb(blockHash) })); 
       let idBlock = r.id;

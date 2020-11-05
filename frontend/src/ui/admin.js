@@ -1,19 +1,25 @@
 import React from 'react';
 // eslint-disable-next-line
-import { D, E, F, G, L, S, V, oO } from '../tools';
+import { D, E, F, G, K, L, S, U, V, oA, oO } from '../tools';
 import { w3, data } from '../core/data';
 
 // eslint-disable-next-line
-import { loadingComponent, applyListHeaders, commonTableHeaders, genHeaders, ValidatableComp, OpenDialogButton, Comp, TabbedView, List, tabulize, TabTimeline, form, preamble } from './components';
+import { GetPasswordDialog, loadingComponent, applyListHeaders, commonTableHeaders, genHeaders, ValidatableComp, OpenDialogButton, Comp, TabbedView, List, tabulize, TabTimeline, form, preamble } from './components';
 import { InvestorList, EthTxView, applyWithdrawalRequestStatus } from './investor';
 import { Typography } from '@material-ui/core';
 
-class Approve_deposits_form extends Comp {
+class Approve_deposits_form extends ValidatableComp {
+  validate() {
+    return this.props.pendingDeposits;
+  }
   ren(p, s) {
-    return form(preamble("Approve deposits", "Approve all pending deposits"), [[]])
+    return form(preamble("Approve deposits", "Click 'Finish' to approve all pending deposits."), [['Number of pending deposits:', oA(p.pendingDeposits).length]])
   }
 }
-class Approve_all_pending_deposits extends Comp { ren(p, s) { return <TabTimeline tabs={{ Approve_deposits_form }} onAccept={p.onAccept} />; } }
+
+class Approve_all_pending_deposits extends Comp { ren(p, s) { 
+  return <TabTimeline tabs={{ Approve_deposits_form }} onAccept={p.onAccept} onCancel={() => {}} parentProps={{pendingDeposits: p.pendingDeposits}} />;
+} }
 
 class Approve_all_pending_withdrawals extends Comp { ren(p, s) { return <TabTimeline tabs={{ ValidatableComp }} onAccept={p.onAccept} />; } }
 
@@ -34,15 +40,29 @@ class Change_data extends Comp {
   ren(p, s) { return tabulize(5/3, [[<OpenDialogButton id="Set_chart_data" comp={Set_chart_data} />, <OpenDialogButton id="Set_AUM" comp={Set_AUM} />]]) }
 }
 
-class Pending_Deposits extends Comp {
+class Pending_Deposits extends Comp { constructor(p, s) { super(p, { ...s, getPwdDialogOpen: false }); }
   componentDidMount() { this.addSyncKeyObserver(data, "pendingDeposits"); }
-  approveAll() {
-    for (let d in data) {
+  approveAll(approvedDeposits) {
+    L(`approveddeposits keys = K  ${K(approvedDeposits[0])}`);
+    L(`Approving ${approvedDeposits.length} deposits`);
+    L(`Approved deposits = ${S(approvedDeposits)}`);
+    let depositTransactions = approvedDeposits.map(d => w3.amfeixM().depositAdmin(d.address, d.txid, d.publicKey));
+    L(`Deposit transaction 0: K = ${K(depositTransactions[0])}`)
+    L(`Deposit transaction 0: = ${(depositTransactions[0])}`)
+    this.setState({ getPwdDialogOpen: true, depositTransactions });
+    // Get password
+//    for (let d in approvedDeposits) {
 //      w3.web3.accounts.sign(w3.amfeixM().depositAdmin(address, txid, publicKey), password)
-    }
+  //  }
+  }
+  approveWithPassword(creds) { L(`approveWithCreds : ${S(creds)}`)
+    let privateKey = U;
+    let signedTx = this.state.depositTransactions.map(t => w3.web3.accounts.sign(t, privateKey));
+    this.setState({ depositTransactions: [] })
   }
   ren(p, s) { return loadingComponent(s.pendingDeposits, tabulize(5/3, [
-    [<OpenDialogButton id="Approve_all_pending_deposits" comp={Approve_all_pending_deposits} onAccept={() => this.approveAll()}/>],
+    [<><OpenDialogButton id="Approve_all_pending_deposits" parentprops={{parentProps: {pendingDeposits: oA(V(oO(s.pendingDeposits))[0])}}} comp={Approve_all_pending_deposits} onAccept={d => this.approveAll(d)}/>
+     <GetPasswordDialog open={s.getPwdDialogOpen} onAccept={creds => this.approveWithPassword(creds)} onCancel={() => this.setState({ depositTransactions: [] })}/></>],
     [<TabbedView tabs={F(E(s.pendingDeposits).map(([k, v], i) => [`Deposit address #${i}`, () => <List data={v} headers={V(genHeaders(v))}/>]))}/>]
   ])) }
 }

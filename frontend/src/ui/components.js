@@ -9,6 +9,7 @@ import AccountBalanceWalletOutlinedIcon from '@material-ui/icons/AccountBalanceW
 import SettingsIcon from '@material-ui/icons/Settings';
 import EqualizerIcon from '@material-ui/icons/Equalizer';
 import LockOpenIcon from '@material-ui/icons/LockOpen';
+import LockIcon from '@material-ui/icons/Lock';
 import AdbIcon from '@material-ui/icons/Adb';
 import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount';
 import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
@@ -23,7 +24,7 @@ let captionIconMap = {
   Bitcoin_Wallet: AccountBalanceWalletOutlinedIcon,
   Impact_Fund: EqualizerIcon,
   Settings: SettingsIcon,
-  Load_Progress: HourglassEmptyIcon,
+  Progress: HourglassEmptyIcon,
   Unlock_wallet: LockOpenIcon,
   Create_wallet: AddCircleOutlineIcon,
   Log_in: VpnKeyIcon,
@@ -157,11 +158,22 @@ class DialogWrap extends Comp { constructor(p, s) { super(p, {...s, open: false}
   show() { this.setState({ open: true }); }
   ren(p, s) { let C = p.comp; let id = cleanText(p.id);
     return <Dialog aria-labelledby={id} open={s.open} onClose={() => { oF(p.onClose)(); this.setState({ open: false }); }}><h2>{id}</h2>
-      <C onCancel={() => { oF(p.onCancel)(); this.setState({ open: false }); }} onAccept={d => { this.setState(({ open: false }), () => oF(p.onAccept)(d)); }}/></Dialog> }
+      <C {...p.parentProps} onCancel={() => { oF(p.onCancel)(); this.setState({ open: false }); }} onAccept={d => { this.setState(({ open: false }), () => oF(p.onAccept)(d)); }}/></Dialog> }
 } 
 
 class OpenDialogButton extends Comp { constructor(p, s) { super(p, s, "dlg"); }
-  ren(p, s) { return <>{button(cleanText(p.id), () => this.fers.dlg.current.show())}<DialogWrap ref={this.fers.dlg} comp={p.comp} id={p.id} onAccept={p.onAccept} onCancel={p.onCancel}/></> }
+  ren(p, s) { return <>{button(cleanText(p.id), () => this.fers.dlg.current.show())}<DialogWrap ref={this.fers.dlg} comp={p.comp} id={p.id} onAccept={p.onAccept} onCancel={p.onCancel} parentProps={p.parentProps}/></> }
+}
+ 
+class GetPasswordView extends ValidatableComp {
+  constructor(p, s) { super(p, s, "Password"); }
+  ren(p, s) { return formTable([[preamble("Please enter your password to confirm", `Enter the password for wallet '${p.walletName}'`)], [<LockIcon fontSize={"large"}/>], 
+    [this.genTextField("Password", { type: "password" })]]) }
+  validate() { return this.state.values; }
+}
+
+class GetPasswordDialog extends Comp { //constructor(p, s) { super(p, s, "dlg"); }
+  ren(p, s) { return <DialogWrap open={p.open} comp={GetPasswordView} walletName={p.walletName} onAccept={p.onAccept} onCancel={p.onCancel}/> }
 }
 
 class ProgressDialog extends Comp { ren(p, s) { let id = cleanText(p.title); 
@@ -194,4 +206,4 @@ let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{titl
 
         let loadingComponent = (data, c) => D(data) ? c  : tabulize(5, [[<CircularProgress/>]]);
 
-export { preamble, loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, ListView as List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }
+export { GetPasswordDialog, preamble, loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, ListView as List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }

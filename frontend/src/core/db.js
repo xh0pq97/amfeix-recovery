@@ -57,6 +57,8 @@ class IDBuffer {
     this.pendingOps.push({ table, action, data, onSuccess, onError })
   }
 
+  pendingOpsCount() { return this.pendingOps.length; }
+
   async flush() { 
     while (this.pendingOps.length > 0) await new Promise((resolve, reject) => {
       let p = this.pendingOps; 
@@ -67,13 +69,13 @@ class IDBuffer {
         let os = tx.objectStore(x.table);
         let y = os[x.action](x.data);
         y.onsuccess = e => { oF(x.onSuccess)(e.target.result); if (result.errors + ++result.successes === total) resolve(result); };
-        y.onerror = e => { L(`err for ${S(x)} : ${S(e)}`); oF(x.onError)(e); if (++result.errors + result.successes === total) resolve(result); };
+        y.onerror = e => { L(`Error for ${S(x)}: ${S(e)}`); oF(x.onError)(e); if (++result.errors + result.successes === total) resolve(result); };
       });
     })
   }
 
-  add(table, data) { this.queueOp(table, "add", data, () => data, err => { L(`adderr ${S(data)}`); L({err}) }); }
-  put(table, data) { this.queueOp(table, "put", data, () => data, err => { L('puterr'); L({err}) }); }
+  add(table, data) { this.queueOp(table, "add", data, () => data, err => { L(`Add error ${S(data)}`); L({err}) }); }
+  put(table, data) { this.queueOp(table, "put", data, () => data, err => { L('Put error '); L({err}) }); }
   count(table, data) { this.queueOp(table, "count", data, e => e.target.result); }
   getAll(table, data) { this.queueOp(table, "getAll", (data), e => e.target.result); }
   get(table, data, onSuccess, onError) { this.queueOp(table, "get", computeKey(table, data), onSuccess, onError); }  

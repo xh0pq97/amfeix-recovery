@@ -8,6 +8,7 @@ import bs58check from 'bs58check';
 import { A, D, E, F, I, K, L, P, S, T, U, V, oA, oO, oS, oF, singleKeyObject } from './tools.mjs'; 
 import mariadb from  'mariadb';
 dotenv.config(); const cfg = process.env;  
+let BN = (v, b) => new BigNumber(v, b);
 
 const verbose = true; 
 let LOG = d => verbose ? L(d) : d; 
@@ -100,6 +101,41 @@ app.get(`/gettransfers/toAddress/:toAddress/`, async (req, a) => { L(`req = ${S(
     } catch(e) { a.send(S({ err: `Invalid address: ${S(e)}` })) }
     finally { if (conn) conn.close(); }
   } else { a.send(S({ err: `No db connection` })); }
+});
+
+let getDeposits = async (toAddress, fromPublicKey) => {
+  let conn = await pool.getConnection(); 
+  //let [txHashes, depositAddresses] = req.body && req.body.params;
+  if (conn) { try { let binToAddress = bs58check.decode(toAddress);
+    try { let r = await conn.query("USE transfers");
+      let data = [];
+      try { 
+        let andPublicKey = D(fromPublicKey) ? `AND pubKey.v = ?` : '';
+        let q = await conn.query(L(`SELECT ${commonFields}, pubKey.v as pubKey, HEX(vout.value) as value, vout.ix as voutIx, transaction.id as tIx FROM ${commonTables}, address, pubKey, vout, vin WHERE address.v = ? AND address.id = idToAddress AND pubKey.id = idPubKey AND transaction.id = vin.idTransaction AND transaction.id = vout.idTransaction AND block.id = idBlock ${andPublicKey} ORDER BY tIx`), [binToAddress, fromPublicKey && htb(fromPublicKey)].filter(I)); 
+        L(`result = ${q.length}`);
+        let txs = {};
+        q.forEach(transfer => { let y = txs[transfer.tIx]; if (y) { y.push(transfer); } else { txs[transfer.tIx] = [transfer]; } });
+        for (let tx of V(txs)) {
+          let v = tx[0];
+          if ((K(F(tx.map(t => [t.pubKey.toString('hex'), true])))).length !== 1) { L(`Ignoring tx ${v.tIx}: Several input pubkeys`); continue; }
+          if (K(F(tx.map(t => [t.voutIx, true]))).length !== 1) { L(`Ignoring tx ${v.tIx}: Several voutIx`); continue; } 
+//          let value = tx.reduce((p, c) => p.plus(BN(c.value, 16)), BN(0)); 
+          data.push([ v.time, compressValue(v.value), v.txid.toString('base64'), v.pubKey.toString('base64'), v.voutIx ]);
+        }
+        L(`result = ${q.length} data = ${data.length}`);
+      } catch(e) { return { err: `Query failed: ${S(e)}` }; }
+      return { data }; 
+    } catch(e) { return { err: `DB error: ${S(e)}` } }
+  } catch(e) { return { err: `Invalid address: ${S(e)}` } }
+  finally { conn.close(); } } else { return { err: `No db connection` }; }
+}
+
+app.get(`/getdeposits/toAddress/:toAddress/`, async (req, a) => { L(`req = ${S(req.params)}`); //addCorsHeaders(a);
+  a.send(S(await getDeposits(req.params.toAddress)));
+});
+
+app.get(`/getdeposits/toAddress/:toAddress/fromPublicKey/:fromPublicKey/`, async (req, a) => { L(`req = ${S(req.params)}`); //addCorsHeaders(a);
+  a.send(S(await getDeposits(req.params.toAddress, req.params.fromPublicKey)));
 });
 
 app.get(`/getAddressId/:toAddress/`, async (req, a) => { L(`req = ${req.params}`); //addCorsHeaders(a);

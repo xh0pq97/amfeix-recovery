@@ -11,7 +11,7 @@ import { Admin } from './ui/admin';
 import { Log_in } from './ui/login';
 import { Network } from './ui/network';
 import { Impact_Fund } from './ui/impactFund';
-import { Load_Progress } from './ui/loadProgressView'
+import { Load_Progress as Progress } from './ui/loadProgressView'
 import { Bitcoin_Wallet } from './ui/wallet'; 
 // eslint-disable-next-line
 import { InvestorID, InvestorList, EthTxView, InvestorDependentView } from './ui/investor';
@@ -33,7 +33,9 @@ urlParams.testMode = D(L(getUrlParam("8e763620037a1054b3656092dece8d324eef5dd5ef
 class Settings extends Comp {
   ren(p, s) { 
     return tabulize(1/3, [[ <Selector options={[ethInterfaceUrl, ganacheInterfaceUrl]} />],
-     [button("Clear data cache", () => {})]]) 
+      [button("Clear data cache", () => {})],
+      [button("Compute data", () => { data.computeData(); })]
+    ]) 
   }
 }
 
@@ -54,7 +56,7 @@ class MainView extends Comp { constructor(p, s) { super(p, s); this.state.openWa
     else { this.startWalletOp("Decrypting", () => wallet.open(d.creds, status => this.setState({ walletCodecProgress: status.percent }))); }
     return true;
   }
-  ren(p, s) { let tabs = A({ Load_Progress, Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Admin, Network, Settings, Features }) : ({}));
+  ren(p, s) { let tabs = A({ Progress, Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Admin, Network, Settings, Features }) : ({}));
 //    {p.EUserMode.Admin ? <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/> : null}
     return <><AppBar position="static"><Toolbar><p>{`Version >= ${version}`}</p><OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/>
       {D(s.wallet) ? button("Log out", () => this.setState({ openWallet: U })) : null}

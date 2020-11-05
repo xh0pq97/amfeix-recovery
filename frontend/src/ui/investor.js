@@ -24,8 +24,8 @@ let applyWithdrawalRequestStatus = wr => { A(oO(wr.status), { caption: "Action",
 class Withdraw extends Comp { ren(p, s) { return <TabTimeline tabs={{ ValidatableComp }} onAccept={p.onAccept} />; } }
 
 class InvestorID extends Comp {
-  ren(p, s) { let i = oO(p.investor); return <div style={{borderStyle: "solid", borderWidh: "1px", borderRadius: `0.3em`, borderColor: '#777'}}>{
-    tabulize(1/7, [['Public key', i.publicKey || '?'], ['Investor address', i.data || '?'], ['Wallet address', i.btcAddress || '?']])
+  ren(p, s) { let i = oO(p.investor); return <div style={{borderStyle: "solid", borderWidth: "1px", borderRadius: `0.3em`, borderColor: '#777'}}>{
+    tabulize(1/7, [['Public key', i.publicKey || '?'], ['Investor address (eth)', i.data || '?'], ['Wallet address (btc)', i.btcAddress || '?']])
   }</div> }
 }
 
