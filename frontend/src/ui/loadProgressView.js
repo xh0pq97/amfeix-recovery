@@ -1,8 +1,9 @@
 import React from 'react';
 // eslint-disable-next-line
-import { D, E, L, S, oO } from '../tools';
+import { D, E, L, S, U, oO } from '../tools';
 import { data } from '../core/data';
-import { Comp } from './components';
+import { tabulize, Comp } from './components'; 
+import { LinearProgress } from '@material-ui/core' 
 
 export class Load_Progress extends Comp {
   componentDidMount() {
@@ -17,7 +18,9 @@ export class Load_Progress extends Comp {
     });
   } 
 
-  ren(p, s) { return <div>{E((oO(s.loadProgress))).map(([key, data]) => <p key={key} style={{ display: "inline", padding: '0.1em 1em 0.1em 1em' }}>
-    {D(data.index) ? `(${data.index}/${data.length} ${key})` : `${key}: ${S(data)} ms`}</p>)}
-  </div>; }
+  ren(p, s) { return <div>{tabulize(1/2, E((oO(s.loadProgress))).map(([key, data]) => [key, 
+    D(data.index) ? tabulize(1/7, [[`${data.index} / ${D(data.length) ? data.length : '?'}`], 
+         [<LinearProgress variant={D(data.length) ? "determinate" : U} value={D(data.length) ? ((100*data.index)/data.length) : U} />]])
+    : `${S(data)} ms`
+  ]))}</div>; }
 }

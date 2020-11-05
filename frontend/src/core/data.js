@@ -3,7 +3,7 @@ import BigNumber from 'bignumber.js';
 import amfeixCjson from '../amfeixC.json'; 
 // eslint-disable-next-line
 import { A, D, E, F, G, H, I, K, L, S, T, U, V, oA, oO, oF, isO, isA, singleKeyObject, makeEnum } from '../tools'; 
-import { IndexedDB, IDBuffer } from './db'; 
+import { IndexedDB } from './db'; 
 import { Persistent } from './persistent';
 let BN = (v, b) => new BigNumber(v, b);
 
@@ -99,9 +99,8 @@ let getInvestorWithdrawTxDataKey = investor => `investor_WithdrawTx_${investor.b
 class Data extends Persistent {
   constructor() { super("data", ["localData"], { localData: { dbix: 173 } }); L('Creating Data class instance.');
     //this.localData = (d => d ? L(JSON.parse(d)) : { dbix: 60 })((localStorage.getItem("_")));
-    if (newDB) this.localData.dbix++;
-    let idb = new IndexedDB(S(this.localData.dbix));
-    A(this, { tables, tableStrucMap, investorData: {}, observers: {}, data: {}, loadProgress: {}, syncCache: new SyncCache(), idb, idbuf: new IDBuffer(idb), adminLoadInitiated: false }); 
+    if (newDB) this.localData.dbix++; 
+    A(this, { tables, tableStrucMap, investorData: {}, observers: {}, data: {}, loadProgress: {}, syncCache: new SyncCache(), idb: new IndexedDB(S(this.localData.dbix)), adminLoadInitiated: false }); 
     for (let q = 0; q < this.localData.dbix; ++q) this.idb.deleteDB(S(q));
     this.persist(); 
      
@@ -176,19 +175,21 @@ class Data extends Persistent {
       await this.updateSimpleArray(this.onLoadProgress("investorsAddresses"), "investorsAddresses");  
       await this.updateSyncCache();
       this.computeTimeDataFromTimeAndAmount(); 
-      await Promise.all([this.updateRegisteredTransactions(), this.loadFundDeposits()]);
+      await Promise.all([this.updateRegisteredTransactions(), this.loadFundDeposits()]); 
+      await this.computeData();
     }
   }
 
-  async registerInvestorAddress(address) { 
+  async registerInvestorAddress(address) { //L(`Registering investor address ${address}`);
     let investorsAddresses = await w3.amfeixM().getAllInvestors().call();
-    let index = investorsAddresses.indexOf(address);
-    if (index >= 0) { let investor = { index, data: address };
+    let index = investorsAddresses.map(x => x.toLowerCase()).indexOf(address.toLowerCase());
+    if (index >= 0) { let investor = { index, data: address }; L(`inv = ${S(investor)}`)
       await this.setData(tables.eth.investorsAddresses, investor);
       await Promise.all(investorMaps.map(m => this.updateInvestorArray(investor, m))); 
       await this.updateSyncCache();
-      this.updateRegisteredTransactions();
+      await this.updateRegisteredTransactions();
       await this.computeData();
+      return investor;
     } 
   }
 
@@ -225,14 +226,15 @@ class Data extends Persistent {
     let sIx = async name => oO(await this.getData(tables.eth.constants, countKey(name))).startIndex || 0;
     let length;
     if ((await sIx("time") === 0) && (await sIx("amount") === 0)) {
+      let buf = this.idb.newBuffer();
       this.updateLoadProgress(onLoadProgress, 0);
       let timeData = await w3.amfeixM().getAll().call();
       length = timeData[0].length;
       for (let index = 0; index < length; ++index) {
-        ["time", "amount"].forEach((t, i) => this.idbuf.write(tables.eth[t], { index, data: (i === 0 ? parseInt : I)(timeData[i][index]) }));
+        ["time", "amount"].forEach((t, i) => buf.write(tables.eth[t], { index, data: (i === 0 ? parseInt : I)(timeData[i][index]) }));
       }
-      ["time", "amount"].forEach(name => this.idbuf.write(tables.eth.constants, {...countKey(name), startIndex: length }));
-      let result = await this.idbuf.flush();
+      ["time", "amount"].forEach(name => buf.write(tables.eth.constants, {...countKey(name), startIndex: length }));
+      let result = await buf.flush();
       this.updateLoadProgress(onLoadProgress, length, length, true);
     }
   }
@@ -241,15 +243,16 @@ class Data extends Persistent {
     let sIx = async name => oO(await this.getData(tables.eth.constants, countKey(name))).startIndex || 0;
     let length;
     if ((await sIx("investorsAddresses") === 0)) {
+      let buf = this.idb.newBuffer();
       this.updateLoadProgress(onLoadProgress, 0);
       let investorsAddresses = await w3.amfeixM().getAllInvestors().call();
       length = investorsAddresses.length;
       for (let index = 0; index < length; ++index) {
-        this.idbuf.write(tables.eth.investorsAddresses, { index, data: investorsAddresses[index] }); 
+        buf.write(tables.eth.investorsAddresses, { index, data: investorsAddresses[index] }); 
 //        this.updateLoadProgress(onLoadProgress, index, length);
       }
-      this.idbuf.write(tables.eth.constants, {...countKey("investorsAddresses"), startIndex: length });
-      let result = await this.idbuf.flush();
+      buf.write(tables.eth.constants, {...countKey("investorsAddresses"), startIndex: length });
+      await buf.flush();
 //      L({result})
       this.updateLoadProgress(onLoadProgress, length, length, true);
     }
@@ -270,14 +273,15 @@ class Data extends Persistent {
     this.updateLoadProgress(onLoadProgress, startIndex, length);
     let index = startIndex;
     //let catchWrap = p => p.catch(e => { throw L(e) });
+    let buf = this.idb.newBuffer();
     let masterKeys = F(oA(tableStrucMap[dataTable].keyPath).map(k => [k, countKey[k]]));
     try { while (!D(length) || (index < length)) { //L(`Processing item ${index} for ${name} (${dataTable}) with parms = ${S(parms)}`);
       let data = await (w3.amfeixM()[name](...oA(parms), index).call()); //L('C');
-      this.idbuf.write(dataTable, ({ ...masterKeys, index: index++, data })); //L('D');
+      buf.write(dataTable, ({ ...masterKeys, index: index++, data })); //L('D');
       this.updateLoadProgress(onLoadProgress, index, length);
     } } catch {} // { L(`Array ${name} stopped at ${index}.`) } 
-    this.idbuf.write(countTable, ({ ...countKey, startIndex: length, length })); //L('I'); 
-    await this.idbuf.flush();
+    buf.write(countTable, ({ ...countKey, startIndex: index, length })); //L('I'); 
+    await buf.flush();
     this.updateLoadProgress(onLoadProgress, index, length, true);
     //L(`Array '${name}' update completed with ${index} entries (count = ${await this.idb.count(dataTable )})`);
   }
@@ -288,18 +292,18 @@ class Data extends Persistent {
 }
   async updateInvestorMappedArray(onLoadProgress, { countTable, dataTable }) { //L(`uima(${name}, ${countTable}, ${dataTable})`);
     let { startIndex, length, investorMapCountKey } = await this.getInvestorMapUpdateCountData(countTable, dataTable, `eth`, tables.eth.investorsAddresses);
-    let investorIx = startIndex;
-    //L(`updateInvestorMappedArray ${investorIx}/${length}`);
-    while (investorIx < length) { let investor = await this.getData(tables.eth.investorsAddresses, { index: investorIx });
-      //L(`>>> ${investorIx}/${length}`);
-      if (investor) {
-        this.updateLoadProgress(onLoadProgress, investorIx, length);
-        await this.updateInvestorArray(investor, { countTable, dataTable });
-        await this.setData(tables.eth.constants, ({...investorMapCountKey, startIndex: investorIx + 1 }));
-      } else { L(`Investor = falsy at @ ${investorIx} for ${dataTable}`); break; }
-      ++investorIx;
+    let ix = startIndex;
+    L(`updateInvestorMappedArray ${ix}/${length}`); 
+    let investors = await this.idb.getAll(tables.eth.investorsAddresses);
+    L(`investors = ${S(investors)}`);
+    L(`Math.min(length, investors.length) = ${Math.min(length, investors.length)}`)
+    while (ix < Math.min(length, investors.length)) {// let investor = investors[ix];
+      this.updateLoadProgress(onLoadProgress, ix, length);
+      await this.updateInvestorArray(investors[ix], { countTable, dataTable });
+      await this.setData(tables.eth.constants, ({...investorMapCountKey, startIndex: ++ix }));
     }
-    this.updateLoadProgress(onLoadProgress, investorIx, length, true);
+    L(`updateInvestorMappedArray afer while ${ix}/${length}`); 
+    this.updateLoadProgress(onLoadProgress, ix, length, true);
   }
 
   async getInvestorMapUpdateCountData(countTable, dataTable, type, lengthTable) {
@@ -347,7 +351,9 @@ class Data extends Persistent {
     let cached = await this.syncCache.getData(getInvestorDataKey(investor));
     if (cached) return cached;
     if (!D(investor.index)) {
-
+      L('finding index');
+      let i = await this.idb.get(tables.eth.investorsAddresses, { data: investor.data }, "data", ["data"]);
+      L(`returned ${S(i)}`)
     }
     let invKey = { investorIx: investor.index }; //L(`Retrieving investor ${investor} data`);
     let ethDataMap = x => ({ timestamp: parseInt(x.timestamp), txId: x.txId, pubKey: x.pubKey, signature: x.signature, action: x.action });
@@ -359,6 +365,7 @@ class Data extends Persistent {
       for (let index = 0; index < length; ++index) e[index].value = b[index].value;
       return e;
     };
+    L(investorMaps);
     let [txs, reqWD] = await Promise.all(investorMaps.map(getList));
     let toObj = a => F(a.map(e => [e.txId, e]));
     let dedup = d => V(toObj(d)); // XXX: does not check if duplicates are identical -- only retains one of them with same txId  

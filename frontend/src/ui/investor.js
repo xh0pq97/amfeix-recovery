@@ -3,7 +3,7 @@ import React from 'react';
 import { A, D, E, F, G, I, K, L, S, T, V, oA, oF, oO, singleKeyObject } from '../tools';
 import { data, getInvestorWalletDataKey, getInvestorDataKey, stati } from '../core/data';
 // eslint-disable-next-line
-import { commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, ValidatableComp, wrapEllipsisDiv, displayBtcTransaction, OpenDialogButton, Comp, TabbedView, List, cleanText, button, TabTimeline } from './components'; 
+import { tabulize, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, ValidatableComp, wrapEllipsisDiv, displayBtcTransaction, OpenDialogButton, Comp, TabbedView, List, cleanText, button, TabTimeline } from './components'; 
 
 class InvestorDependentView extends Comp {
   componentDidMount() { this.updateInvestor(this.props.investor); }
@@ -23,7 +23,13 @@ class InvestorDependentView_Btc extends InvestorDependentView {
 let applyWithdrawalRequestStatus = wr => { A(oO(wr.status), { caption: "Action", displayFunc: (v, d) => (v === stati.Withdrawal_Requests.Pending) ? button("Approve", () => this.onApproveWithdrawal(d)) : cleanText(v) }); return wr; };
 class Withdraw extends Comp { ren(p, s) { return <TabTimeline tabs={{ ValidatableComp }} onAccept={p.onAccept} />; } }
 
-export class EthTxView extends InvestorDependentView_Eth { 
+class InvestorID extends Comp {
+  ren(p, s) { let i = oO(p.investor); return <div style={{borderStyle: "solid", borderWidh: "1px", borderRadius: `0.3em`, borderColor: '#777'}}>{
+    tabulize(1/7, [['Public key', i.publicKey || '?'], ['Investor address', i.data || '?'], ['Wallet address', i.btcAddress || '?']])
+  }</div> }
+}
+
+class EthTxView extends InvestorDependentView_Eth { 
   ren(p, s) { let i = this.getInvestorData(); 
     let headers = F(T("Deposits Withdrawals Withdrawal_Requests").map(k => [k, genHeaders(i[k])]));
     A(oO(headers.Deposits.status), { caption: "Action", displayFunc: (v, d) => (v !== stati.Deposits.Active) ? cleanText(v) : <OpenDialogButton id="Withdraw" comp={Withdraw} onAccept={I} /> });
@@ -33,9 +39,9 @@ export class EthTxView extends InvestorDependentView_Eth {
   }
 }
 
-export class InvestorList extends Comp {
+class InvestorList extends Comp {
   componentDidMount() { this.addSyncKeyObserver(data, "investorsAddresses"); }
   ren(p, s) { return <List caption={p.caption || "Investors"} data={s.investorsAddresses} onChange={d => oF(p.onChangedSelectedInvestor)(oA(s.investorsAddresses)[d.selectedIx])} />; }
 }
 
-export { applyWithdrawalRequestStatus, InvestorDependentView_Eth, InvestorDependentView_Btc }
+export { InvestorList, InvestorID, EthTxView, applyWithdrawalRequestStatus, InvestorDependentView_Eth, InvestorDependentView_Btc }

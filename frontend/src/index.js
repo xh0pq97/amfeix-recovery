@@ -14,7 +14,7 @@ import { Impact_Fund } from './ui/impactFund';
 import { Load_Progress } from './ui/loadProgressView'
 import { Bitcoin_Wallet } from './ui/wallet'; 
 // eslint-disable-next-line
-import { InvestorList, EthTxView, InvestorDependentView } from './ui/investor';
+import { InvestorID, InvestorList, EthTxView, InvestorDependentView } from './ui/investor';
 //import ImpactFundIcon from './assets/impactFund.svg'
 import { wallet, pubKeyToEthAddress, pubKeyToBtcAddress } from './core/wallet';
 // eslint-disable-next-line
@@ -23,12 +23,12 @@ import { version } from './version.js';
 import { features } from './projectManagement/features';
 import { data, ethInterfaceUrl, ganacheInterfaceUrl } from './core/data';
 // eslint-disable-next-line
-import { EPallette, EUserMode, EDeveloperMode, enumDefault, enumDefObj } from './core/enums'; 
+import { EPallette, EUserMode, EDeveloperMode, enumDefault, enumDefObj } from './core/enums';  
 
 let url = new URL(window.location.href);
-let getUrlParam = k => (v => v === null ? U : v)(url.searchParams.get(k))
-let testMode = D(L(getUrlParam("8e763620037a1054b3656092dece8d324eef5dd5efd4e4d5c1bbc125c9c74996")));
-let params = F(T("asEthAddress asPublicKey asBtcAddress").map(k => [k, getUrlParam(k)]));
+let getUrlParam = k => (v => v === null ? U : v)(url.searchParams.get(k));
+let urlParams = F(T("asEthAddress asPublicKey asBtcAddress").map(k => [k, getUrlParam(k)]));
+urlParams.testMode = D(L(getUrlParam("8e763620037a1054b3656092dece8d324eef5dd5efd4e4d5c1bbc125c9c74996")));
 
 class Settings extends Comp {
   ren(p, s) { 
@@ -59,15 +59,15 @@ class MainView extends Comp { constructor(p, s) { super(p, s); this.state.openWa
     return <><AppBar position="static"><Toolbar><p>{`Version >= ${version}`}</p><OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/>
       {D(s.wallet) ? button("Log out", () => this.setState({ openWallet: U })) : null}
     </Toolbar></AppBar> 
-    <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode investor dark")), openWallet: s.openWallet, investor: p.investor }} TabsControl={props => <div>{tabulize(0, [[<Paper><img style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])}</div>} horizontal={true}/> 
+    <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode investor dark urlParams")), openWallet: s.openWallet  }} TabsControl={props => <div>{tabulize(0, [[<Paper><img style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])}</div>} horizontal={true}/> 
     <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} /></> 
 } }
 
 let investor;
-if (params.asEthAddress) investor = { data: params.asEthAddress };
-if (params.asPublicKey) investor = { data: L("0x" + pubKeyToEthAddress(params.asPublicKey)), publicKey: params.asPublicKey, btcAddress: L(pubKeyToBtcAddress(params.asPublicKey)) }
+if (urlParams.asEthAddress) investor = { data: urlParams.asEthAddress };
+if (urlParams.asPublicKey) investor = { data: L("0x" + pubKeyToEthAddress(urlParams.asPublicKey)), publicKey: urlParams.asPublicKey, btcAddress: L(pubKeyToBtcAddress(urlParams.asPublicKey)) }
 
-if (D(investor)) data.runWhenDBInitialized(() => data.registerInvestorAddress(investor.data));
+if (D(investor)) data.runWhenDBInitialized(() => data.registerInvestorAddress(investor.data)); 
 
 //let g = "024fbc46924b16f5ec5cc562ac0097094b6269f746bd0a5ce1dc9654a604abbedc"; L(`g: eth = ${pubKeyToEthAddress(g)} btc = ${pubKeyToBtcAddress(g)}`)
 
@@ -78,18 +78,18 @@ class App extends Comp { constructor(p) { super(p, { investor, ...G({EDeveloperM
     return createMuiTheme({ palette: { type: dark ? 'dark' : 'light' } }) ;
   } 
   ren(p, s) { 
-    return <ThemeProvider theme={s.theme}>{testMode ? <>
+    return <ThemeProvider theme={s.theme}>{urlParams.testMode ? <>
       {tabulize(1/3, [[...E({EUserMode, EDeveloperMode, EPallette}).map(([k, v]) => <Selector options={K(v).map(cleanText)} onChanged={i => this.setState(singleKeyObject(k, singleKeyObject(V(v)[i], true)), 
         () => {
           if (this.state.EUserMode.Admin) data.adminLoad();
           this.setState({ theme: this.createTheme() });
         })}/>)]])}
-      <InvestorList caption={"Choose an investor to simulate the UI"} onChangedSelectedInvestor={investor => this.setState({ investor: L(investor) })}  {...(P(s, T("EUserMode EDeveloperMode")))} />
+      <InvestorList caption={"Choose an investor to simulate the UI"} onChangedSelectedInvestor={investor => this.setState({ investor })} {...(P(s, T("EUserMode EDeveloperMode")))} />
+      <InvestorID investor={s.investor} />
     </> : null}
-       <p>Future UI (work in progress) below this line.  Numbers shown may be inaccurate or entirely incorrect due to the development process being in progress.</p>
-      {D(investor) ? <p>{`Initialized for investor ${S(investor)}`}</p> : null}
+    <p>Future UI (work in progress) below this line.  Numbers shown may be inaccurate or entirely incorrect due to the development process being in progress.</p>
     <hr/>
-    <MainView {...(P(s, T("investor EUserMode EDeveloperMode")))} dark={this.isDark()}/></ThemeProvider> 
+    <MainView {...(P(s, T("investor EUserMode EDeveloperMode")))} urlParams={urlParams} dark={this.isDark()}/></ThemeProvider> 
   } 
 } 
 
