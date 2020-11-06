@@ -230,6 +230,7 @@ class Data extends Persistent {
       pendingDeposits = G(fundDeposits, v => v.filter(d => !processedDepositsTxIds.includes(d.txId))); 
     })).time; 
     this.syncCache.setData("pendingDeposits", pendingDeposits);
+    L('Data computed');
     L({pendingDeposits});
     this.updateLoadProgress(olp, investorsAddresses.length, investorsAddresses.length);
   };
@@ -265,7 +266,8 @@ class Data extends Persistent {
     let fundDepositAddresses = (this.syncCache.getData("fundDepositAddresses").map(x => x.data));
     let fundDeposits = G((F(await Promise.all((fundDepositAddresses.map(async a => [a, oO(await btcRpc("GET", `getdeposits/toAddress/${a}`)).data]))))), v => v.map(decodeFundDeposit));
     this.syncCache.setData("fundDeposits", (fundDeposits));
-    L('Loaded fund deposits');
+    L(`Loaded fund deposits`);
+    L({fundDeposits})
   };
 
   async retrieveInvestorFundTxData(investor) {
@@ -276,6 +278,7 @@ class Data extends Persistent {
     let fundDeposits = G((F(await Promise.all((fundDepositAddresses.map(async a => [a, oO(await btcRpc("GET", `getdeposits/toAddress/${a}`)).data]))))), v => v.map(decodeFundDeposit)); 
     this.syncCache.setData(key, (fundDeposits));
     L(`Loaded fund tx for investor ${S(investor)}`)
+    L({fundDeposits})
   }
 
   getFactor() { return BN(10).pow(this.syncCache.getData('decimals')); } 

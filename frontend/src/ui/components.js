@@ -59,30 +59,35 @@ let classes = styles;
 class THead extends Comp {
   ren(p, s) {
     const { onSelectAllClick, order, orderBy, numSelected, rowCount, onRequestSort } = p;
-    const createSortHandler = (property) => (event) => { onRequestSort(event, property); }; 
+    const createSortHandler = (property) => (event) => { onRequestSort(property, event); }; 
     return <TableHead><TableRow>
       {p.checkable ? <TableCell padding="checkbox"><Checkbox indeterminate={numSelected > 0 && numSelected < rowCount} checked={rowCount > 0 && numSelected === rowCount} onChange={onSelectAllClick} inputProps={{ 'aria-label': 'select all desserts' }} /></TableCell> : null}
-      {oA(p.headers).map((h, i) => <TableCell key={i} align={h.alignCaption} padding={h.disablePadding ? 'none' : 'default'} sortDirection={orderBy === i ? order : false}>
-        <TableSortLabel active={orderBy === i} direction={orderBy === i ? order : 'asc'} onClick={createSortHandler(i)}>
-          {h.caption}{orderBy === i ? <span style={styles.visuallyHidden}>{order === 'desc' ? 'sorted descending' : 'sorted ascending'}</span> : null}
-        </TableSortLabel>
-      </TableCell>)}
+      {oA(p.headers).map((h, i) => { let sortDirection = ['asc', 'desc', false][orderBy === i ? order : 2];
+        return <TableCell key={i} align={h.alignCaption} padding={h.disablePadding ? 'none' : 'default'} sortDirection={sortDirection}>
+          <TableSortLabel active={orderBy === i} direction={sortDirection || 'asc'} onClick={createSortHandler(i)}>
+            {h.caption}{orderBy === i ? <span style={styles.visuallyHidden}>{order === 1 ? 'sorted descending' : 'sorted ascending'}</span> : null}
+          </TableSortLabel>
+        </TableCell>})}
     </TableRow></TableHead>;
   }
 }
  
 class ListView extends Comp {
-  constructor(p) { super(p); this.state = { page: 0, rowsPerPage: 5, checked: {}, selectedIx: null }; } 
+  constructor(p) { super(p); this.state = { page: 0, rowsPerPage: 5, checked: {}, selectedIx: null, sortOrder: 0 }; } 
   ren(p, s) {
     let headers = p.headers || K(oO(oA(p.data)[0])).map(h => ({ label: h, caption: h }));
     let rows = oA(p.data).map((d, _id) => ({ _id, ...d }));
+    if (D(s.sortColumn)) rows = rows.sort((a, b) => { let h = headers[s.sortColumn];
+      let x = (h.compare || ((x, y) => x - y))(a[h.label], b[h.label]);
+      return [x, -x][s.sortOrder];
+    });
     let X = d => this.setState(d, oF(p.onChange)(d));
     let isChecked = d => s.checked[d.index], isSelected = d => s.selectedIx === d._id;
     let columnCount = headers.length + (p.checkable ? 1 : 0);
     let offset = s.page * s.rowsPerPage, end = Math.min(rows.length, offset + s.rowsPerPage);//, emptyRows = offset + s.rowsPerPage - end;
-    let dense = true, order = "asc", orderBy = 0, onRequestSort = () => { }; 
+    let dense = true, onRequestSort = sortColumn => { this.setState({ sortColumn, sortOrder: this.state.sortOrder ^ ((this.state.sortColumn === sortColumn) ? 1 : 0) })}; 
     return <TableContainer component={Box}><p>{p.caption || null}</p><Table className={classes.table} aria-labelledby={p.title} size={(dense ? 'small' : 'medium')} aria-label={p.title}>
-        <THead headers={headers} classes={classes} checkable={p.checkable} numSelected={V(s.checked).filter(v => D(v)).length} order={order} orderBy={orderBy} onSelectAllClick={() => { }} onRequestSort={onRequestSort} rowCount={rows.length} />
+        <THead headers={headers} classes={classes} checkable={p.checkable} numSelected={V(s.checked).filter(v => D(v)).length} order={s.sortOrder} orderBy={s.sortColumn} onSelectAllClick={() => { }} onRequestSort={onRequestSort} rowCount={rows.length} />
         <TableBody>{sort(rows).slice(offset, (s.page + 1) * s.rowsPerPage).map((d, i) => <TableRow key={i} hover onClick={() => X({ selectedIx: d._id })} aria-checked={isChecked(d)} tabIndex={-1} selected={isSelected(d)}>
           {p.checkable ? <TableCell padding="checkbox"><Checkbox checked={isChecked(d)} inputProps={{ 'aria-labelledby': i }} /></TableCell> : null}
           {headers.map((h, j) => <TableCell key={j} align={h.align || "center"}>{(h.displayFunc || I)(d[h.label], d)}</TableCell>)}
@@ -156,9 +161,11 @@ let form = (preamble, cells) => <form noValidate autoComplete="off">{preamble}{f
 
 class DialogWrap extends Comp { constructor(p, s) { super(p, {...s, open: false}); }
   show() { this.setState({ open: true }); }
-  ren(p, s) { let C = p.comp; let id = cleanText(p.id);
+  ren(p, s) { 
+    L(`DialogWrap parentProps = ${S(p.parentProps)}`)
+    let C = p.comp; let id = cleanText(p.id);
     return <Dialog aria-labelledby={id} open={s.open} onClose={() => { oF(p.onClose)(); this.setState({ open: false }); }}><h2>{id}</h2>
-      <C {...p.parentProps} onCancel={() => { oF(p.onCancel)(); this.setState({ open: false }); }} onAccept={d => { this.setState(({ open: false }), () => oF(p.onAccept)(d)); }}/></Dialog> }
+      <C parentProps={p.parentProps} onCancel={() => { oF(p.onCancel)(); this.setState({ open: false }); }} onAccept={d => { this.setState(({ open: false }), () => oF(p.onAccept)(d)); }}/></Dialog> }
 } 
 
 class OpenDialogButton extends Comp { constructor(p, s) { super(p, s, "dlg"); }
@@ -188,18 +195,21 @@ let formatDate = date => {
 
 
 let wrapEllipsisDiv = v => <div style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap"}}>{v}</div>;
-let displayBtcTransaction = v => <>{wrapEllipsisDiv(<a href={`https://www.blockchain.com/en/btc/tx/${v}`}>{v}</a>)}</>;
-let displayBtcAddress = v => <>{wrapEllipsisDiv(<a href={`https://www.blockchain.com/en/btc/address/${v}`}>{v}</a>)}</>;
+let newTabRef = (link, caption) => <a target="_blank" rel="noopener noreferrer" href={link}>{caption}</a>;
+let displayBtcTransaction = v => wrapEllipsisDiv(newTabRef(`https://www.blockchain.com/en/btc/tx/${v}`, v));
+let displayBtcAddress = v => wrapEllipsisDiv(newTabRef(`https://www.blockchain.com/en/btc/address/${v}`, v));
 let extractHeaders = d => F(K(oO(oA(d)[0])).map(h => [h, { label: h, caption: h }]));
 let genHeaders = d => applyListHeaders(extractHeaders(d), commonTableHeaders);
 
 let applyListHeaders = (h, mods)  => { E(mods).forEach(([k, v]) => A(oO(h[k]), v)); return h; };
 
+let compareStrings = (a, b) => a.localeCompare(b);
+let compareBNs = (a, b) => a.smallerThan(b);
 let commonTableHeaders = {
-  txId: { caption: "BTC Transaction", displayFunc: displayBtcTransaction },
+  txId: { caption: "BTC Transaction", displayFunc: displayBtcTransaction, compare: compareStrings },
   timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp },
-  pubKey: { caption: "Public key", displayFunc: wrapEllipsisDiv },
-  value: { caption: "Amount (BTC)", align: "right", alignCaption: "right" }
+  pubKey: { caption: "Public key", displayFunc: wrapEllipsisDiv, compare: compareStrings },
+  value: { caption: "Amount (BTC)", align: "right", alignCaption: "right"  }
 }
  
 let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{title}</h2><p style={{textAlign: "left"}}>{text}</p><p style={{textAlign: "left", color: "#FF2170"}}>{warning}</p></>;
