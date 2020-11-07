@@ -5,31 +5,14 @@ import { A, D, E, F, G, I, K, L, U, V, S, oA, oF, oO, oS, singleKeyObject } from
 import { List, ListItem, ListItemText, ListItemIcon, Hidden, Drawer, Stepper, Step, StepLabel, CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, Typography, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 // eslint-disable-next-line
 import { HistoryIcon, AttachMoneyIcon, CallMadeIcon } from '@material-ui/icons';
-import AccountBalanceWalletOutlinedIcon from '@material-ui/icons/AccountBalanceWalletOutlined';
-import SettingsIcon from '@material-ui/icons/Settings';
-import EqualizerIcon from '@material-ui/icons/Equalizer';
-import LockOpenIcon from '@material-ui/icons/LockOpen';
+import { satoshiToBTCString } from '../core/satoshi';
 import LockIcon from '@material-ui/icons/Lock';
-import AdbIcon from '@material-ui/icons/Adb';
-import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount';
-import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
-import VpnKeyIcon from '@material-ui/icons/VpnKey';
-import HourglassEmptyIcon from '@material-ui/icons/HourglassEmpty';
+import { captionIconMap } from './icons';
+import { formatTimestamp } from './formatting';
 
 let captionMap = {
   timestamp: "Time", value: "Value", txId: "Transaction ID", deposits: "Deposits", withdrawals: "Withdrawals", withdrawalRequests: "Withdrawal Requests", fundDepositAddresses: "Fund deposit addresses", feeAddresses: "Fee addresses", _: ""
 };
-
-let captionIconMap = {
-  Bitcoin_Wallet: AccountBalanceWalletOutlinedIcon,
-  Impact_Fund: EqualizerIcon,
-  Settings: SettingsIcon,
-  Progress: HourglassEmptyIcon,
-  Unlock_wallet: LockOpenIcon,
-  Create_wallet: AddCircleOutlineIcon,
-  Log_in: VpnKeyIcon,
-  Admin: SupervisorAccountIcon
-}
 //let displayFunctions = { timestamp: formatTimestamp };
 
 let cleanText = s => oS(s).replace(/_/g, " ").trim();
@@ -115,7 +98,8 @@ class TabbedView extends Comp { constructor(p) { super(p, { selectedTabIx: 0 });
     let horizontal = p.horizontal;
     let tabsProps = { value: selTabIx, onChange: (e, selectedTabIx) => this.setState({ selectedTabIx }, oF(p.onChangeSelectedTabIx)(selectedTabIx)) };
     let tabs = p.TabsControl ? p.TabsControl(tabsProps) : <Tabs indicatorColor="primary" textColor="primary" {...tabsProps} aria-label="tabs" centered>{E(p.tabs).map(([title, control], i) => <Tab key={i} label={cleanText(title)} disabled={(oO(p.tabProps)[title])}/>)}</Tabs>;
-    let activeTab = K(p.tabs).length > 0 ? React.createElement(V(p.tabs)[selTabIx], {...p.parentProps, childRef: this.fers.visibleTab}) : null;
+    //L(`TabbedView: pp: ${S(p.parentProps)}`)
+    let activeTab = K(p.tabs).length > 0 ? React.createElement(V(p.tabs)[selTabIx], ({...p.parentProps, childRef: this.fers.visibleTab})) : null;
     return tabulize(0, horizontal ? [[tabs, activeTab]] : [[tabs], [activeTab]], horizontal ? [[{width: "13em", verticalAlign: "top"}, U]] : [[U], [U]]);
   }
 }
@@ -126,7 +110,7 @@ class TabTimeline extends Comp { constructor(p) { super(p, { selectedTabIx: 0 })
   getTabbedView() { return this.fers.tabbedView.current; } 
   getVisibleTab() { return this.fers.visibleTab.current; }
   ren(p, s) { let last = (i, o) => (i === (K(o).length - 1));
-    let f = o => G(o, (V, k, i) => () => tabulize(1/2, [[<Box><V childRef={this.fers.visibleTab}/></Box>], [<Box>{tabulize(1/2, [[
+    let f = o => G(o, (V, k, i) => () => tabulize(1/2, [[<Box><V {...p.parentProps} childRef={this.fers.visibleTab}/></Box>], [<Box>{tabulize(1/2, [[
       p.onCancel && button("Cancel", oF(p.onCancel)), 
       (i > 0) && button("Start over", () => this.setState({ selectedTabIx: 0 })),
       !last(i, o) && button("Next", () => { let r = this.getVisibleTab().validate(); if (r) { 
@@ -134,6 +118,7 @@ class TabTimeline extends Comp { constructor(p) { super(p, { selectedTabIx: 0 })
       }}),
       last(i, o) && button(p.acceptText || "Finish", () => { let vt = this.getVisibleTab(); if (vt) { let r = vt.validate(); L(`>> r = ${S(r)}`); if (L(r)) oF((p.onAccept))(r); } })
     ].filter(I)])}</Box>]]));
+    //L(`TabTimeLine:: ${S(p.parentProps)}`);
     return <TabbedView onChangeSelectedTabIx={selectedTabIx => this.setState({selectedTabIx})} selectedTabIx={s.selectedTabIx} ref={this.fers.tabbedView} tabs={f(oO(p.tabs))} tabProps={G((p.tabs), (v, k, i) => (i !== (s.selectedTabIx)))} parentProps={p.parentProps}/>
   }
 }
@@ -159,17 +144,18 @@ let tabulize = (borderSpacing, cells, cellStyles) => <table style={{borderSpacin
 let formTable = cells => tabulize(1.5, cells)
 let form = (preamble, cells) => <form noValidate autoComplete="off">{preamble}{formTable(cells)}</form>
 
-class DialogWrap extends Comp { constructor(p, s) { super(p, {...s, open: false}); }
-  show() { this.setState({ open: true }); }
+class DialogWrap extends Comp { //constructor(p, s) { super(p, {...s, open: false}); }
+//  show() { this.setState({ open: true }); }
   ren(p, s) { 
-    L(`DialogWrap parentProps = ${S(p.parentProps)}`)
+    //L(`DialogWrap parentProps = ${S(p.parentProps)}`)
     let C = p.comp; let id = cleanText(p.id);
-    return <Dialog aria-labelledby={id} open={s.open} onClose={() => { oF(p.onClose)(); this.setState({ open: false }); }}><h2>{id}</h2>
-      <C parentProps={p.parentProps} onCancel={() => { oF(p.onCancel)(); this.setState({ open: false }); }} onAccept={d => { this.setState(({ open: false }), () => oF(p.onAccept)(d)); }}/></Dialog> }
+    return <Dialog aria-labelledby={id} open={p.open} onClose={() => { oF(p.onClose)(); this.setState({ open: false }); }}><h2>{id}</h2>
+      <C {...p.parentProps} onCancel={p.onCance} onAccept={p.onAccept}/></Dialog> }
 } 
 
-class OpenDialogButton extends Comp { constructor(p, s) { super(p, s, "dlg"); }
-  ren(p, s) { return <>{button(cleanText(p.id), () => this.fers.dlg.current.show())}<DialogWrap ref={this.fers.dlg} comp={p.comp} id={p.id} onAccept={p.onAccept} onCancel={p.onCancel} parentProps={p.parentProps}/></> }
+class OpenDialogButton extends Comp { constructor(p, s) { super(p, { ...s, open: false }); }
+  ren(p, s) { return <>{button(cleanText(p.id), () => this.setState({ open: true }))}
+    <DialogWrap open={s.open} comp={p.comp} id={p.id} onAccept={d => { p.onAccept(d); this.setState({ open: false }); }} onCancel={() => { p.onCancel(); this.setState({ open: false }); }} parentProps={p.parentProps}/></> }
 }
  
 class GetPasswordView extends ValidatableComp {
@@ -180,18 +166,13 @@ class GetPasswordView extends ValidatableComp {
 }
 
 class GetPasswordDialog extends Comp { //constructor(p, s) { super(p, s, "dlg"); }
-  ren(p, s) { return <DialogWrap open={p.open} comp={GetPasswordView} walletName={p.walletName} onAccept={p.onAccept} onCancel={p.onCancel}/> }
+  ren(p, s) { L(`GetPasswordDialog open = ${p.open}`);
+    return <DialogWrap open={p.open} comp={() => <TabTimeline tabs={{GetPasswordView}} walletName={p.walletName} onAccept={p.onAccept} onCancel={p.onCancel} />}/> }
 }
 
 class ProgressDialog extends Comp { ren(p, s) { let id = cleanText(p.title); 
   return <Dialog aria-labelledby={id} open={p.open} onClose={oF(p.onClose)}><h2>{cleanText(id)}</h2>{tabulize(3, [[<CircularProgress  value={p.progress} />]])}</Dialog> 
 } }
-
-let formatDate = date => {
-  let fmt = { year: 'numeric', month: 'short', day: '2-digit', hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false };
-  let d = G(fmt, (v, k) => new Intl.DateTimeFormat('en', { hour12: false, ...singleKeyObject(k, v) }).format(date));
-  return `${d.month} ${d.day}, ${d.year} @ ${d.hour}:${d.minute}:${d.second}`;
-}, formatTimestamp = timestamp => formatDate(new Date(1000 * timestamp));
 
 
 let wrapEllipsisDiv = v => <div style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap"}}>{v}</div>;
@@ -204,16 +185,16 @@ let genHeaders = d => applyListHeaders(extractHeaders(d), commonTableHeaders);
 let applyListHeaders = (h, mods)  => { E(mods).forEach(([k, v]) => A(oO(h[k]), v)); return h; };
 
 let compareStrings = (a, b) => a.localeCompare(b);
-let compareBNs = (a, b) => a.smallerThan(b);
+let compareBNs = (a, b) => a.lte(b); 
 let commonTableHeaders = {
   txId: { caption: "BTC Transaction", displayFunc: displayBtcTransaction, compare: compareStrings },
   timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp },
   pubKey: { caption: "Public key", displayFunc: wrapEllipsisDiv, compare: compareStrings },
-  value: { caption: "Amount (BTC)", align: "right", alignCaption: "right"  }
+  value: { caption: "Amount (BTC) -- deprecated", align: "right", alignCaption: "right"  },
+  satoshiBN: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => satoshiToBTCString(x), compare: compareBNs }
 }
  
 let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{title}</h2><p style={{textAlign: "left"}}>{text}</p><p style={{textAlign: "left", color: "#FF2170"}}>{warning}</p></>;
-
-        let loadingComponent = (data, c) => D(data) ? c  : tabulize(5, [[<CircularProgress/>]]);
+let loadingComponent = (data, c) => D(data) ? c  : tabulize(5, [[<CircularProgress/>]]);
 
 export { GetPasswordDialog, preamble, loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, ListView as List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }

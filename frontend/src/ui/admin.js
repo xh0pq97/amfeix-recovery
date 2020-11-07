@@ -7,20 +7,27 @@ import { w3, data } from '../core/data';
 import { GetPasswordDialog, loadingComponent, applyListHeaders, commonTableHeaders, genHeaders, ValidatableComp, OpenDialogButton, Comp, TabbedView, List, tabulize, TabTimeline, form, preamble } from './components';
 import { InvestorList, EthTxView, applyWithdrawalRequestStatus } from './investor';
 import { Typography } from '@material-ui/core';
+import BN from 'bn.js';
+import { satoshiToBTCString } from '../core/satoshi';
+import { formatTimestamp } from './formatting';
+import { pubKeyToEthAddress } from '../core/wallet';
 
 class Approve_deposits_form extends ValidatableComp {
   validate() {
     return this.props.pendingDeposits;
   }
-  ren(p, s) {
-    L(`Approve_deposits_form: ${S(p.pendingDeposits)}`)
-    return form(preamble("Approve deposits", "Click 'Finish' to approve all pending deposits."), [['Number of pending deposits:', oA(p.pendingDeposits).length]])
+  ren(p, s) { 
+    return form(preamble("Approve deposits", "Click 'Confirm' to approve all pending deposits."), [
+      ['Number of pending deposits:', oA(p.pendingDeposits).length],
+      ['Total deposit value:', satoshiToBTCString(oA(p.pendingDeposits).reduce((p, c) => p.add(c.satoshiBN), new BN(0)))],
+      ['Time of first deposit:', formatTimestamp(oA(p.pendingDeposits).reduce((p, c) => D(p) ? Math.min(p, c.timestamp) : c.timestamp, U))],
+      ['Time of last deposit:', formatTimestamp(oA(p.pendingDeposits).reduce((p, c) => D(p) ? Math.max(p, c.timestamp) : c.timestamp, U))]
+    ])
   }
 }
 
 class Approve_all_pending_deposits extends Comp { ren(p, s) { 
-  L(`Approve_all_pending_deposits: ${S(p.pendingDeposits)}`)
-  return <TabTimeline tabs={{ Approve_deposits_form }} onAccept={p.onAccept} onCancel={() => {}} parentProps={{pendingDeposits: p.pendingDeposits}} />;
+  return <TabTimeline tabs={{ Approve_deposits_form }} acceptText="Confirm" onAccept={p.onAccept} onCancel={() => { L('onCancel'); }} parentProps={{pendingDeposits: p.pendingDeposits}} />;
 } }
 
 class Approve_all_pending_withdrawals extends Comp { ren(p, s) { return <TabTimeline tabs={{ ValidatableComp }} onAccept={p.onAccept} />; } }
@@ -44,13 +51,10 @@ class Change_data extends Comp {
 
 class Pending_Deposits extends Comp { constructor(p, s) { super(p, { ...s, getPwdDialogOpen: false }); }
   componentDidMount() { this.addSyncKeyObserver(data, "pendingDeposits"); }
-  approveAll(approvedDeposits) {
-    L(`approveddeposits keys = K  ${K(approvedDeposits[0])}`);
+  approveAll(approvedDeposits) { 
     L(`Approving ${approvedDeposits.length} deposits`);
-    L(`Approved deposits = ${S(approvedDeposits)}`);
-    let depositTransactions = approvedDeposits.map(d => w3.amfeixM().depositAdmin(d.address, d.txid, d.publicKey));
-    L(`Deposit transaction 0: K = ${K(depositTransactions[0])}`)
-    L(`Deposit transaction 0: = ${(depositTransactions[0])}`)
+    let depositTransactions = approvedDeposits.map(d => w3.amfeixM().depositAdmin(pubKeyToEthAddress(d.pubKey, true), d.txId, d.pubKey, "").encodeABI());
+    L(`ABIs encoded for ${approvedDeposits.length} deposits`);
     this.setState({ getPwdDialogOpen: true, depositTransactions });
     // Get password
 //    for (let d in approvedDeposits) {
@@ -62,9 +66,9 @@ class Pending_Deposits extends Comp { constructor(p, s) { super(p, { ...s, getPw
     let signedTx = this.state.depositTransactions.map(t => w3.web3.accounts.sign(t, privateKey));
     this.setState({ depositTransactions: [] })
   }
-  ren(p, s) { let pendingDeposits = oA(V(oO(s.pendingDeposits))[0]); L(`Pending_Deposits: ${S(pendingDeposits)}`);
+  ren(p, s) { let pendingDeposits = oA(V(oO(s.pendingDeposits))[0]); //L(`Pending_Deposits: ${S(pendingDeposits)}`);
     return loadingComponent(s.pendingDeposits, tabulize(5/3, [
-    [<><OpenDialogButton id="Approve_all_pending_deposits" parentProps={{parentProps: { pendingDeposits }}} comp={Approve_all_pending_deposits} onAccept={d => this.approveAll(d)}/>
+    [<><OpenDialogButton id="Approve_all_pending_deposits" parentProps={{ pendingDeposits }} comp={Approve_all_pending_deposits} onAccept={d => this.approveAll(d)}/>
      <GetPasswordDialog open={s.getPwdDialogOpen} onAccept={creds => this.approveWithPassword(creds)} onCancel={() => this.setState({ depositTransactions: [] })}/></>],
     [<TabbedView tabs={F(E(s.pendingDeposits).map(([k, v], i) => [`Deposit address #${i}`, () => <List data={v} headers={V(genHeaders(v))}/>]))}/>]
   ])) }

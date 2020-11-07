@@ -43,7 +43,6 @@ let insertIfNotExists = async (conn, table, obj, idKeys) => { let r = await sele
   return (r.length === 0) ? { ...obj, id: oO(await conn.query(`INSERT INTO ${table} (${K(obj).join(", ")}) VALUES (${K(obj).map(() => '?').join(", ")})`, V(obj))).insertId } : r[0]
 }
 
-let coin = (new BigNumber(10)).pow(18);
 
 let pubKeyFromScriptSig = ss => { let asm = oS(oO(ss).asm), k = "[ALL] "; let p = asm.indexOf(k); return p >= 0 ? asm.substr(p + k.length) : U; }
 

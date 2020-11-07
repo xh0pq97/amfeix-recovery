@@ -79,7 +79,7 @@ let blockScan = (async (offset) => { let conn = await pool.getConnection(); //LO
       let idBlock = r.id;
       if (D(idBlock) && !(r.processed === 1)) { 
         let block = await rpc("getblock", [blockHash]);
-        await conn.query("UPDATE block SET time = FROM_UNIXTIME(?)", [block.time]);
+        await conn.query("UPDATE block SET time = FROM_UNIXTIME(?) WHERE id = ?", [block.time, idBlock]);
         for (let txHash of block.tx) { 
           let tx = await rpc("decoderawtransaction", [(await rpc("getrawtransaction", [txHash]))]);
           let idTransaction;

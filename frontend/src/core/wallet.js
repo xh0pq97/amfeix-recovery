@@ -33,7 +33,7 @@ let decryptWallet = (encryptedKeys, password, onProgress) => (G(encryptedKeys, v
 let getAmfeixPublicKey = root => (deriveFromNode(coinNodesFromRoot(root).bitcoin)).publicKey;
 //let hexToUI8A = h => new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b, 16))); 
 let hexOnly = s => (s.slice(0, 2) === "0x") ? s.slice(2) : s;
-let pubKeyToEthAddress = pubKeyHex => ethAddressFromPubKey(pubKeyBufferToPoint(Buffer.from(hexOnly(pubKeyHex), 'hex')));
+let pubKeyToEthAddress = (pubKeyHex, prefix) => (prefix ? "0x" : "") + ethAddressFromPubKey(pubKeyBufferToPoint(Buffer.from(hexOnly(pubKeyHex), 'hex')));
 let pubKeyToBtcAddress = pubKeyHex => btcAddressFromPubKey(pubKeyBufferToPoint(Buffer.from(hexOnly(pubKeyHex), 'hex')));
 
 let generateSeedWords = () => T(bip39.generateMnemonic());

@@ -23,10 +23,10 @@ class SeedView extends ValidatableComp {
      if (this.constructed) { this.setState({ values }); } else { this.state.values = values; }
   }
   checkWordsInList(wordList) { //L(`checkWordsInList: ${wordList}`);
-    return this.setErrors(F(this.getWords().map((w, i) => { if (!(wordList.includes(w))) return `Word '${w}' is not an accepted word.`; }).map((r, i) => [this.getKey(i), (r)]).filter(([k, v]) => D(v))));  
+    return this.setErrors(F(this.getWords().map((w, i) => (!(wordList.includes(w))) ? `Word '${w}' is not an accepted word.` : U).filter(I).map((r, i) => [this.getKey(i), (r)])));  
   }
   checkWordsEqual(expectedWords) { let gotWords = this.getWords(); L(`gotWords = ${gotWords} =?= ${expectedWords} = expectedWords`);
-    return this.setErrors(F(gotWords.map((w, i) => { if (!(w === expectedWords[i])) { return `This word is not correct.`; } }).map((r, i) => [this.getKey(i), r]).filter(([k, v]) => D(v))));  
+    return this.setErrors(F(gotWords.map((w, i) =>  (!(w === expectedWords[i])) ? `This word is not correct.` : U).filter(I).map((r, i) => [this.getKey(i), r])));  
   }
   componentDidUpdate(prevP) { if (prevP.initialWords !== this.props.initialWords) this.setNewInitialWords(); }
   getKey(x) { return `Word_${x}`}

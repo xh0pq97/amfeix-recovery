@@ -82,8 +82,8 @@ class App extends Comp { constructor(p) { super(p, { investor, ...G({EDeveloperM
   ren(p, s) { 
     return <ThemeProvider theme={s.theme}>{urlParams.testMode ? <>
       {tabulize(1/3, [[...E({EUserMode, EDeveloperMode, EPallette}).map(([k, v]) => <Selector options={K(v).map(cleanText)} onChanged={i => this.setState(singleKeyObject(k, singleKeyObject(V(v)[i], true)), 
-        () => {
-          if (this.state.EUserMode.Admin) data.adminLoad();
+        async () => {
+          if (this.state.EUserMode.Admin) await data.adminLoad();
           this.setState({ theme: this.createTheme() });
         })}/>)]])}
       <InvestorList caption={"Choose an investor to simulate the UI"} onChangedSelectedInvestor={investor => this.setState({ investor })} {...(P(s, T("EUserMode EDeveloperMode")))} />

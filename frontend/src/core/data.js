@@ -1,11 +1,10 @@
 import Web3 from 'web3';
-import BigNumber from 'bignumber.js'; 
 import amfeixCjson from '../amfeixC.json'; 
 // eslint-disable-next-line
 import { A, D, E, F, G, H, I, K, L, S, T, U, V, oA, oO, oF, isO, isA, singleKeyObject, makeEnum } from '../tools'; 
 import { IndexedDB } from './db'; 
 import { Persistent } from './persistent';
-let BN = (v, b) => new BigNumber(v, b);
+import BN from 'bn.js';
 
 let newDB = false;//true;  
 
@@ -19,11 +18,10 @@ const ethInterfaceUrl = `https://eth.${hostname}/`; //"ws://46.101.6.38/ws";
 //ethInterfaceUrl = "http://46.101.6.38:8547/"; 
 //const web3 =  new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/v3/efc3fa619c294bc194161b66d8f3585e"));
 let amfeixAddress = "0xb0963da9baef08711583252f5000Df44D4F56925";
-
-let coin = BN(10).pow(18);
+ 
 let b64ToHex = v => Buffer.from(v, 'base64').toString('hex');
 let decodeFundDeposit = ([timestamp, amountX, transactionX, pubKeyX]) => 
-  ({timestamp, value: BN(b64ToHex(amountX), 16).div(coin).toString(), txId: b64ToHex(transactionX), pubKey: b64ToHex(pubKeyX)});
+  ({timestamp, satoshiBN: new BN(b64ToHex(amountX), 16), txId: b64ToHex(transactionX), pubKey: b64ToHex(pubKeyX)});
 
 class AmfeixContract {
   constructor(url) { this.setWeb3Url(url); }
@@ -39,6 +37,11 @@ class AmfeixContract {
     this.maxInFlight = 32;
     this.nextIx = 0;
   }
+
+  setFrom(address) { 
+    this.amfeixC.options.from = address;
+    this.amfeixC.options.value = "0";
+     L(`contract from updated: ${S(this.amfeixC.options.from)}`); }
 
   queueOp(method, params, onSuccess, onError) {
     this.queuedOps.push({ method, params, onSuccess, onError });
@@ -106,13 +109,13 @@ const btcFields = T("blockcount connectioncount difficulty blockchaininfo");
 let btcRpc = async (method, func, params) => ((await fetch(`${btcRpcUrl}${func}/${method === "GET" ? `?${E(oO(params)).map(x => x.map(encodeURIComponent).join("=")).join("&")}` : ''}`, 
  { method, mode: 'cors', headers: { "content-type": "application/json" }, ...(method === "POST" ? { body: S({params}) }: {}) })).json());
 
-let invMapDBStruc = ({countTable, dataTable}) => ({ ...singleKeyObject(countTable, struc(["investorIx"])), ...singleKeyObject(dataTable, struc(["investorIx", "index"])) })
+let invMapDBStruc = ({countTable, dataTable}) => ({ ...singleKeyObject(countTable, struc(["investorIx"])), ...singleKeyObject(dataTable, struc(["investorIx", "index"], [["investorIx", "investorIx", false]])) })
  
 export let tableStrucMap = {}
 let hierName = (o, p) => F(E(o).map(([k, v]) => { let q = p ? [p, k].join("-") : k; return [k, isA(v) ? (tableStrucMap[q] = {...v[0], table: q}, q) : hierName(v, q)]; }));
 let struc = (keyPath, indices) => [{ keyPath, indices }];
 let tables = hierName({ 
-  eth: { constants: struc(["name"], [["name", "name", true]]), ...invMapDBStruc(investorMaps[0]), ...invMapDBStruc(investorMaps[1]),
+  eth: { constants: struc(["name"], [["name", "name", true]]),  ...invMapDBStruc(investorMaps[0]), ...invMapDBStruc(investorMaps[1]), 
   ...F(T("time amount").concat(indexMaps).map(k => [k, struc(["index"])])), investorsAddresses: struc(["index"], [["data", "data", true]])  }, 
   btc: { constants: struc(["name"], [["name", "name", true]]), ...invMapDBStruc(investorMaps[0]), ...invMapDBStruc(investorMaps[1]) } 
 });
@@ -192,6 +195,7 @@ class Data extends Persistent {
   async updateSyncCache() {
     for (let t of T("investorsAddresses fundDepositAddresses feeAddresses").concat(timeAndAmount)) this.syncCache.setData(t, await this.idb.getAll(tables.eth[t]));
     for (let t in constantFields) for (let name of constantFields[t]) this.syncCache.setData(name, oO(await this.getData(tables[t].constants, { name })).value);
+    w3.setFrom(this.syncCache.getData("owner"));
   }
 
   async updateRegisteredTransactions() {
@@ -206,34 +210,6 @@ class Data extends Persistent {
     await this.updateRegisteredTransactions(); 
     await this.computeData();
   }
-
-  async computeData() {
-    let fundDeposits =  this.syncCache.getData("fundDeposits");
-    let processedDepositsTxIds = [];
-    this.investors = {};
-    this.withdrawalRequests = [];
-    let investorsAddresses = this.syncCache.getData("investorsAddresses"); let olp = this.onLoadProgress("Computing data structures");
-    this.loadProgress.Compute_investorData = (await timeFunc(async () => {
-      for (let ix = 0; ix < investorsAddresses.length; ++ix) { this.updateLoadProgress(olp, ix, investorsAddresses.length);
-        let investor = await this.retrieveInvestorData(investorsAddresses[ix]);
-        let i = { index: investorsAddresses[ix].index, address: investorsAddresses[ix].data, investmentValue: investor.investmentValue, Withdrawal_Requests: investor.Withdrawal_Requests };
-        this.investors[i.index] = i;
-        this.withdrawalRequests.push(i.Withdrawal_Requests);
-        processedDepositsTxIds.push(investor.Deposits.map(d => d.txId));
-      } 
-    })).time; 
-    this.syncCache.setData("investors", V(this.investors));
-    this.syncCache.setData("withdrawalRequests", this.withdrawalRequests.flat());
-    let pendingDeposits;
-    this.loadProgress.Compute_pending_deposits = (await timeFunc(() => { 
-      processedDepositsTxIds = processedDepositsTxIds.flat();
-      pendingDeposits = G(fundDeposits, v => v.filter(d => !processedDepositsTxIds.includes(d.txId))); 
-    })).time; 
-    this.syncCache.setData("pendingDeposits", pendingDeposits);
-    L('Data computed');
-    L({pendingDeposits});
-    this.updateLoadProgress(olp, investorsAddresses.length, investorsAddresses.length);
-  };
 
   async adminLoad() { 
     if (!this.adminLoadInitiated) {
@@ -267,7 +243,7 @@ class Data extends Persistent {
     let fundDeposits = G((F(await Promise.all((fundDepositAddresses.map(async a => [a, oO(await btcRpc("GET", `getdeposits/toAddress/${a}`)).data]))))), v => v.map(decodeFundDeposit));
     this.syncCache.setData("fundDeposits", (fundDeposits));
     L(`Loaded fund deposits`);
-    L({fundDeposits})
+    //L({fundDeposits})
   };
 
   async retrieveInvestorFundTxData(investor) {
@@ -281,14 +257,14 @@ class Data extends Persistent {
     L({fundDeposits})
   }
 
-  getFactor() { return BN(10).pow(this.syncCache.getData('decimals')); } 
+  getFactor() { return new BN(10).pow(new BN(this.syncCache.getData('decimals'))); } 
 
   computeTimeDataFromTimeAndAmount() {
     let performance = [], [time, amount] = "time amount".split(" ").map(t => this.syncCache.getData(t)).map(y => y.map(x => x.data));  
-    let f = this.getFactor(), ff = f.times(100);// L({factor: f})
-    for (let x = 0, acc = BN(1.0); x < amount.length; ++x) performance.push([time[x], (acc = (acc.times((BN(amount[x])).plus(ff))).div(ff)).plus(0)]);  
-    E(({ timeData: performance.map(([t, d]) => [1000*t, parseFloat(d.times(100).toString())]), roi: parseFloat(performance[performance.length - 1][1].times(100).minus(100).toString()), 
-      dailyChange: parseFloat((BN(amount[amount.length - 1]).div(f)).toString()) }))
+    let f = this.getFactor(), ff = f.muln(100);// L({factor: f})
+    for (let x = 0, acc = new BN(1); x < amount.length; ++x) performance.push([time[x], (acc = (acc.mul((new BN(amount[x])).add(ff))).div(ff))]);  
+    E(({ timeData: performance.map(([t, d]) => [1000*t, parseFloat(d.muln(100).toString())]), roi: parseFloat(performance[performance.length - 1][1].muln(100).subn(100).toString()), 
+      dailyChange: parseFloat((new BN(amount[amount.length - 1]).div(f)).toString()) }))
     .map(([k, v]) => this.syncCache.setData(k, v));
     this.performance = performance;
   }
@@ -432,8 +408,38 @@ class Data extends Persistent {
   async setData(table, data) { return await this.idb.write(table, data); }
   async getData(table, data, retriever) { return (await this.idb.get(table, data)) || (retriever && (await this.setData(table, await retriever()))); } 
 
-  async retrieveInvestorData(investor) { //L(`retrieveInvestorData = ${S(investor)}`);
-    let cached = await this.syncCache.getData(getInvestorDataKey(investor));
+  async computeData() {
+    let fundDeposits =  this.syncCache.getData("fundDeposits");
+    let processedDepositsTxIds = [];
+    this.investors = {};
+    this.withdrawalRequests = [];
+    let investorsAddresses = this.syncCache.getData("investorsAddresses"); let olp = this.onLoadProgress("Computing data structures");
+    this.loadProgress.Compute_investorData = (await timeFunc(async () => {
+      let h = await Promise.all(investorMaps.map(async im => F((await this.idb.getAll((tables.eth[(im).countTable]))).map(x => [parseInt(x.investorIx), x.length]))));
+//      L({h})
+      for (let ix = 0; ix < investorsAddresses.length; ++ix) { this.updateLoadProgress(olp, ix, investorsAddresses.length);
+        let investor = await this.retrieveInvestorData(investorsAddresses[ix], h);
+        let i = { index: investorsAddresses[ix].index, address: investorsAddresses[ix].data, investmentValue: investor.investmentValue, Withdrawal_Requests: investor.Withdrawal_Requests };
+        this.investors[i.index] = i;
+        this.withdrawalRequests.push(i.Withdrawal_Requests);
+        processedDepositsTxIds.push(investor.Deposits.map(d => d.txId));
+      } 
+    })).time; 
+    this.syncCache.setData("investors", V(this.investors));
+    this.syncCache.setData("withdrawalRequests", this.withdrawalRequests.flat());
+    let pendingDeposits;
+    this.loadProgress.Compute_pending_deposits = (await timeFunc(() => { 
+      processedDepositsTxIds = processedDepositsTxIds.flat();
+      pendingDeposits = G(fundDeposits, v => v.filter(d => !processedDepositsTxIds.includes(d.txId))); 
+    })).time; 
+    this.syncCache.setData("pendingDeposits", pendingDeposits);
+    L('Data computed');
+//    L({pendingDeposits});
+    this.updateLoadProgress(olp, investorsAddresses.length, investorsAddresses.length);
+  };
+
+  async retrieveInvestorData(investor, lengths) { //L(`retrieveInvestorData = ${S(investor)}`);
+    let cached = this.syncCache.getData(getInvestorDataKey(investor));
     if (cached) return cached;
     if (!D(investor.index)) {
       L('finding index');
@@ -444,8 +450,11 @@ class Data extends Persistent {
     let invKey = { investorIx: investor.index }; //L(`Retrieving investor ${investor} data`);
 //    L(`invKey = ${S(invKey)}`);
     let ethDataMap = x => ({ timestamp: parseInt(x.timestamp), txId: x.txId, pubKey: x.pubKey, signature: x.signature, action: x.action });
-    let dataMaps = { eth: x => ({index: x.index, ...ethDataMap(oO(x.data))}), btc: x => ({index: x.index, value: x.value}) }
-    let getList = async m => { let length = ((oO(await this.idb.get((tables.eth[(m).countTable]), (invKey)))).length || 0);
+    let dataMaps = { eth: x => ({index: x.index, ...ethDataMap(oO(x.data))}), btc: x => ({index: x.index, value: new BN(x.value)}) }
+    let getList = async (m, j) => { 
+//      L({invKey});
+      let fastLength = (oO(oA(lengths)[j]))[(invKey.investorIx)];
+      let length = D(fastLength) ? (fastLength) : ((oO(await this.idb.get((tables.eth[(m).countTable]), (invKey)))).length || 0);
       let [e, b] = await Promise.all(['eth', 'btc'].map(async t => {
         let buf = this.idb.newBuffer();
         let r  = []; 
@@ -470,27 +479,28 @@ class Data extends Persistent {
     });
 
     let investment = g.Deposits.concat(g.Withdrawals).sort((a, b) => a.timestamp - b.timestamp); 
-    let acc = BN(0), currentValueAcc = BN(0);
+    let acc = new BN(0), currentValueAcc = new BN(0);
     for (let d of g.Deposits) { d.status = ((has.Withdrawals(d)) ? stati.Deposits.Withdrawn : (has.Withdrawal_Requests(d) ? stati.Deposits.Withdrawal_Requested : stati.Deposits.Active));
       let endTimestamp = (oO(objs.Withdrawal_Requests[d.txId]) || oO(objs.Withdrawals[d.txId])).timestamp || 0;
       let endIx = (d.status === stati.Deposits.Active) ? this.performance.length - 1 : this.getPerformanceIndex(endTimestamp);
       let startIx = this.getPerformanceIndex(d.timestamp), startPerf = this.performance[startIx];
       let endPerf = this.performance[endIx][1];
-      let perf = endPerf.div((startPerf[0] >= d.timestamp) ? startPerf[1] : endPerf);
-      d.performance = perf.toString();
-      d.finalValue = BN(d.value).times(perf);
+      let appliedPerf = (startPerf[0] >= d.timestamp) ? startPerf[1] : endPerf;
+//      L(`num = ${appliedPerf.toString()}`); 
+      //d.performance = perf.toString();
+      d.finalValue = appliedPerf.isZero() ? U : new BN(d.value).mul(endPerf.div(appliedPerf));
       d.hasWithdrawalRequest = has.Withdrawal_Requests(d) ? "Yes" : "No";
       d.hasWithdrawal = has.Withdrawals(d) ? "Yes" : "No";
     }
     for (let wr of g.Withdrawal_Requests) wr.status = has.Withdrawals(wr) ? stati.Withdrawal_Requests.Processed : stati.Withdrawal_Requests.Pending;
-    for (let i of investment) { let v = BN(i.value); 
-      i.accValue = parseFloat((acc = (i.action === "0" ? acc.plus(v) : acc.minus(v))).plus(0).toString()); 
-      i.accCurrentValue = parseFloat((currentValueAcc = (i.action === "0" ? currentValueAcc.plus(i.finalValue) : currentValueAcc.minus(v))).plus(0).toString()); 
+    for (let i of investment) { let v = new BN(i.value); 
+//      i.accValue = (acc = (i.action === "0" ? acc.plus(v) : acc.minus(v)));  
+      i.accCurrentValue = currentValueAcc && ((currentValueAcc = (i.action === "0" ? (D(i.finalValue) ? currentValueAcc.add(i.finalValue) : U) : currentValueAcc.sub(v)))); 
     }
-    g.investment = investment.map(x => [1000*x.timestamp, x.accValue]);
-    g.investmentValue = parseFloat(currentValueAcc.toString());
-    g.value = investment.map(x => [1000*x.timestamp, x.accCurrentValue]);;
-    for (let d of g.Deposits) d.finalValue = d.finalValue.toString();
+//    g.investment = investment.map(x => [x.timestamp, x.accValue]);
+    g.investmentValue = currentValueAcc && parseFloat(currentValueAcc.toString());
+    g.value = investment.map(x => [x.timestamp, x.accCurrentValue]);;
+    for (let d of g.Deposits) d.finalValue = d.finalValue;//.toString();
       //L(g);
     return this.syncCache.setData(getInvestorDataKey(investor), g);
   }

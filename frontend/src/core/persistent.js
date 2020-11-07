@@ -1,3 +1,4 @@
+// eslint-disable-next-line
 import { A, L, P, S, oO } from '../tools'
 
 export class Persistent {
