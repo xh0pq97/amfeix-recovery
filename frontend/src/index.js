@@ -1,7 +1,7 @@
 import React from 'react'; import ReactDOM from 'react-dom';
 import * as serviceWorker from './serviceWorker';
 // eslint-disable-next-line
-import { A, D, E, F, G, H, I, K, L, P, S, T, U, V, oA, oS, asA, makeEnum, singleKeyObject } from './tools';  
+import { A, D, E, F, G, H, I, K, L, P, S, T, U, V, oA, oO, oS, asA, makeEnum, singleKeyObject } from './tools';  
 // eslint-disable-next-line
 import { FormControlLabel, Switch, List, ListItem, ListItemText, ListItemIcon, AppBar, Toolbar, Typography, Button, Box, TextField, Paper, Accordion, AccordionSummary, AccordionDetails } from '@material-ui/core';
 import { createMuiTheme, ThemeProvider}  from '@material-ui/core/styles';
@@ -21,7 +21,7 @@ import { wallet, pubKeyToEthAddress, pubKeyToBtcAddress } from './core/wallet';
 import { basePallette, getMainLightness, seriesColors, getMainColor, darkMode } from './ui/colors';
 import { version } from './version.js';
 import { features } from './projectManagement/features';
-import { data, ethInterfaceUrl, ganacheInterfaceUrl } from './core/data';
+import { data, ethInterfaceUrl, ganacheInterfaceUrl } from './core/data'; 
 // eslint-disable-next-line
 import { EPallette, EUserMode, EDeveloperMode, enumDefault, enumDefObj } from './core/enums';  
 
@@ -34,7 +34,8 @@ class Settings extends Comp {
   ren(p, s) { 
     return tabulize(1/3, [[ <Selector options={[ethInterfaceUrl, ganacheInterfaceUrl]} />],
       [button("Clear data cache", () => {})],
-      [button("Compute data", () => { data.computeData(); })]
+      [button("Compute data", () => { data.computeData(); })],
+      [button("Clear bitcoin transaction cache", () => { data.clearBitcoinTransactionCache(); })]
     ]) 
   }
 }
@@ -49,8 +50,8 @@ class Features extends Comp { ren(p, s) { // <Typography><div style={{textAlign:
   }
 }
 // wc52mNR2qTpFfNP 
-class MainView extends Comp { constructor(p, s) { super(p, s); this.state.openWallet = U; } 
-  startWalletOp(walletOperation, f) { this.setState({ walletOperation, progressDialogOpen: true }, () => setTimeout(async () => { let openWallet = await f(); this.setState({ progressDialogOpen: false, openWallet }) }, 500));  }
+class MainView extends Comp { //constructor(p, s) { super(p, s);} 
+  startWalletOp(walletOperation, f) { this.setState({ walletOperation, progressDialogOpen: true }, () => setTimeout(async () => { await f(); this.setState({ progressDialogOpen: false }) }, 500));  }
   acceptLogIn(d) { 
     if (d.seedWords) { this.startWalletOp("Encrypting", () => wallet.add(d.creds, d.seedWords, status => { this.setState({ walletCodecProgress: L(status.percent) }); })); }
     else { this.startWalletOp("Decrypting", () => wallet.open(d.creds, status => this.setState({ walletCodecProgress: status.percent }))); }
@@ -59,9 +60,10 @@ class MainView extends Comp { constructor(p, s) { super(p, s); this.state.openWa
   ren(p, s) { let tabs = A({ Progress, Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Admin, Network, Settings, Features }) : ({}));
 //    {p.EUserMode.Admin ? <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/> : null}
     return <><AppBar position="static"><Toolbar><p>{`Version >= ${version}`}</p><OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/>
-      {D(s.wallet) ? button("Log out", () => this.setState({ openWallet: U })) : null}
+      {D(oO(p.wallet).lastLogin) ? button("Log out", () =>  ({ })) : null}
+      {D(oO(p.wallet).lastLogin) ? `You are logged in to wallet '${p.wallet.lastLogin.name}'` : 'You are not logged in'}
     </Toolbar></AppBar> 
-    <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode investor dark urlParams")), openWallet: s.openWallet  }} TabsControl={props => <div>{tabulize(0, [[<Paper><img style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])}</div>} horizontal={true}/> 
+    <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode investor dark urlParams wallet")) }} TabsControl={props => <div>{tabulize(0, [[<Paper><img style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])}</div>} horizontal={true}/> 
     <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} /></> 
 } }
 
@@ -69,11 +71,13 @@ let investor;
 if (urlParams.asEthAddress) investor = { data: urlParams.asEthAddress };
 if (urlParams.asPublicKey) investor = { data: L("0x" + pubKeyToEthAddress(urlParams.asPublicKey)), publicKey: urlParams.asPublicKey, btcAddress: L(pubKeyToBtcAddress(urlParams.asPublicKey)) }
 
+L(`Initializing with investor ${S(investor)}`);
+
 if (D(investor)) data.runWhenDBInitialized(() => data.registerInvestorAddress(investor.data)); 
 
 //let g = "024fbc46924b16f5ec5cc562ac0097094b6269f746bd0a5ce1dc9654a604abbedc"; L(`g: eth = ${pubKeyToEthAddress(g)} btc = ${pubKeyToBtcAddress(g)}`)
-
-class App extends Comp { constructor(p) { super(p, { investor, ...G({EDeveloperMode, EUserMode, EPallette}, enumDefObj)}); this.state.theme = this.createTheme(); } 
+//wsqC3ZB9Ue2pAJ6
+class App extends Comp { constructor(p) { super(p, { wallet, investor, ...G({EDeveloperMode, EUserMode, EPallette}, enumDefObj)}); this.state.theme = this.createTheme(); } 
   isDark() { let s = this.state; return !D(s.EPallette) || s.EPallette.Default ? darkMode : D(s.EPallette.Dark) }
   createTheme() { let s = this.state; let dark = this.isDark();
     A(document.body.style, { color: getMainColor(true, dark), backgroundColor: getMainColor(false, dark) });
@@ -83,7 +87,7 @@ class App extends Comp { constructor(p) { super(p, { investor, ...G({EDeveloperM
     return <ThemeProvider theme={s.theme}>{urlParams.testMode ? <>
       {tabulize(1/3, [[...E({EUserMode, EDeveloperMode, EPallette}).map(([k, v]) => <Selector options={K(v).map(cleanText)} onChanged={i => this.setState(singleKeyObject(k, singleKeyObject(V(v)[i], true)), 
         async () => {
-          if (this.state.EUserMode.Admin) await data.adminLoad();
+          if (this.state.EUserMode.Admin) setTimeout(async () => await data.adminLoad(), 20);
           this.setState({ theme: this.createTheme() });
         })}/>)]])}
       <InvestorList caption={"Choose an investor to simulate the UI"} onChangedSelectedInvestor={investor => this.setState({ investor })} {...(P(s, T("EUserMode EDeveloperMode")))} />
@@ -91,7 +95,7 @@ class App extends Comp { constructor(p) { super(p, { investor, ...G({EDeveloperM
     </> : null}
     <p>Future UI (work in progress) below this line.  Numbers shown may be inaccurate or entirely incorrect due to the development process being in progress.</p>
     <hr/>
-    <MainView {...(P(s, T("investor EUserMode EDeveloperMode")))} urlParams={urlParams} dark={this.isDark()}/></ThemeProvider> 
+    <MainView {...(P(s, T("investor EUserMode EDeveloperMode wallet")))} urlParams={urlParams} dark={this.isDark()}/></ThemeProvider> 
   } 
 } 
 

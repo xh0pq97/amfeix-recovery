@@ -7,14 +7,17 @@ import { LinearProgress } from '@material-ui/core'
 
 export class Load_Progress extends Comp {
   componentDidMount() {
-    //L("componentDidMount: LoadProgressView");
+//    L("componentDidMount: LoadProgressView");
     let displayDelay = 500, lastUpdate = (Date.now() - displayDelay);
-    this.addSyncObserver(data, "loadProgress", loadProgress => {
-      let currentTime = Date.now(), deltaS = (currentTime - lastUpdate), update = loadProgress => {
-        displayDelay = Math.min(4000, 1.41 * displayDelay);
-        lastUpdate = (currentTime); return !this.unmounted && this.setState({ loadProgress });
+    this.addSyncObserver(data, "loadProgress", newProgress => {
+      let loadProgress = newProgress;
+      let currentTime = Date.now(), deltaS = (currentTime - lastUpdate), update = () => { //L({currentTime});
+      this.updateTimeout = false;
+      displayDelay = Math.min(4000, 1.41 * displayDelay);
+        lastUpdate = currentTime; return !this.unmounted && this.setState({ loadProgress: { ...loadProgress } });
       };
-      if ((deltaS >= displayDelay)) { update({ ...loadProgress }); } else { clearTimeout(this.updateTimeout); this.updateTimeout = setTimeout(() => update({ ...loadProgress }), displayDelay - deltaS); }
+//      L({deltaS, displayDelay});
+      if ((deltaS >= displayDelay)) { update(); } else if (!(this.updateTimeout)) { this.updateTimeout = setTimeout(() => update(), displayDelay - deltaS); }
     });
   } 
 

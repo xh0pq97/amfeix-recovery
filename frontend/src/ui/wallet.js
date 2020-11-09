@@ -5,7 +5,10 @@ import { Box, TextField } from '@material-ui/core';
 import { wrapEllipsisDiv, applyListHeaders, OpenDialogButton, DialogWrap, Comp, ValidatableComp, form, formTable, TabbedView, TabTimeline, button, List  } from './components'; 
 // eslint-disable-next-line
 import { A, D, E, F, H, I, K, L, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
-
+import { InvestorDependentView_Btc } from './investor'
+// eslint-disable-next-line
+import QRCode from 'qrcode';
+// wc52mNR2qTpFfNP
 // eslint-disable-next-line
 class _Withdraw_ extends Comp { ren(p, s) { return <TabTimeline tabs={{ Withdraw, Review, Done }} onCancel={p.onCancel} onAccept={p.onAccept}/>; } }
 
@@ -29,23 +32,28 @@ class Account extends Comp { constructor(p, s) { super(p, s, "dlgWithdraw"); }
 
 class All_transactions extends Comp { ren(p, s) { return <Box/>; } }
 class Deposits extends Comp { 
-  
   ren(p, s) { return <Box/>; } 
 }
 class Withdrawals extends Comp { ren(p, s) { return <Box/>; } }
 class Investments extends Comp { ren(p, s) { return <Box/>; } }
 class Returns extends Comp { ren(p, s) { return <Box/>; } }
   
-class History extends Comp { 
+class History extends InvestorDependentView_Btc { 
 //  componentDidMount() { this.addSyncKeyObserver(data, data.getInvestorWalletDepositsKey()); }
   //ren(p, s) { return loadingComponent(s.fundDeposits, <TabbedView tabs={F(E(s.fundDeposits).map(([k, v], i) => [`Deposit address #${i}`, () => <List data={v} headers={V(genHeaders(v))}/>]))}/>) }
-  ren(p, s) { return <TabbedView tabs={{ All_transactions, Deposits, Withdrawals, Investments, Returns }} parentProps={{ wallet: p.openWallet }} />; } 
+  ren(p, s) { let walletData = this.getInvestorWalletData(); L(`p.wallet = ${S(p.wallet)}`)
+    return <TabbedView tabs={{ All_transactions, Deposits, Withdrawals, Investments, Returns }} parentProps={{ walletData, wallet: oO(p.wallet).lastLogin }} />; 
+  } 
 }
+
+//let getQRCode = async (data) => new Promise((resolve, reject) => QRCode.toString(data, { type : "svg" }, (err, result) => (err ? reject(err) : resolve(result)));
 // eslint-disable-next-line
 class Invest extends ValidatableComp { 
   ren(p, s) { 
     L(`wall = ${S(p.wallet)}`);
-    return form(null, [[this.genTextField("Bitcoin personal Investment address", { value: oO(p.wallet).btcAddress, disabled: true })]]) 
+    return form(null, [
+  //  [<svg>{QRCode.toString("svg")}</svg>]
+      [this.genTextField("Bitcoin personal Investment address", { value: oO(oO(p.wallet).lastLogin).btcAddress, disabled: true })]]) 
   } 
 } 
 
@@ -54,8 +62,8 @@ class Review extends ValidatableComp { ren(p, s) { return <Box/>; } }
 class Withdraw extends ValidatableComp { ren(p, s) { return form(null, [[this.genTextField("To", "The address of the recipient")], [this.genTextField("Amount", "Amount to be sent")], [this.genTextField("Fees")]]); } }
 
 export class Bitcoin_Wallet extends Comp { ren(p, s) { 
-  L(`wallet = ${S(p.openWallet)}`)
+  L(`Lastlogin = ${S(p.wallet)}`)
   //return !D(p.wallet) ? <Box/> : <>{formTable([[<Account wallet={(p.wallet)} />]])}
-  return <TabbedView tabs={{ History, Invest, _Withdraw_ }} parentProps={{ wallet: p.openWallet }} />
+  return <TabbedView tabs={{ History, Invest, _Withdraw_ }} parentProps={{ wallet: p.wallet }} />
   // <Invest bitcoinAddress={oO(p.wallet).bitcoinAddress}/>
 } }

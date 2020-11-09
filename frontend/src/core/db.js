@@ -1,7 +1,7 @@
-import { A, D, I, K, L, S, V, oA, oF, isA } from '../tools';
+import { A, D, I, K, L, S, U, V, oA, oF, isA } from '../tools';
 import { tableStrucMap } from './data';
 
-let computeKey = (table, data, keyPath) => ((keyPath || tableStrucMap[table].keyPath).map(k => data[k])); 
+let computeKey = (table, data, keyPath) => (z => keyPath && keyPath.length === 1 ? z.join("") : z)(data && ((keyPath || tableStrucMap[table].keyPath).map(k => data[k]))); 
 
 //L({tables}); L({tableStrucMap});
 class IndexedDB {
@@ -40,11 +40,12 @@ class IndexedDB {
   add(table, data) { return this.act(table, "add", data, () => data); }
   put(table, data) { return this.act(table, "put", data, () => data); }
   count(table, data) { return this.act(table, "count", data, e => e.target.result); }
-  getAll(table, data) { return this.act(table, "getAll", (data), e => e.target.result); }
+  getAll(table, data, index, keyPath) { return this.act(table, "getAll", L(computeKey(table, data, keyPath)), e => e.target.result, index); }
   openCursor(table, data, onCursor) { return this.act(table, "openCursor", data, e => (c => c && onCursor(c))((e.target.result))); }
   iterateAll(table, data, onData) { return this.openCursor(table, data, c => { if (onData(c.value)) c.continue(); }); }
   get(table, data, index, keyPath) { return this.act(table, "get", computeKey(table, data, keyPath), e => e.target.result, index); }
   write(table, data) { return this.get(table, data).catch(() => this.add(table, data)).then(() => this.put(table, data)); }
+  clear(table) { return this.act(table, "clear", U, I); }
 
   newBuffer() { return new IDBuffer(this) }
 }

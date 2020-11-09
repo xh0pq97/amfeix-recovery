@@ -34,7 +34,7 @@ class EthTxView extends InvestorDependentView_Eth {
     let headers = F(T("Deposits Withdrawals Withdrawal_Requests").map(k => [k, genHeaders(i[k])]));
     A(oO(headers.Deposits.status), { caption: "Action", displayFunc: (v, d) => (v !== stati.Deposits.Active) ? cleanText(v) : <OpenDialogButton id="Withdraw" comp={Withdraw} onAccept={I} /> });
     applyWithdrawalRequestStatus(headers.Withdrawal_Requests);
-    headers = G(headers, v => V(v).filter(h => (p.EDeveloperMode.Developer) || T("status value txId pubKey timestamp").includes(h.label)));
+    headers = G(headers, v => V(v).filter(h => (p.EDeveloperMode.Developer) || T("status satoshiBN txId pubKey timestamp").includes(h.label)));
     return <TabbedView style={{ display: D(p.investor) ? "block" : "none" }} caption={`Investor ${oO(p.investor).data}`} tabs={G(headers, (v, k) => () => <List data={i[k]} headers={v} />)} />;
   }
 }

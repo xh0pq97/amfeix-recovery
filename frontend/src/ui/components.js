@@ -1,6 +1,6 @@
 import React from 'react';
 // eslint-disable-next-line
-import { A, D, E, F, G, I, K, L, U, V, S, oA, oF, oO, oS, singleKeyObject } from '../tools';
+import { A, D, E, F, G, I, K, L, U, V, S, oA, oF, oO, oS, isO, singleKeyObject } from '../tools';
 // eslint-disable-next-line
 import { List, ListItem, ListItemText, ListItemIcon, Hidden, Drawer, Stepper, Step, StepLabel, CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, Typography, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 // eslint-disable-next-line
@@ -9,6 +9,7 @@ import { satoshiToBTCString } from '../core/satoshi';
 import LockIcon from '@material-ui/icons/Lock';
 import { captionIconMap } from './icons';
 import { formatTimestamp } from './formatting';
+import { BN } from '../core/bignumber';
 
 let captionMap = {
   timestamp: "Time", value: "Value", txId: "Transaction ID", deposits: "Deposits", withdrawals: "Withdrawals", withdrawalRequests: "Withdrawal Requests", fundDepositAddresses: "Fund deposit addresses", feeAddresses: "Fee addresses", _: ""
@@ -32,7 +33,7 @@ class Comp extends React.Component {
 
 class Selector extends Comp { constructor(p) { super(p); A(this.state, { selectedIx: 0 }); oF(p.onChanged)(this.state.selectedIx) }
   setSelectedIx(selectedIx) { if (this.state.selectedIx !== selectedIx) this.setState({ selectedIx }, () => oF(this.props.onChanged)(selectedIx)); }
-  ren(p, s) { return <FormControl component="fieldset"><RadioGroup aria-label="" name="" value={s.selectedIx} onChange={e => this.setSelectedIx(L(parseInt(e.target.value)))}>
+  ren(p, s) { return <FormControl component="fieldset"><RadioGroup row aria-label="" name="" value={s.selectedIx} onChange={e => this.setSelectedIx(L(parseInt(e.target.value)))}>
     {(oA(p.options).map((x, i) => <FormControlLabel key={i} value={i} label={x} control={<Radio />}/>))}</RadioGroup></FormControl> }
 }  
 
@@ -64,6 +65,7 @@ class ListView extends Comp {
       let x = (h.compare || ((x, y) => x - y))(a[h.label], b[h.label]);
       return [x, -x][s.sortOrder];
     });
+    let elimObjects = (d, h) => { if (isO(d)) { L(`${h} is an object: ${S(K(d))}`); } else return d; };
     let X = d => this.setState(d, oF(p.onChange)(d));
     let isChecked = d => s.checked[d.index], isSelected = d => s.selectedIx === d._id;
     let columnCount = headers.length + (p.checkable ? 1 : 0);
@@ -150,12 +152,12 @@ class DialogWrap extends Comp { //constructor(p, s) { super(p, {...s, open: fals
     //L(`DialogWrap parentProps = ${S(p.parentProps)}`)
     let C = p.comp; let id = cleanText(p.id);
     return <Dialog aria-labelledby={id} open={p.open} onClose={() => { oF(p.onClose)(); this.setState({ open: false }); }}><h2>{id}</h2>
-      <C {...p.parentProps} onCancel={p.onCance} onAccept={p.onAccept}/></Dialog> }
+      <C {...p.parentProps} onCancel={p.onCancel} onAccept={p.onAccept}/></Dialog> }
 } 
 
 class OpenDialogButton extends Comp { constructor(p, s) { super(p, { ...s, open: false }); }
   ren(p, s) { return <>{button(cleanText(p.id), () => this.setState({ open: true }))}
-    <DialogWrap open={s.open} comp={p.comp} id={p.id} onAccept={d => { p.onAccept(d); this.setState({ open: false }); }} onCancel={() => { p.onCancel(); this.setState({ open: false }); }} parentProps={p.parentProps}/></> }
+    <DialogWrap open={s.open} comp={p.comp} id={p.id} onAccept={d => { p.onAccept(d); this.setState({ open: false }); }} onCancel={() => { oF(p.onCancel)(); this.setState({ open: false }); }} parentProps={p.parentProps}/></> }
 }
  
 class GetPasswordView extends ValidatableComp {
@@ -185,13 +187,16 @@ let genHeaders = d => applyListHeaders(extractHeaders(d), commonTableHeaders);
 let applyListHeaders = (h, mods)  => { E(mods).forEach(([k, v]) => A(oO(h[k]), v)); return h; };
 
 let compareStrings = (a, b) => a.localeCompare(b);
-let compareBNs = (a, b) => a.lte(b); 
+let compareBNs = (a, b) => a.isLessThan(b); 
+let compareBNStrings = (a, b) => compareBNs(BN(a), BN(b)); 
 let commonTableHeaders = {
   txId: { caption: "BTC Transaction", displayFunc: displayBtcTransaction, compare: compareStrings },
   timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp },
   pubKey: { caption: "Public key", displayFunc: wrapEllipsisDiv, compare: compareStrings },
-  value: { caption: "Amount (BTC) -- deprecated", align: "right", alignCaption: "right"  },
-  satoshiBN: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => satoshiToBTCString(x), compare: compareBNs }
+//  value: { caption: "Amount (BTC) -- deprecated", align: "right", alignCaption: "right" },
+  satoshiBN: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => satoshiToBTCString(x), compare: compareBNs },
+  finalValue: { caption: "Final value (BTC)", align: "right", alignCaption: "right", displayFunc: x => (x), compare: compareBNStrings },
+  value: { caption: "Value (BTC)", align: "right", alignCaption: "right", displayFunc: x => (x), compare: compareBNStrings }
 }
  
 let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{title}</h2><p style={{textAlign: "left"}}>{text}</p><p style={{textAlign: "left", color: "#FF2170"}}>{warning}</p></>;

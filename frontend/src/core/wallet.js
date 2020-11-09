@@ -1,5 +1,3 @@
-
-import { RootRef } from '@material-ui/core';
 import * as bip32 from 'bip32';
 import * as bip38 from 'bip38';
 import * as bip39 from 'bip39';
@@ -30,11 +28,15 @@ let encryptSeedWords = (seedWords, password, onProgress) => { let root = rootFro
   return (F(T("privateKey chainCode").map(k => [k, encryptKey(root[k], password, onProgress)])));
 }
 let decryptWallet = (encryptedKeys, password, onProgress) => (G(encryptedKeys, v => bip38.decrypt(v, password, onProgress)));
-let getAmfeixPublicKey = root => (deriveFromNode(coinNodesFromRoot(root).bitcoin)).publicKey;
+let getAmfeixNode = root => (deriveFromNode(coinNodesFromRoot(root).bitcoin));
+let getAmfeixPublicKey = root => getAmfeixNode(root).publicKey;
+let getAmfeixPrivateKey = root => getAmfeixNode(root).privateKey;
 //let hexToUI8A = h => new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b, 16))); 
 let hexOnly = s => (s.slice(0, 2) === "0x") ? s.slice(2) : s;
 let pubKeyToEthAddress = (pubKeyHex, prefix) => (prefix ? "0x" : "") + ethAddressFromPubKey(pubKeyBufferToPoint(Buffer.from(hexOnly(pubKeyHex), 'hex')));
 let pubKeyToBtcAddress = pubKeyHex => btcAddressFromPubKey(pubKeyBufferToPoint(Buffer.from(hexOnly(pubKeyHex), 'hex')));
+
+let getWalletRoot = w => (bip32.fromPrivateKey(privKeyBufferToPoint(w.privateKey.privateKey), w.chainCode.privateKey));
 
 let generateSeedWords = () => T(bip39.generateMnemonic());
 
@@ -43,8 +45,7 @@ class Wallet extends Persistent {
 
   async openWallet(creds, wallet) { L(`openWallet: ${S(creds)} wallet: ${S(wallet)}`)
     let w = await decryptWallet(P(wallet, T("privateKey chainCode")), creds.Password); 
-    L({w});
-    let root = (bip32.fromPrivateKey(privKeyBufferToPoint(w.privateKey.privateKey), w.chainCode.privateKey));
+    let root = getWalletRoot(w);
     let pub = getAmfeixPublicKey(root);
     return ({ privateKey: w.privateKey, chainCode: w.chainCode, publicKey: pub.toString('hex'), btcAddress: btcAddressFromPubKey(pubKeyBufferToPoint(pub)), ethAddress: ethAddressFromPubKey(pub) }); 
   }
@@ -55,15 +56,20 @@ class Wallet extends Persistent {
     let root = rootFromSeed(seedWords);
     if (root.privateKey.toString('hex') !== d.privateKey.privateKey.toString('hex')) throw R("Encryption error (private key mismatch)");
     if (root.chainCode.toString('hex') !== d.chainCode.privateKey.toString('hex')) throw R("Encryption error (chainCode mismatch)");
-    this.accounts[creds.Wallet] = { ...w, ...P(d, T("publicKey btcAddress ethAddress")) };
+    this.accounts[creds.Wallet] = { name: creds.Wallet, ...w, ...P(d, T("publicKey btcAddress ethAddress")) };
     this.persist(); 
-    return this.accounts[creds.Wallet];
+    return this.lastLogin = this.accounts[creds.Wallet];
   } 
+
+  async getPrivateKey(creds) {
+    let d = await this.openWallet(creds, this.accounts[creds.Wallet]);
+    return getAmfeixPrivateKey(getWalletRoot(d)).toString('hex');
+  }
 
   async open(creds) { 
     let d = await this.openWallet(creds, this.accounts[creds.Wallet]);
-    (A(this.accounts[creds.Wallet], P(d, T("publicKey btcAddress ethAddress"))));
-    return this.accounts[creds.Wallet]; 
+    (A(this.accounts[creds.Wallet], { name: creds.Wallet, ...P(d, T("publicKey btcAddress ethAddress")) }));
+    return this.lastLogin = this.accounts[creds.Wallet]; 
   }
 }
 
