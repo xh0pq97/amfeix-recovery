@@ -553,9 +553,9 @@ class Data extends Persistent {
 //      i.accValue = (acc = (i.action === "0" ? acc.plus(v) : acc.minus(v)));  
       i.accCurrentValue = currentValueAcc && ((currentValueAcc = (i.action === "0" ? (D(i.finalValue) ? currentValueAcc.plus(i.finalValue) : U) : currentValueAcc.minus(v)))); 
     }
-//    g.investment = investment.map(x => [x.timestamp, x.accValue]);
+  //  g.investment = investment.map(x => [1000*x.timestamp, parseFloat(x.accValue.toString())]);
     g.investmentValue = currentValueAcc && parseFloat(currentValueAcc.toString());
-    g.value = investment.map(x => [x.timestamp, x.accCurrentValue]);;
+    g.value = investment.map(x => [1000*x.timestamp, parseFloat(x.accCurrentValue.toString())]);;
     for (let d of g.Deposits) { T("finalValue value").forEach(v => { if (D(d[v])) d[v] = d[v].toString(); }); }
     for (let d of g.Withdrawal_Requests) { T("value").forEach(v => { if (D(d[v])) d[v] = d[v].toString(); }); }
     for (let d of g.Withdrawals) { T("value").forEach(v => { if (D(d[v])) d[v] = d[v].toString(); }); }
