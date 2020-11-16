@@ -12,12 +12,13 @@ export class Load_Progress extends Comp {
     this.addSyncObserver(data, "loadProgress", newProgress => {
       let loadProgress = newProgress;
       let currentTime = Date.now(), deltaS = (currentTime - lastUpdate), update = () => { //L({currentTime});
-      this.updateTimeout = false;
-      displayDelay = Math.min(4000, 1.41 * displayDelay);
-        lastUpdate = currentTime; return !this.unmounted && this.setState({ loadProgress: { ...loadProgress } });
+        this.updateTimeout = false;
+        displayDelay = Math.min(4000, 1.17 * displayDelay);
+        lastUpdate = currentTime; 
+        return !this.unmounted && this.setState({ loadProgress: { ...loadProgress } });
       };
 //      L({deltaS, displayDelay});
-      if ((deltaS >= displayDelay)) { update(); } else if (!(this.updateTimeout)) { this.updateTimeout = setTimeout(() => update(), displayDelay - deltaS); }
+      if ((deltaS >= displayDelay)) { update(); } else if (!(this.updateTimeout)) { this.updateTimeout = setTimeout(update, displayDelay - deltaS); }
     });
   } 
 

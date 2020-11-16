@@ -43,7 +43,7 @@ let generateSeedWords = () => T(bip39.generateMnemonic());
 class Wallet extends Persistent { 
   constructor() { super("wallet", ["accounts"], { accounts: {} }); L('Creating Wallet class instance.'); }
 
-  async openWallet(creds, wallet) { L(`openWallet: ${S(creds)} wallet: ${S(wallet)}`)
+  async openWallet(creds, wallet) {// L(`openWallet: ${S(creds)} wallet: ${S(wallet)}`)
     let w = await decryptWallet(P(wallet, T("privateKey chainCode")), creds.Password); 
     let root = getWalletRoot(w);
     let pub = getAmfeixPublicKey(root);

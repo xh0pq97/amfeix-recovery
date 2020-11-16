@@ -2,10 +2,10 @@ import React from 'react';
 // eslint-disable-next-line
 import { Box, TextField } from '@material-ui/core';
 // eslint-disable-next-line
-import { wrapEllipsisDiv, applyListHeaders, OpenDialogButton, DialogWrap, Comp, ValidatableComp, form, formTable, TabbedView, TabTimeline, button, List  } from './components'; 
+import { testModeComp, wrapEllipsisDiv, applyListHeaders, OpenDialogButton, DialogWrap, Comp, ValidatableComp, form, formTable, TabbedView, TabTimeline, button, List  } from './components'; 
 // eslint-disable-next-line
-import { A, D, E, F, H, I, K, L, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
-import { InvestorDependentView_Btc } from './investor'
+import { A, D, E, F, H, I, K, L, P, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
+import { InvestorDependentView_Btc, InvestorID } from './investor'
 // eslint-disable-next-line
 import QRCode from 'qrcode';
 // wc52mNR2qTpFfNP
@@ -30,19 +30,23 @@ class Account extends Comp { constructor(p, s) { super(p, s, "dlgWithdraw"); }
   ])}
 }
 
+let investorCompIfTestMode = (p) => testModeComp(p.urlParams.testMode, () => <InvestorID investor={p.investor} />)
+
 class All_transactions extends Comp { ren(p, s) { return <Box/>; } }
 class Deposits extends Comp { 
-  ren(p, s) { return <Box/>; } 
+  ren(p, s) { return <>{investorCompIfTestMode(p)}<Box/></>; } 
 }
 class Withdrawals extends Comp { ren(p, s) { return <Box/>; } }
 class Investments extends Comp { ren(p, s) { return <Box/>; } }
 class Returns extends Comp { ren(p, s) { return <Box/>; } }
   
+
 class History extends InvestorDependentView_Btc { 
 //  componentDidMount() { this.addSyncKeyObserver(data, data.getInvestorWalletDepositsKey()); }
   //ren(p, s) { return loadingComponent(s.fundDeposits, <TabbedView tabs={F(E(s.fundDeposits).map(([k, v], i) => [`Deposit address #${i}`, () => <List data={v} headers={V(genHeaders(v))}/>]))}/>) }
   ren(p, s) { let walletData = this.getInvestorWalletData(); L(`p.wallet = ${S(p.wallet)}`)
-    return <TabbedView tabs={{ All_transactions, Deposits, Withdrawals, Investments, Returns }} parentProps={{ walletData, wallet: oO(p.wallet).lastLogin }} />; 
+    return <>{investorCompIfTestMode(p)}
+      <TabbedView tabs={{ All_transactions, Deposits, Withdrawals, Investments, Returns }} parentProps={{ walletData, wallet: oO(p.wallet).lastLogin, urlParams: p.urlParams, investor: p.investor }} /></>; 
   } 
 }
 
@@ -64,6 +68,7 @@ class Withdraw extends ValidatableComp { ren(p, s) { return form(null, [[this.ge
 export class Bitcoin_Wallet extends Comp { ren(p, s) { 
   L(`Lastlogin = ${S(p.wallet)}`)
   //return !D(p.wallet) ? <Box/> : <>{formTable([[<Account wallet={(p.wallet)} />]])}
-  return <TabbedView tabs={{ History, Invest, _Withdraw_ }} parentProps={{ wallet: p.wallet }} />
+  return <>{investorCompIfTestMode(p)}
+  <TabbedView tabs={{ History, Invest, _Withdraw_ }} parentProps={{...(P(p, T("urlParams investor wallet")))}} /></>
   // <Invest bitcoinAddress={oO(p.wallet).bitcoinAddress}/>
 } }

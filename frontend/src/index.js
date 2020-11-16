@@ -21,7 +21,7 @@ import { wallet, pubKeyToEthAddress, pubKeyToBtcAddress } from './core/wallet';
 import { basePallette, getMainLightness, seriesColors, getMainColor, darkMode } from './ui/colors';
 import { version } from './version.js';
 import { features } from './projectManagement/features';
-import { data, ethInterfaceUrl, ganacheInterfaceUrl } from './core/data'; 
+import { data, ethInterfaceUrls } from './core/data'; 
 // eslint-disable-next-line
 import { EPallette, EUserMode, EDeveloperMode, enumDefault, enumDefObj } from './core/enums';  
 
@@ -31,11 +31,13 @@ let urlParams = F(T("asEthAddress asPublicKey asBtcAddress").map(k => [k, getUrl
 urlParams.testMode = D(L(getUrlParam("8e763620037a1054b3656092dece8d324eef5dd5efd4e4d5c1bbc125c9c74996")));
 
 class Settings extends Comp {
+  ethInterfaceChanged(v) { data.setEthRPCUrl(ethInterfaceUrls[v]) }
   ren(p, s) { 
-    return tabulize(1/3, [[ <Selector options={[ethInterfaceUrl, ganacheInterfaceUrl]} />],
+    return tabulize(1/3, [[ 
+      <Selector options={ethInterfaceUrls} onChanged={v => this.ethInterfaceChanged(v)}/>],
       [button("Clear data cache", () => {})],
       [button("Compute data", () => { data.computeData(); })],
-      [button("Clear bitcoin transaction cache", () => { data.clearBitcoinTransactionCache(); })]
+      [button("Clear bitcoin transaction cache", async () => { await data.clearBitcoinTransactionCache(); window.location.reload(); })]
     ]) 
   }
 }
@@ -85,7 +87,7 @@ class App extends Comp { constructor(p) { super(p, { wallet, investor, ...G({EDe
   } 
   ren(p, s) { 
     return <ThemeProvider theme={s.theme}>{urlParams.testMode ? <>
-      {tabulize(1/3, [[...E({EUserMode, EDeveloperMode, EPallette}).map(([k, v]) => <Selector options={K(v).map(cleanText)} onChanged={i => this.setState(singleKeyObject(k, singleKeyObject(V(v)[i], true)), 
+      {tabulize(1/3, [[...E({EUserMode, EDeveloperMode, EPallette}).map(([k, v]) => <Selector options={K(v).map(cleanText)} horizontal={true} onChanged={i => this.setState(singleKeyObject(k, singleKeyObject(V(v)[i], true)), 
         async () => {
           if (this.state.EUserMode.Admin) setTimeout(async () => await data.adminLoad(), 20);
           this.setState({ theme: this.createTheme() });

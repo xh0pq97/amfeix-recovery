@@ -1,6 +1,6 @@
 import React from 'react';
 // eslint-disable-next-line
-import { A, D, E, F, G, I, K, L, U, V, S, oA, oF, oO, oS, isO, singleKeyObject } from '../tools';
+import { A, D, E, F, G, I, K, L, U, V, S, oA, oB, oF, oO, oS, isO, singleKeyObject } from '../tools';
 // eslint-disable-next-line
 import { List, ListItem, ListItemText, ListItemIcon, Hidden, Drawer, Stepper, Step, StepLabel, CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, Typography, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 // eslint-disable-next-line
@@ -33,7 +33,7 @@ class Comp extends React.Component {
 
 class Selector extends Comp { constructor(p) { super(p); A(this.state, { selectedIx: 0 }); oF(p.onChanged)(this.state.selectedIx) }
   setSelectedIx(selectedIx) { if (this.state.selectedIx !== selectedIx) this.setState({ selectedIx }, () => oF(this.props.onChanged)(selectedIx)); }
-  ren(p, s) { return <FormControl component="fieldset"><RadioGroup row aria-label="" name="" value={s.selectedIx} onChange={e => this.setSelectedIx(L(parseInt(e.target.value)))}>
+  ren(p, s) { return <FormControl component="fieldset"><RadioGroup row={p.horizontal || U} aria-label="" name="" value={s.selectedIx} onChange={e => this.setSelectedIx(L(parseInt(e.target.value)))}>
     {(oA(p.options).map((x, i) => <FormControlLabel key={i} value={i} label={x} control={<Radio />}/>))}</RadioGroup></FormControl> }
 }  
 
@@ -168,14 +168,14 @@ class GetPasswordView extends ValidatableComp {
 }
 
 class GetPasswordDialog extends Comp { //constructor(p, s) { super(p, s, "dlg"); }
-  ren(p, s) { L(`GetPasswordDialog open = ${p.open}`);
-    return <DialogWrap open={p.open} comp={() => <TabTimeline tabs={{GetPasswordView}} walletName={p.walletName} onAccept={p.onAccept} onCancel={p.onCancel} />}/> }
+  ren(p, s) { return <DialogWrap open={oB(p.open)} comp={() => <TabTimeline tabs={{GetPasswordView}} walletName={p.walletName} onAccept={p.onAccept} onCancel={p.onCancel} />}/> }
 }
 
 class ProgressDialog extends Comp { ren(p, s) { let id = cleanText(p.title); 
   return <Dialog aria-labelledby={id} open={p.open} onClose={oF(p.onClose)}><h2>{cleanText(id)}</h2>{tabulize(3, [[<CircularProgress  value={p.progress} />]])}</Dialog> 
 } }
 
+let testModeComp = (testMode, C) => (testMode ? <div style={{borderStyle: "dashed", borderWidth: "1px", borderRadius: `0.333em`, borderColor: '#7A7'}}><C/></div> : null)
 
 let wrapEllipsisDiv = v => <div style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap"}}>{v}</div>;
 let newTabRef = (link, caption) => <a target="_blank" rel="noopener noreferrer" href={link}>{caption}</a>;
@@ -202,4 +202,4 @@ let commonTableHeaders = {
 let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{title}</h2><p style={{textAlign: "left"}}>{text}</p><p style={{textAlign: "left", color: "#FF2170"}}>{warning}</p></>;
 let loadingComponent = (data, c) => D(data) ? c  : tabulize(5, [[<CircularProgress/>]]);
 
-export { GetPasswordDialog, preamble, loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, ListView as List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }
+export { testModeComp, GetPasswordDialog, preamble, loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, ListView as List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }

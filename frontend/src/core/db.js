@@ -35,6 +35,7 @@ class IndexedDB {
   }
   getOS(table, label, reject) { return this.getTx(table, label, reject).objectStore(table); }
   act(table, label, input, getData, index) { return new Promise((resolve, reject) => { let os = this.getOS(table, label, reject);
+    I({index, input});
     (index ? os.index((index)) : os)[label](input).onsuccess = e => resolve(getData(e)); 
   }); }
   add(table, data) { return this.act(table, "add", data, () => data); }
@@ -43,7 +44,7 @@ class IndexedDB {
   getAll(table, data, index, keyPath) { return this.act(table, "getAll", L(computeKey(table, data, keyPath)), e => e.target.result, index); }
   openCursor(table, data, onCursor) { return this.act(table, "openCursor", data, e => (c => c && onCursor(c))((e.target.result))); }
   iterateAll(table, data, onData) { return this.openCursor(table, data, c => { if (onData(c.value)) c.continue(); }); }
-  get(table, data, index, keyPath) { return this.act(table, "get", computeKey(table, data, keyPath), e => e.target.result, index); }
+  get(table, data, index, keyPath) { I( {computeKey: computeKey(table, data, keyPath)} ); return this.act(table, "get", computeKey(table, data, keyPath), e => e.target.result, index); }
   write(table, data) { return this.get(table, data).catch(() => this.add(table, data)).then(() => this.put(table, data)); }
   clear(table) { return this.act(table, "clear", U, I); }
 
