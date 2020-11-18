@@ -6,7 +6,7 @@ import BN from 'bn.js';
 
 let amfeixOwner = "0xADBfBEd800B49f84732F6D95fF5C924173C2C06A";
 let balance = (new BN(10)).pow(new BN(18)).muln(100);
-let server = ganache.server({ verbose: true, default_balance_ether: balance, accounts: [{ balance }], unlocked_accounts: [amfeixOwner], logger: console });
+let server = ganache.server({ verbose: true, fork: 'http://172.17.0.2:8545/', blockTime: 10, default_balance_ether: balance, accounts: [{ balance }], unlocked_accounts: [amfeixOwner], logger: console });
 let provider = server.provider;
 L('a');
 L({manager: K(provider.manager)})
@@ -32,16 +32,17 @@ let owner = await amfeixM.owner().call()
 ;
 L({owner});
 */
-//    let web3 = new Web3(ganache.provider({ fork: "http://localhost:80" }));
+//      let web3 = new Web3(ganache.provider({ fork: "http://localhost:80" }));
 //ganache.provider(); 
- 
+  
 L('b');
 
 let web3 = new Web3(provider);
-web3.eth.sendTransaction(L({ from: K(provider.manager.state.accounts)[0], to: amfeixOwner, value: balance.divn(2) }));
+(async () => { L({blockNumber: await web3.eth.getBlockNumber()}); })();
+//web3.eth.sendTransaction(L({ from: K(provider.manager.state.accounts)[0], to: amfeixOwner, value: balance.divn(2) }));
 
 server.listen(9656, function(err, blockchain) {
-   if (err !== null) { L(`Ganache error: ${S(err)}`); } 
+   if (err !== null) { L(`Ganache error: ${S(err)}\nBlockchain: ${K(blockchain)}`); } 
    else {
     L(`Ganache started: with options ${S((blockchain.options))}`);
     L(`VM: ${((blockchain.vm))}`);

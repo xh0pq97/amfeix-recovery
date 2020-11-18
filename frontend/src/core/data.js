@@ -1,7 +1,7 @@
 import Web3 from 'web3';
 import amfeixCjson from '../amfeixC.json'; 
 // eslint-disable-next-line
-import { A, D, E, F, G, H, I, K, L, S, T, U, V, oA, oO, oF, isO, isA, isS, singleKeyObject, makeEnum } from '../tools'; 
+import { A, D, E, F, G, H, I, K, L, S, T, P, U, V, oA, oO, oF, isO, isA, isS, singleKeyObject, makeEnum } from '../tools'; 
 import { IndexedDB } from './db'; 
 import { Persistent } from './persistent';
 import { BN }  from './bignumber';
@@ -115,10 +115,9 @@ let w3 = new AmfeixContract();
 
 let amfeixFeeFields = "fee1 fee2 fee3".split(" ");
 let invMap = (countTable, dataTable) => ({countTable, dataTable});
-let timeAndAmount = T("time amount"), 
-//arrays = ["investorsAddresses"].concat(timeAndAmount), 
-indexMaps = T("feeAddresses fundDepositAddresses"), investorMaps = [invMap("ntx", "fundTx"), invMap("rtx", "reqWD")]; 
-let ethBasicFields = T("owner aum decimals btcPrice").concat(amfeixFeeFields).concat(indexMaps.map(k => `${k}Length`));
+let amfeixAddressLists = ["fundDepositAddresses", "feeAddresses"];
+let timeAndAmount = T("time amount"), indexMaps = amfeixAddressLists, investorMaps = [invMap("ntx", "fundTx"), invMap("rtx", "reqWD")]; 
+let ethBasicFields = T("owner aum decimals btcPrice").concat(amfeixFeeFields).concat(amfeixAddressLists.map(k => `${k}Length`));
 const btcFields = T("blockcount connectioncount difficulty blockchaininfo");
 
 let btcRpc = async (method, func, params) => JSONBig.parse((await ((await fetch(`${btcRpcUrl}${func}/${method === "GET" ? `?${E(oO(params)).map(x => x.map(encodeURIComponent).join("=")).join("&")}` : ''}`, 
@@ -187,27 +186,27 @@ class Data extends Persistent {
   constructor() { super("data", ["localData"], { localData: { dbix: 173 } }); L('Creating Data class instance.');
     //this.localData = (d => d ? L(JSON.parse(d)) : { dbix: 60 })((localStorage.getItem("_")));
     if (newDB) this.localData.dbix++; 
-    A(this, { tables, tableStrucMap, investorData: {}, observers: {}, data: {}, loadProgress: {}, syncCache: new SyncCache(), idb: new IndexedDB(S(this.localData.dbix)), adminLoadInitiated: false, queuedEthTransactions: [] }); 
+    A(this, { tables, tableStrucMap, investorData: {}, observers: {}, data: {}, loadProgress: { progress: {}, timings: {} }, syncCache: new SyncCache(), idb: new IndexedDB(S(this.localData.dbix)), adminLoadInitiated: false, queuedEthTransactions: [] }); 
     for (let q = 0; q < this.localData.dbix; ++q) this.idb.deleteDB(S(q));
     this.persist(); 
      
-    this.setEthRPCUrl(ethInterfaceUrl);
-    this.updateConstants = F(E(constantFields).map(([t, f]) => [t, f.map(name => async () => {
-      let result = await (constantRetrievers[t](name)());
-      this.syncCache.setData(name, result.value);
-      //L(`update ${t} ${name} --> ${result}`);
-      await this.setData(tables[t].constants, (result));
-    })]));
-    this.onLoadProgress = name => d => { this.loadProgress[name] = d; this.syncCache.setData("loadProgress", this.loadProgress); };
+    this.setEthRPCUrl(ethInterfaceUrl); 
+    this.onLoadProgress = name => d => { this.loadProgress.progress[name] = d; this.syncCache.setData("loadProgress", this.loadProgress); };
     this.onGlobalLoad = step => this.updateLoadProgress(this.onLoadProgress("Global load"), step, 6, step === 6);
+    this.updateConstants = F(E(constantFields).map(([t, f]) => [t, () => this.measureTime(`Constants (${t})`, async () => await Promise.all(f.map(async name => { 
+      let result = await constantRetrievers[t](name)();
+      this.syncCache.setData(name, result.value); 
+      await this.setData(tables[t].constants, (result));
+    })))]));
+    this.functionsToPerformAfterBasicLoad = [];
+
     (async () => { await this.idb.init(); this.syncCache.setData("dbInitialized", true); await this.genericLoad(); })(); 
-//    this.onLoadMsg = msg => this.onLoadProgress("Phase");
   }
 
   set queuedEthTransactions(a) { this.syncCache.setData("queuedEthTransactions", a); }
   get queuedEthTransactions() { return this.syncCache.getData("queuedEthTransactions"); }
 
-  async signAndSubmitQueuedEthTransactions(privateKey, testMode) { 
+  async signAndSubmitQueuedEthTransactions(privateKey, testMode) { await this.measureTime("Basic Load", async () => {
     let from = "0xADBfBEd800B49f84732F6D95fF5C924173C2C06A";
     L(`Generating ${this.queuedEthTransactions.length} transactions...`);
     L({privateKey});
@@ -219,32 +218,27 @@ class Data extends Persistent {
       let u = w3.amfeixM()[t.method](...t.parms); 
 //      L(`u = ${S(u)}`);
       let options = L({from, to: amfeixAddress, gas: Math.max(25000, await u.estimateGas({ from, to: amfeixAddress })), data: u.encodeABI() });
-      let z = await w3.web3.eth.sendTransaction(options); L(`Sendtransaction result = ${S(z)}`);
+      let z = await w3.web3.eth.sendTransaction(options); L(`Sendtransaction result = ${S(z)}`); 
 //      let x = await account.signTransaction(options); L(`Signed tx: ${S(x)}`);
   //    let z = await w3.web3.eth.sendSignedTransaction(x.rawTransaction); L(`Submitted tx: ${S(z)}`);
-      return ({ ...t, blockNumber: z.blockNumber, status: z.status === true ? "Submitted" : "Failed", gasUsed: z.gasUsed });
+      return ({ ...t, ...P(z, T("gasUsed blockNumber transactionHash")), status: z.status === true ? "Submitted" : "Failed" });
     })); 
-  } 
+  })}
 
   runWhenDBInitialized(f) { let obs = this.syncCache.watch("dbInitialized", () => { f(); obs.detach(); }) }
 
+  async updateFixedLengthArray(name) { await this.measureTime(`Update '${name}' array`, () => this.updateSimpleArray(name, `${name}Length`)) }
+
   async basicLoad() { await this.measureTime("Basic Load", async () => { this.onGlobalLoad(0);
-    await Promise.all([this.loadTimeDataSingleShot(this.onLoadProgress("Fund Index chart data")),
-      ...indexMaps.map(l => this.updateSimpleArray(this.onLoadProgress(l), l, `${l}Length`)),
-      ...V(this.updateConstants).flat().map(x => x())]); this.onGlobalLoad(1);
+    await Promise.all([this.loadTimeData(), ...V(this.updateConstants).map(x => x()), ...indexMaps.map(l => this.updateFixedLengthArray(l))]); this.onGlobalLoad(1);
     await this.updateSyncCache(); this.onGlobalLoad(2);
-    await (this.basicLoadPromise = this.computeTimeDataFromTimeAndAmount()); this.onGlobalLoad(3);
-//    .then(() => { this.constantSchedulers = G(this.updateConstants, v => v.map(x => new Scheduler(10000, x))); })
+    await this.computeTimeDataFromTimeAndAmount(); this.onGlobalLoad(3); 
+    for (let q of oA(this.functionsToPerformAfterBasicLoad)) await q();
   }); }
 
-  async updateSyncCache() { await this.measureTime("updateSyncCache", async () => { //L('updateSyncCache');
-    await Promise.all([
-      ...T("investorsAddresses fundDepositAddresses feeAddresses").concat(timeAndAmount).map(async t => this.syncCache.setData(t, (await this.idb.getAll(tables.eth[t])))),
-//      V(this.updateConstants).flat()
-//      ...K(constantFields).map(t => constantFields[t].map(async name => this.syncCache.setData(name, oO(await this.getData(tables[t].constants, { name })).value))).flat()
-    ]);
-    w3.setFrom(this.syncCache.getData("owner"));
-  }); } 
+  performAfterBasicLoad(f) { this.functionsToPerformAfterBasicLoad.push(f); }
+
+  async updateSyncCache() { await this.measureTime("updateSyncCache", () => Promise.all(T("investorsAddresses").map(async t => this.syncCache.setData(t, (await this.idb.getAll(tables.eth[t])))))); } 
 
   async updateRegisteredTransactions() { await this.measureTime("Update Registered Transactions", async () => {
     await this.updateRegisteredEthTransactions(); this.onGlobalLoad(4);
@@ -267,8 +261,9 @@ class Data extends Persistent {
     if (!this.adminLoadInitiated) {
       this.adminLoadInitiated = true; 
       await this.loadInvestorsAddressesSingleShot(this.onLoadProgress("allInvestors")); 
-      await this.updateSimpleArray(this.onLoadProgress("investorsAddresses"), "investorsAddresses");  
+      await this.updateSimpleArray("investorsAddresses");  
       await this.updateSyncCache();
+      L("adminload computeTimeDataFromTimeAndAmount");
       await this.computeTimeDataFromTimeAndAmount(); 
       await Promise.all([this.updateRegisteredTransactions(), this.loadFundDeposits()]); 
       await this.computeData();
@@ -294,10 +289,11 @@ class Data extends Persistent {
 //    (async() => L(`Personal accounts: ${S(await oF(oO(w3.web3.eth.personal).getAccounts)())}`))();
   }
 
-  getFundDepositAddresses() { return L(this.syncCache.getData("fundDepositAddresses")).map(x => x.data); }
+  getFundDepositAddresses() { L('getFundDepositAddresses'); return L(this.syncCache.getData("fundDepositAddresses")).map(x => x.data); }
 
   async loadFundDeposits() {
-    let fundDeposits = G((F(await Promise.all((this.getFundDepositAddresses().filter(z => z.length > 0).map(async a => [a, oO(await btcRpc("GET", `getdeposits/toAddress/${a}`)).data]))))), v => v.map(decodeFundDeposit));
+    let fundDeposits = G((F(await Promise.all((this.getFundDepositAddresses().filter(z => z.length > 0).map(async a => [a, oO(await btcRpc("GET", L(`getdeposits/toAddress/${a}`))).data]))))), 
+      v => oA(v && v.map(decodeFundDeposit)));
     this.syncCache.setData("fundDeposits", (fundDeposits));
     L(`Loaded fund deposits`);
     //L({fundDeposits})
@@ -322,7 +318,8 @@ class Data extends Persistent {
   getFactor() { return BN(10).pow(this.getDecimals()); } 
 
   async computeTimeDataFromTimeAndAmount() { await this.measureTime("Fund Index chart computation", async () => {
-    let performance = [], [time, amount] = "time amount".split(" ").map(t => this.syncCache.getData(t)).map(y => y.map(x => x.data));  
+    L(K(this.syncCache.data));
+    let performance = [], [time, amount] = T("time amount").map(t => L(this.syncCache.getData(t))).map(y => (y).map(x => x.data));  
     let f = this.getFactor(), ff = f.times(100);// L({factor: f})
     for (let x = 0, acc = BN(1.0); x < amount.length; ++x) performance.push([time[x], acc = acc.times(ff.plus(BN(amount[x])).div(ff))]);  
     let timeData = performance.map(([t, d]) => [1000*t, parseFloat(d.toString())]);
@@ -338,7 +335,8 @@ class Data extends Persistent {
     return high;
   }
 
-  async loadTimeDataSingleShot(onLoadProgress) { await this.measureTime("Fund Index chart data", async () => {
+  async loadTimeData() { await this.measureTime("Fund Index chart data", async () => {
+    let onLoadProgress = this.onLoadProgress("Fund Index chart data");
     let countKey = name => ({ name: `${name}.counts` });
     let sIx = async name => oO(await this.getData(tables.eth.constants, countKey(name))).startIndex || 0;
     let length;
@@ -353,7 +351,9 @@ class Data extends Persistent {
       ["time", "amount"].forEach(name => buf.write(tables.eth.constants, {...countKey(name), startIndex: length }));
       let result = await buf.flush();
       this.updateLoadProgress(onLoadProgress, length, length, true);
-    }) } else { await Promise.all([timeAndAmount.map(l => this.updateSimpleArray(this.onLoadProgress(`Fund Index chart data incremental (${l})`), l))]); }
+      timeAndAmount.forEach((t, i) => this.syncCache.setData(t, timeData[i].map((data, index) => ({ index, data }))));
+    }) } else { await Promise.all(timeAndAmount.map(l => this.updateSimpleArray(l))); }
+    L("Time data loaded");
   }); }
 
   async loadInvestorsAddressesSingleShot(onLoadProgress) { await this.measureTime("Investors addresses", async () => {
@@ -467,13 +467,18 @@ class Data extends Persistent {
     ...T("ntx-fundTx rtx-reqWD").map(z => this.idb.write(tables.btc.constants, { name: `${z}.counts`, startIndex: 0 }))
   ]); }
 
-  updateSimpleArray(onLoadProgress, name, lengthName) { return this.updateArray(onLoadProgress, name, tables.eth.constants, lengthName); }  
-  async updateArray(onLoadProgress, arrayName, countTable, lengthName, parms) { //L(`updateArray(${arrayName}, ${countTable}, ${lengthName}, ${S((parms))})`);
+  async updateSimpleArray(name, lengthName) { L(`updateSimpleArray(${name})`);
+    await this.measureTime(`Update '${name}' array`, async () => await this.updateArray(name, tables.eth.constants, lengthName));
+    await this.measureTime(`Cache '${name}' array`, async () => this.syncCache.setData(name, L(await this.idb.getAll(tables.eth[name])))); 
+    L(`updateSimpleArray(${name}) done?`);
+  }  
+  async updateArray(arrayName, countTable, lengthName, parms) { 
+    let olp = this.onLoadProgress(`Update '${arrayName}' array`);
     let countKey = ({ name: lengthName || `${arrayName}.counts` }); 
-    let alsi = (await this.getArrayLengthAndStartIndex(onLoadProgress, countTable, countKey, lengthName, parms)); 
+    let alsi = (await this.getArrayLengthAndStartIndex(olp, countTable, countKey, lengthName, parms)); 
     if (D(alsi.value) && !D(alsi.length)) alsi.length = parseInt(alsi.value);
    // L({arrayName, lengthName, countKey, alsi});
-    await this.updateGenericArray(onLoadProgress, arrayName, alsi, countKey, countTable, tables.eth[arrayName], parms);
+    await this.updateGenericArray(olp, arrayName, alsi, countKey, countTable, tables.eth[arrayName], parms);
   } 
 
   getKey(table, data) { return (`${table}${isO(data) ? `:[${tableStrucMap[table].keyPath.map(a => data[a]).join(",")}]` : ''}`) }
@@ -481,7 +486,7 @@ class Data extends Persistent {
   async setData(table, data) { return await this.idb.write(table, data); }
   async getData(table, data, retriever) { return (await this.idb.get(table, data)) || (retriever && (await this.setData(table, await retriever()))); } 
 
-  async measureTime(name, promise) { this.loadProgress[name] = (await timeFunc(promise)).time; } 
+  async measureTime(name, promise) { this.loadProgress.timings[name] = (await timeFunc(promise)).time; } 
 
   async computeData() { await this.measureTime("computeData", async () => {
     let fundDeposits =  this.syncCache.getData("fundDeposits"); 
@@ -589,4 +594,4 @@ class Data extends Persistent {
 
 let data = new Data(); 
   
-export { Transaction, stati, ethInterfaceUrls, btcRpcUrl, btcFields, ethBasicFields, getInvestorDataKey, getInvestorWalletDataKey, data, amfeixFeeFields };
+export { Transaction, stati, ethInterfaceUrls, btcRpcUrl, btcFields, ethBasicFields, getInvestorDataKey, getInvestorWalletDataKey, data, amfeixFeeFields, amfeixAddressLists };

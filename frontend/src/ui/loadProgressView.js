@@ -2,7 +2,7 @@ import React from 'react';
 // eslint-disable-next-line
 import { D, E, L, S, U, oO } from '../tools';
 import { data } from '../core/data';
-import { tabulize, Comp } from './components'; 
+import { tabulize, Comp, List } from './components'; 
 import { LinearProgress } from '@material-ui/core' 
 
 export class Load_Progress extends Comp {
@@ -22,9 +22,12 @@ export class Load_Progress extends Comp {
     });
   } 
 
-  ren(p, s) { return <div>{tabulize(1/2, E((oO(s.loadProgress))).map(([key, data]) => [key, 
+  ren(p, s) { return tabulize(1/2, [
+    [tabulize(1/2, E((oO(oO(s.loadProgress).progress))).map(([key, data]) => [key, 
     D(data.index) ? tabulize(1/7, [[`${data.index} / ${D(data.length) ? data.length : '?'}`], 
          [<LinearProgress variant={D(data.length) ? "determinate" : U} value={D(data.length) ? ((100*data.index)/data.length) : U} />]])
     : `${S(data)} ms`
-  ]))}</div>; }
+  ]))],
+  [<List data={E((oO(oO(s.loadProgress).timings))).map(([key, data]) => ({ key, timing: `${S(data)} ms` }))} />]
+  ]); }
 }

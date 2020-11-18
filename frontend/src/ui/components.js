@@ -26,7 +26,8 @@ class Comp extends React.Component {
   updateChildRef(newV) { if (D(this.props.childRef)) this.props.childRef.current = newV; }
   componentDidMount() { this.updateChildRef(this); }
   componentWillUnmount() { this.updateChildRef(U); for (let o of this.observers) o.detach(); this.unmounted = true; }
-  setStateKV(k, v, onDone) { this.setState(singleKeyObject(k, v, onDone)) }
+  setStateKV(k, v, onDone) { //L(`setStateKV(${k}, ${S(v)})`); 
+  this.setState(singleKeyObject(k, v, onDone)) }
   addSyncKeyObserver(data, key, context) { this.addSyncObserver(data, key, d => { if (!this.unmounted) this.setStateKV(key, d) }, context); }
   addSyncObserver(data, key, onChange, context) { this.observers.push(data.syncCache.watch(key, onChange, context)); }
 }  

@@ -44,6 +44,7 @@ let generateForm = (preambleText, aa) => {
 }
 
 let changeDataForms = {
+  Owner: generateForm("Please enter the new Owner", [[textField("Owner")]]),
   AUM: generateForm("Please enter the new AUM", [[textField("AUM")]]),
   Daily_change: generateForm("Please enter the new Daily_change", [[textField("Daily_change")]]),
   Fees: generateForm("Please enter the new Fees", [T("fee1 fee2 fee3").map(textField)]),
@@ -66,17 +67,17 @@ class Investors extends Comp {
 
 let qEthTx = (method, params) => data.queuedEthTransactions.push(L(new Transaction(method, params))); 
 class Change_data extends Comp { 
+  Owner(d) { qEthTx("transferOwnership", [BN(d["Owner"]).toString()]); }
+  AUM(d) { qEthTx("setAum", [BN(d["AUM"]).times(data.getFactor()).toString()]); }
   Daily_change(d) { qEthTx("setDataBlock", [(BN(d["Daily_change"]).times(data.getFactor())).toFixed().toString()]); }
-  AUM(d) { qEthTx("setAum", [BN(d["AUM"]).toString()]); }
   Fees(d) { d = G(d, x => BN(x).toString()); qEthTx("setFee", [d["fee1"], d["fee2"], d["fee3"]]); }
-  Fund_deposit_address(d) { qEthTx("setFeeAddress", [d["Fund_deposit_address"]]) }
-  Fee_address(d) { qEthTx("setfundDepositAddress", [d["Fee_address"]]); }
+  Fund_deposit_address(d) { qEthTx("setfundDepositAddress", [d["Fund_deposit_address"]]) }
+  Fee_address(d) { qEthTx("setFeeAddress", [d["Fee_address"]]); }
 
   ren(p, s) { return tabulize(5/3, V(G(adminSetters, (v, k) => [<OpenDialogButton id={k} comp={v} onAccept={d => this[k](d)} onCancel={I}/>]))) }
 }
 
-class Pending_Deposits extends Comp { constructor(p, s) { super(p, { ...s, getPwdDialogOpen: false }); }
-  componentDidMount() { this.addSyncKeyObserver(data, "pendingDeposits"); }
+class Pending_Deposits extends Comp { componentDidMount() { this.addSyncKeyObserver(data, "pendingDeposits"); }
   approveAll(deps) { data.queuedEthTransactions.push(...deps.map(d => new Transaction("depositAdmin", [pubKeyToEthAddress(d.pubKey, true), d.txId, d.pubKey, ""]))) }  
   ren(p, s) { let pendingDeposits = oA(V(oO(s.pendingDeposits))[0]); //L(`Pending_Deposits: ${S(pendingDeposits)}`);
     L(`admin wallet last login: ${S(oO(p.wallet).lastLogin)}`);
@@ -87,9 +88,8 @@ class Pending_Deposits extends Comp { constructor(p, s) { super(p, { ...s, getPw
   }
 }
 
-class Withdrawal_Requests extends Comp {
-  componentDidMount() { this.addSyncKeyObserver(data, "withdrawalRequests"); }
-  approveAll(approvedWithdrawals) {  L(`Approving ${approvedWithdrawals.length} withdrawals`);  }
+class Withdrawal_Requests extends Comp { componentDidMount() { this.addSyncKeyObserver(data, "withdrawalRequests"); }
+  approveAll(withs) { data.queuedEthTransactions.push(...withs.map(d => new Transaction("returnInvestment", [pubKeyToEthAddress(d.pubKey, true), d.txId, d.pubKey, ""]))) }
   ren(p, s) {  let pendingWithdrawals = oA(s.withdrawalRequests);
     return loadingComponent(s.withdrawalRequests, tabulize(5/3, [
     [<OpenDialogButton id="Approve_all_pending_withdrawals" parentProps={{ pendingWithdrawals }} comp={Approve_all_pending_withdrawals} onAccept={d => this.approveAll(d)} />],
