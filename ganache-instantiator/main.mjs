@@ -6,7 +6,7 @@ import BN from 'bn.js';
 
 let amfeixOwner = "0xADBfBEd800B49f84732F6D95fF5C924173C2C06A";
 let balance = (new BN(10)).pow(new BN(18)).muln(100);
-let server = ganache.server({ verbose: true, fork: 'http://172.17.0.2:8545/', blockTime: 10, default_balance_ether: balance, accounts: [{ balance }], unlocked_accounts: [amfeixOwner], logger: console });
+let server = ganache.server({ verbose: true, debug: true, fork: 'http://172.17.0.2:8545/', blockTime: 10, default_balance_ether: balance, accounts: [{ balance }], unlocked_accounts: [amfeixOwner], logger: console });
 let provider = server.provider;
 L('a');
 L({manager: K(provider.manager)})

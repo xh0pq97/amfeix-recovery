@@ -10,8 +10,8 @@ import { Sidebar, ProgressDialog, OpenDialogButton, DialogWrap, cleanText, Selec
 import { Admin } from './ui/admin';
 import { Log_in } from './ui/login';
 import { Network } from './ui/network';
+import { Progress } from './ui/loadProgressView'
 import { Impact_Fund } from './ui/impactFund';
-import { Load_Progress as Progress } from './ui/loadProgressView'
 import { Bitcoin_Wallet } from './ui/wallet'; 
 // eslint-disable-next-line
 import { InvestorID, InvestorList, EthTxView, InvestorDependentView } from './ui/investor';
@@ -37,7 +37,8 @@ class Settings extends Comp {
       <Selector options={ethInterfaceUrls} onChanged={v => this.ethInterfaceChanged(v)}/>],
       [button("Clear data cache", () => {})],
       [button("Compute data", () => { data.computeData(); })],
-      [button("Clear bitcoin transaction cache", async () => { await data.clearBitcoinTransactionCache(); window.location.reload(); })]
+      [button("Clear bitcoin transaction cache", async () => { await data.clearTransactionCache('btc'); })], //  window.location.reload();
+      [button("Clear ethereum registered transaction cache", async () => { await data.clearTransactionCache('eth'); })]
     ]) 
   }
 }

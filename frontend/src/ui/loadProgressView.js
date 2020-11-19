@@ -5,7 +5,7 @@ import { data } from '../core/data';
 import { tabulize, Comp, List } from './components'; 
 import { LinearProgress } from '@material-ui/core' 
 
-export class Load_Progress extends Comp {
+export class Progress extends Comp {
   componentDidMount() {
 //    L("componentDidMount: LoadProgressView");
     let displayDelay = 500, lastUpdate = (Date.now() - displayDelay);

@@ -41,7 +41,7 @@ class IndexedDB {
   add(table, data) { return this.act(table, "add", data, () => data); }
   put(table, data) { return this.act(table, "put", data, () => data); }
   count(table, data) { return this.act(table, "count", data, e => e.target.result); }
-  getAll(table, data, index, keyPath) { return this.act(table, "getAll", L(computeKey(table, data, keyPath)), e => e.target.result, index); }
+  getAll(table, data, index, keyPath) { return this.act(table, "getAll", (computeKey(table, data, keyPath)), e => e.target.result, index); }
   openCursor(table, data, onCursor) { return this.act(table, "openCursor", data, e => (c => c && onCursor(c))((e.target.result))); }
   iterateAll(table, data, onData) { return this.openCursor(table, data, c => { if (onData(c.value)) c.continue(); }); }
   get(table, data, index, keyPath) { I( {computeKey: computeKey(table, data, keyPath)} ); return this.act(table, "get", computeKey(table, data, keyPath), e => e.target.result, index); }
