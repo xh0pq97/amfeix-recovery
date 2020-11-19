@@ -52,11 +52,14 @@ class IndexedDB {
 }
 
 class IDBuffer {
-  constructor(idb) { A(this, { idb, pendingOps: [], tables: {} }); }
+  constructor(idb) { A(this, { idb, pendingOps: [], tables: {}, batchSize: 1024 }); }
 
   queueOp(table, action, data, onSuccess, onError) {
     this.tables[table] = true;
-    this.pendingOps.push({ table, action, data, onSuccess, onError })
+    this.pendingOps.push({ table, action, data, onSuccess, onError });
+    if (this.pendingOps.length > this.batchSize) {
+      this.activeFlush = (this.activeFlush || Promise.resolve()).then(async () => await this.flush());
+    }
   }
 
   pendingOpsCount() { return this.pendingOps.length; }

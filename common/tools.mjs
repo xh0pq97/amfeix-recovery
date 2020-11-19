@@ -14,7 +14,10 @@ let GA = async (o, f) => F(await E(oO(o)).map(async ([k, v], i) => [k, await f(v
 let H = (f, o) => G(o, (v, k, i, o) => isO(v) ? H(f, v) : f(v, k, i, o));
 let I = x => x;
 let K = Object.keys;
-let L = x => { console.log(S(x)); return x; }
+let L = x => { 
+  console.log(S(x)); 
+  return x; 
+}
 let P = (o, keys) => F(keys.map(k => [k, o[k]]));
 let R = (msg, data) => A(new Error(msg), oO(data));
 let S = JSON.stringify;

@@ -24,7 +24,7 @@ export class Progress extends Comp {
 
   ren(p, s) { return tabulize(1/2, [
     [tabulize(1/2, E((oO(oO(s.loadProgress).progress))).map(([key, data]) => [key, 
-    D(data.index) ? tabulize(1/7, [[`${data.index} / ${D(data.length) ? data.length : '?'}`], 
+    D(data.index) ? tabulize(1/7, [[`${data.index} / ${D(data.length) ? data.length : '?'}` + (D(data.length) ? ` (${Math.round(100*(data.index/data.length))}%)` : '')], 
          [<LinearProgress variant={D(data.length) ? "determinate" : U} value={D(data.length) ? ((100*data.index)/data.length) : U} />]])
     : `${S(data)} ms`
   ]))],

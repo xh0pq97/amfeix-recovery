@@ -1,6 +1,6 @@
 import React from 'react';
 import { A, S, V, oA, oO } from '../tools';
-import { amfeixAddressLists, btcRpcUrl, btcFields, amfeixFeeFields, data, ethBasicFields } from '../core/data';
+import { amfeixAddressLists, btcRpcUrl, btcFields, data, ethBasicFields } from '../core/data';
 // eslint-disable-next-line
 import { button, genHeaders, displayBtcAddress, Selector, Comp, TabbedView, List, captionMap, tabulize } from './components';
 //import { genHeaders } from './investor';
