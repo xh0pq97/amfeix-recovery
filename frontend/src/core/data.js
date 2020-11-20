@@ -193,7 +193,7 @@ class Data extends Persistent {
      
     this.setEthRPCUrl(ethInterfaceUrl); 
     this.onLoadProgress = name => d => { this.loadProgress.progress[name] = d; this.syncCache.setData("loadProgress", this.loadProgress); };
-    this.onGlobalLoad = step => this.updateLoadProgress(this.onLoadProgress("Global load"), step, 6, step === 6);
+    this.onGlobalLoad = (step, length, done) => this.updateLoadProgress(this.onLoadProgress("Global load"), step, length || 5, done);
     this.updateConstants = F(E(constantFields).map(([t, f]) => [t, () => this.measureTime(`Constants (${t})`, async () => await Promise.all(f.map(async name => { 
       let result = await constantRetrievers[t](name)();
       this.syncCache.setData(name, result.value); 
@@ -264,14 +264,14 @@ class Data extends Persistent {
     await this.basicLoad(); 
     await this.updateArray("investorsAddresses");  
     await this.updateRegisteredTransactions(); this.onGlobalLoad(5);
-    await this.computeData(); this.onGlobalLoad(6, 6, true);
+    this.onGlobalLoad(5, 5, true);
     for (let q of oA(this.functionsToPerformAfterGenericLoad)) await q();
   }); }
 
   async adminLoad() { 
-    if (!this.adminLoadInitiated) {
-      this.adminLoadInitiated = true;  
-      await this.loadFundDeposits();  
+    if (!this.adminLoadInitiated) { this.adminLoadInitiated = true; this.onGlobalLoad(5, 7);
+      await this.loadFundDeposits(); this.onGlobalLoad(6, 7);
+      await this.computeData(); this.onGlobalLoad(7, 7, true);
     }
   }
 
@@ -311,11 +311,10 @@ class Data extends Persistent {
     let fundDeposits = G((F(await Promise.all((this.getFundDepositAddresses().map(async a => [a, oO(await btcRpc("GET", `getdeposits/toAddress/${a}`)).data]))))), v => v.map(decodeFundDeposit)); 
     this.syncCache.setData(key, (fundDeposits));
     L(`Loaded fund tx for investor ${S(investor)}`)
-    L({fundDeposits}) */
+    L({fundDeposits})  */
   }
 
   async retrieveInvestorWalletData(investor) {
-    
     return {};
   }
 
@@ -423,9 +422,9 @@ class Data extends Persistent {
       if (D(alsi.value) && !D(alsi.length)) alsi.length = parseInt(alsi.value);
       // L({arrayName, lengthName, countKey, alsi});
   //    L({arrayName, alsi});
-      let dp = {};
-      let donePromise = new Promise((resolve, reject) => { dp = ({resolve, reject }) });
-      await this.updateGenericArray(olp, arrayName, alsi, countKey, tables.eth.constants, tables.eth[arrayName], parms);//, U, U, () => dp.resolve());
+      await new Promise((resolve, reject) => { try {
+        this.updateGenericArray(olp, arrayName, alsi, countKey, tables.eth.constants, tables.eth[arrayName], parms, U, U, resolve);//, U, U, () => dp.resolve());
+      } catch(err) { reject(err) } });
       //await amfx.flushBatch();
       //await donePromise;
     });
@@ -449,36 +448,29 @@ class Data extends Persistent {
   }
 
   async updateInvestorMappedArray(onLoadProgress, { countTable, dataTable }) { await this.measureTime(`Update invsetor mapped array '${dataTable}'`, async () => {
-      //L(`uima(${countTable}, ${dataTable})`);
-      let olp = onLoadProgress;
-      let { startIndex, length, investorMapCountKey } = await this.getInvestorMapUpdateCountData(countTable, dataTable, `eth`);
-      let ix = startIndex;
-      let investors = this.syncCache.getData("investorsAddresses"); 
-      length = investors.length;
-      let localBuf = this.idb.newBuffer();
-      let completed = 0;
-      await new Promise(async (resolve, reject) => { 
-        await new Promise(async (resolve, reject) => { 
-          if (ix === length) { this.updateLoadProgress(olp, ix, length); resolve(); }
-          while (ix < length) {// let investor = investors[ix]; 
-            this.updateInvestorArray(investors[ix++], { countTable, dataTable }, localBuf, amfx, async () => { 
-              this.updateLoadProgress(olp, ++completed, length);
-              if (completed === length - startIndex) resolve();
-            });
-          }
-          //L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2});
-          await amfx.flushBatch(); 
+    //L(`uima(${countTable}, ${dataTable})`);
+    let olp = onLoadProgress;
+    let { startIndex, length, investorMapCountKey } = await this.getInvestorMapUpdateCountData(countTable, dataTable, `eth`);
+    let ix = startIndex;
+    let investors = this.syncCache.getData("investorsAddresses"); 
+    length = investors.length;
+    let localBuf = this.idb.newBuffer();
+    let completed = 0;
+    await new Promise(async (resolve, reject) => { try {
+      await new Promise(async (resolve, reject) => { try {
+        if (ix === length) { this.updateLoadProgress(olp, ix, length); resolve(); }
+        while (ix < length) this.updateInvestorArray(investors[ix++], { countTable, dataTable }, localBuf, amfx, async () => { 
+          this.updateLoadProgress(olp, ++completed, length);
+          if (completed === length - startIndex) resolve();
         });
-        L(`uima ${dataTable} final`);
         await amfx.flushBatch(); 
-        L(`uima ${dataTable} local buf flush`);
-        await localBuf.flush();
-        L(`uima ${dataTable} local buf done`);
-        if (ix !== startIndex) await this.setData(tables.eth.constants, ({...investorMapCountKey, startIndex: ix }));
-        resolve();
-      });
-    });
-  }
+      } catch(err) { reject(err); } }); L(`uima ${dataTable} final`);
+      await amfx.flushBatch(); L(`uima ${dataTable} local buf flush`);
+      await localBuf.flush(); L(`uima ${dataTable} local buf done`);
+      if (ix !== startIndex) await this.setData(tables.eth.constants, ({...investorMapCountKey, startIndex: ix }));
+      resolve();
+    } catch(err) { reject(err); } });
+  }); }
 
   async getInvestorMapUpdateCountData(countTable, dataTable, type, lengthTable) {
     let investorMapCountKey = { name: `${countTable}-${dataTable}.counts` };
@@ -530,6 +522,9 @@ class Data extends Persistent {
       investors.push(i);
       investor.Deposits.forEach(d => { approvedDeposits[d.txId] = true; });
     }   
+    L(`${V(approvedDeposits).length} approved deposits`);
+    L(`${V(fundDeposits).length} fund deposits`);
+    L(`${S(approvedDeposits)}`);
     this.syncCache.set({ investors, withdrawalRequests: investors.map(i => i.Withdrawal_Requests).flat(), pendingDeposits: G(fundDeposits, v => v.filter(d => !approvedDeposits[d.txId])) });  
     this.updateLoadProgress(olp, investorsAddresses.length, investorsAddresses.length);
   }); };
