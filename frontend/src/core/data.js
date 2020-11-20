@@ -7,7 +7,8 @@ import { Persistent } from './persistent';
 import { BN }  from './bignumber';
 import JSONBig from 'json-bigint'; 
 import Accounts from 'web3-eth-accounts';
-import aggregate from './aggregate.js';
+//import aggregate from './aggregate.js';
+import aggregate from '@makerdao/multicall/src/aggregate';
 
 let newDB = false //|| true;  
 
@@ -18,7 +19,7 @@ hostname = (hostname === "localhost") ? "spacetimemanifolds.com" : hostname;
 const btcRpcUrl = `https://btc.${hostname}/`; //`http://157.245.35.34/`,  
 const ethInterfaceUrl = `https://eth.${hostname}/`; //"ws://46.101.6.38/ws"; 
 const ethInterfaceUrls = [ethInterfaceUrl, ethInterfaceUrl + 'ganache/']; //"ws://46.101.6.38/ws"; 
-//ethInterfaceUrl = "http://46.101.6.38:8547/"; 
+//ethInterfaceUrl = "http://46.101.6.38:8547/";  
 //const web3 =  new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/v3/efc3fa619c294bc194161b66d8f3585e"));
 let amfeixAddress = "0xb0963da9baef08711583252f5000Df44D4F56925";
  
@@ -409,14 +410,13 @@ class Data extends Persistent {
   }
 
   async updateArray(arrayName, lengthName, parms) { 
-    await this.measureTime(`Update '${arrayName}' array`, async () => {
-      let countTable = tables.eth.constants;
+    await this.measureTime(`Update '${arrayName}' array`, async () => { 
       let olp = this.onLoadProgress(`Update '${arrayName}' array`);
       let countKey = ({ name: lengthName || `${arrayName}.counts` }); 
-      let alsi = (await this.getArrayLengthAndStartIndex(countTable, countKey, lengthName, parms)); 
+      let alsi = (await this.getArrayLengthAndStartIndex(tables.eth.constants, countKey, lengthName, parms)); 
       if (D(alsi.value) && !D(alsi.length)) alsi.length = parseInt(alsi.value);
      // L({arrayName, lengthName, countKey, alsi});
-      await this.updateGenericArray(olp, arrayName, alsi, countKey, countTable, tables.eth[arrayName], parms);
+      await this.updateGenericArray(olp, arrayName, alsi, countKey, tables.eth.constants, tables.eth[arrayName], parms);
     });
     await this.measureTime(`Cache '${arrayName}' array`, async () => this.syncCache.setData(arrayName, (await this.idb.getAll(tables.eth[arrayName]))));  
   } 
@@ -437,42 +437,45 @@ class Data extends Persistent {
     }, err => L(`Error while getting array length for '${countTable}-${dataTable}' for investor ${investor.data}: ${S(err)}`));
   }
 
-  async updateInvestorMappedArray(onLoadProgress, { countTable, dataTable }) { L(`uima(${countTable}, ${dataTable})`);
-    let olp = onLoadProgress;
-    let { startIndex, length, investorMapCountKey } = await this.getInvestorMapUpdateCountData(countTable, dataTable, `eth`);
-    let ix = startIndex;
-    let investors = this.syncCache.getData("investorsAddresses"); 
-    length = investors.length;
-    let localBuf = this.idb.newBuffer();
-    let completed = 0;
-    L(`uima(${countTable}, ${dataTable}) starting from ${ix}`);
-    let dp = {};
-    let donePromise = new Promise((resolve, reject) => { dp = ({resolve, reject }) });
-    let final = async () => { L('uima final');
+  async updateInvestorMappedArray(onLoadProgress, { countTable, dataTable }) { this.measureTime(`Update invsetor mapped array '${dataTable}'`, async () => {
+      //L(`uima(${countTable}, ${dataTable})`);
+      let olp = onLoadProgress;
+      let { startIndex, length, investorMapCountKey } = await this.getInvestorMapUpdateCountData(countTable, dataTable, `eth`);
+      let ix = startIndex;
+      let investors = this.syncCache.getData("investorsAddresses"); 
+      length = investors.length;
+      let localBuf = this.idb.newBuffer();
+      let completed = 0;
+      //L(`uima(${countTable}, ${dataTable}) starting from ${ix}`);
+      let dp = {};
+      let donePromise = new Promise((resolve, reject) => { dp = ({resolve, reject }) });
+      let final = async () => { //L('uima final');
+        await amfx.flushBatch(); 
+        await localBuf.flush();
+//        let total = await this.idb.count(tables.eth[dataTable]);
+  //      L(`uima(${countTable}, ${dataTable}) done at ${ix} total = ${total}`);
+        if (ix !== startIndex) await this.setData(tables.eth.constants, ({...investorMapCountKey, startIndex: ix }));
+        dp.resolve();
+      }
+      this.uiaStep2 = 0;
+      let updatesStarted = 0, updatesCompleted = 0;
+      if (ix === length) { this.updateLoadProgress(olp, ix, length); await final(); }
+      while (ix < length) {// let investor = investors[ix]; 
+        updatesStarted++;
+        this.updateInvestorArray(investors[ix++], { countTable, dataTable }, localBuf, amfx, async () => { 
+          updatesCompleted++;
+          this.updateLoadProgress(olp, ++completed, length);
+  //        L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2, completed, total: length - startIndex});
+          if (completed === length - startIndex) await final();
+        });
+      }
+      //L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2});
       await amfx.flushBatch(); 
-      await localBuf.flush();
-      let total = await this.idb.count(tables.eth[dataTable]);
-      L(`uima(${countTable}, ${dataTable}) done at ${ix} total = ${total}`);
-      if (ix !== startIndex) await this.setData(tables.eth.constants, ({...investorMapCountKey, startIndex: ix }));
-      dp.resolve();
-    }
-    this.uiaStep2 = 0;
-    let updatesStarted = 0, updatesCompleted = 0;
-    while (ix < length) {// let investor = investors[ix]; 
-      updatesStarted++;
-      this.updateInvestorArray(investors[ix++], { countTable, dataTable }, localBuf, amfx, async () => { 
-        updatesCompleted++;
-        this.updateLoadProgress(olp, ++completed, length);
-//        L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2, completed, total: length - startIndex});
-        if (completed === length - startIndex) await final();
-      });
-    }
-    L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2});
-    await amfx.flushBatch(); 
-    L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2});
-    await donePromise;
-    L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2});
-    //    this.updateLoadProgress(onLoadProgress, ix, length, true);
+      //L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2});
+      await donePromise;
+      //L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2});
+      //    this.updateLoadProgress(onLoadProgress, ix, length, true);
+    });
   }
 
   async getInvestorMapUpdateCountData(countTable, dataTable, type, lengthTable) {
@@ -540,7 +543,7 @@ class Data extends Persistent {
     }
     let invKey = { investorIx: investor.index }; //L(`Retrieving investor ${investor} data`);
 //    L(`invKey = ${S(invKey)}`);
-    let ethDataMap = x => ({ timestamp: parseInt(x.timestamp), txId: x.txId, pubKey: x.pubKey, signature: x.signature, action: x.action });
+    let ethDataMap = ([txId, pubKey, signature, action, timestamp]) => ({ timestamp: parseInt(timestamp), txId, pubKey, signature, action });
     let dataMaps = { eth: x => ({index: x.index, ...ethDataMap(oO(x.data))}), btc: x => ({index: x.index, value: BN(x.value)}) }
     let txs, reqWD;
 //    L(`getting data for investor ${investor.index}`);
@@ -591,7 +594,7 @@ class Data extends Persistent {
       let endPerf = this.performance[endIx][1];
       let appliedPerf = (startPerf[0] >= d.timestamp) ? startPerf[1] : endPerf;
 //      L(`num = ${appliedPerf.toString()}`); 
-      //d.performance = perf.toString();
+      //d.performance  = perf.toString();
       //L({appliedPerf});      L({d});
       d.finalValue = (appliedPerf.isZero() || !D(d.value)) ? U : d.value.times(endPerf.div(appliedPerf));
       d.hasWithdrawalRequest = has.Withdrawal_Requests(d) ? "Yes" : "No";
