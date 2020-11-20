@@ -457,35 +457,26 @@ class Data extends Persistent {
       length = investors.length;
       let localBuf = this.idb.newBuffer();
       let completed = 0;
-      //L(`uima(${countTable}, ${dataTable}) starting from ${ix}`);
-      let dp = {};
-      let donePromise = new Promise((resolve, reject) => { dp = ({resolve, reject }) });
-      let final = async () => { //L('uima final');
-        await amfx.flushBatch(); 
-        await localBuf.flush();
-//        let total = await this.idb.count(tables.eth[dataTable]);
-  //      L(`uima(${countTable}, ${dataTable}) done at ${ix} total = ${total}`);
-        if (ix !== startIndex) await this.setData(tables.eth.constants, ({...investorMapCountKey, startIndex: ix }));
-        dp.resolve();
-      }
-      this.uiaStep2 = 0;
-      let updatesStarted = 0, updatesCompleted = 0;
-      if (ix === length) { this.updateLoadProgress(olp, ix, length); await final(); }
-      while (ix < length) {// let investor = investors[ix]; 
-        updatesStarted++;
-        this.updateInvestorArray(investors[ix++], { countTable, dataTable }, localBuf, amfx, async () => { 
-          updatesCompleted++;
-          this.updateLoadProgress(olp, ++completed, length);
-  //        L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2, completed, total: length - startIndex});
-          if (completed === length - startIndex) await final();
+      await new Promise(async (resolve, reject) => { 
+        await new Promise(async (resolve, reject) => { 
+          if (ix === length) { this.updateLoadProgress(olp, ix, length); resolve(); }
+          while (ix < length) {// let investor = investors[ix]; 
+            this.updateInvestorArray(investors[ix++], { countTable, dataTable }, localBuf, amfx, async () => { 
+              this.updateLoadProgress(olp, ++completed, length);
+              if (completed === length - startIndex) resolve();
+            });
+          }
+          //L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2});
+          await amfx.flushBatch(); 
         });
-      }
-      //L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2});
-      await amfx.flushBatch(); 
-      //L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2});
-      await donePromise;
-      //L({updatesStarted, updatesCompleted, uiaStep2: this.uiaStep2});
-      //    this.updateLoadProgress(onLoadProgress, ix, length, true);
+        L(`uima ${dataTable} final`);
+        await amfx.flushBatch(); 
+        L(`uima ${dataTable} local buf flush`);
+        await localBuf.flush();
+        L(`uima ${dataTable} local buf done`);
+        if (ix !== startIndex) await this.setData(tables.eth.constants, ({...investorMapCountKey, startIndex: ix }));
+        resolve();
+      });
     });
   }
 
