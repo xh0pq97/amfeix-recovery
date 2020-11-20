@@ -39,7 +39,7 @@ let abi = new ABI(amfeixCjson.abi);
 //
 class MultiCallBatch {
   constructor() { this.calls = []; }
-  add(target, method, params, onSuccess, onError) { this.calls.push({ target, method, params, onSuccess, onError }); }
+  add(target, method, params, onSuccess, onError) { this.calls.push(({ target, method, params, onSuccess, onError })); }
   async execute(rpcUrl) { 
    // L(`Executing multicall length: ${this.calls.length}`)
     //L(`I = ${S(I)}`);
@@ -48,6 +48,7 @@ class MultiCallBatch {
       return ({ target: c.target, call: [`${c.method}(${m.inputs.map(x => x.type).join(",")})(${m.outputs.map(x => x.type).join(",")})`, ...c.params], returns: m.outputs.map((x, j) => [`${i}_${j}`, I])       
       })
     });
+//    L({calls});
     let response = await aggregate(calls, { rpcUrl, multicallAddress: '0x5e227AD1969Ea493B43F840cfF78d08a6fc17796' });
     let results = oO(oO(response).results).original;
     //L(`MultiCallBatch results = ${S(results)}`)
@@ -57,6 +58,7 @@ class MultiCallBatch {
         if (oO(r)._hex) { r = BN(r._hex.slice(2), 16).toString(); }
         return r;
       });
+//      L({method: c.method, parms: c.params, q});
       return c.onSuccess(q.length === 1 ? q[0] : q);
     }));
   }
@@ -73,21 +75,21 @@ class AmfeixContract {
   setFrom(address) { this.from = address; }
 
   queueOp(method, params, onSuccess, onError) { this.queuedOpCount++
-    this.queuedOps.push({ method, params, onSuccess, onError });
-    if (this.queuedOps.length - (this.nextIx + 1) >= this.batchSize) this.flushBatch(); 
+    this.queuedOps.push(({ method, params, onSuccess, onError }));
+    if (this.queuedOps.length  >= this.batchSize) this.flushBatch(); 
   } 
 
   async execute(op) { try { return await amfx.amfeixM()[op.method](...oA(op.params)).call(); } catch(err) { return { err } } }
 
   executeBatch() {
-    let batch = new MultiCallBatch(), batchNo = this.batchIx++;
+    let batch = new MultiCallBatch();//, batchNo = this.batchIx++;
 //    L(`Creating batch ${batchNo}`); 
-    while ((this.nextIx + 1 < this.queuedOps.length) && (batch.calls.length < this.batchSize)) {
-      let op = this.queuedOps[this.nextIx++];
+    for (let op of this.queuedOps) {
+//      let op = this.queuedOps[this.nextIx++];
       batch.add(amfeixAddress, op.method, oA(op.params), op.onSuccess, op.onError);
-      this.processedOpCount++;// += this.queuedOps.length;
+  //    this.processedOpCount++;// += this.queuedOps.length;
     }
-//    this.queuedOps = [];
+    this.queuedOps = [];
     
     let delay = async f => { if (this.inFlight > this.maxInFlight) { return new Promise((resolve, reject) => setTimeout(async () => { resolve(await delay(f)); }, 200)); } else { return await f(); } };
     let prevActiveBatch = this.activeBatach;
@@ -101,8 +103,8 @@ class AmfeixContract {
   }   
 
   async flushBatch() { //L('Flushing batched ops');
-    if (this.queuedOps.length > this.nextIx + 1) {
-      while (this.queuedOps.length > this.nextIx + 1) { this.executeBatch(); }
+    if (this.queuedOps.length > 0) {
+      while (this.queuedOps.length > 0) { this.executeBatch(); }
       //L('Flush almost done');
       await this.activeBatch; this.activeBatch = Promise.resolve();
       //L('Flush done');
@@ -383,20 +385,24 @@ class Data extends Persistent {
       localBuf.write(countTable, ({ ...countKey, startIndex: index, length })); //L('I'); 
       if (!D(buf)) await localBuf.flush();
       if (onLoadProgress) this.updateLoadProgress(onLoadProgress, index, length, true);
+      await oF(onDone)();
     }
     if (D(length)) {
-      w3Batcher = w3Batcher || amfx;
+      let w3b = w3Batcher || amfx;
       let completed = 0;
-      if (index === length) await oF(onDone)();
+//      L({name, startIndex, index, length});
+      if (index === length) await final(index);
       while ((index < length)) { let currentIx = index++; 
-        w3Batcher.queueOp(name, [...oA(parms), currentIx], async data => {
+        //L({name, currentIx, length});
+        w3b.queueOp(name, [...oA(parms), currentIx], async data => {
           localBuf.write(dataTable, ({ ...masterKeys, index: currentIx, data })); //L('D');
           if (onLoadProgress) this.updateLoadProgress(onLoadProgress, completed, length);
           completed++;
-          if (completed === length - startIndex) { await final(currentIx + 1); await oF(onDone)(); }
+        //  L({currentIx, length, completed, startIndex});
+          if (completed === length - startIndex) { await final(currentIx + 1); }
         }, err => { L(`Error in '${name}' array update: ${S(err)}`) });  
       }
-      if (!D(w3Batcher)) await amfx.flushBatch();
+      if (!D(w3Batcher)) { L('flushB'); await amfx.flushBatch(); }
     } else {
       try { while (!D(length) || (index < length)) { //L(`Processing item ${index} for ${name} (${dataTable}) with parms = ${S(parms)}`);
         let data = await (amfx.amfeixM()[name](...oA(parms), index).call()); //L('C');
@@ -404,8 +410,7 @@ class Data extends Persistent {
         localBuf.write(dataTable, ({ ...masterKeys, index: index++, data })); //L('D');
         if (onLoadProgress) this.updateLoadProgress(onLoadProgress, index, length); 
       } } catch {} // { L(`Array ${name} stopped at ${index}.`) } 
-      await final(index);
-      await oF(onDone)();
+      await final(index); 
     }
   }
 
@@ -414,9 +419,15 @@ class Data extends Persistent {
       let olp = this.onLoadProgress(`Update '${arrayName}' array`);
       let countKey = ({ name: lengthName || `${arrayName}.counts` }); 
       let alsi = (await this.getArrayLengthAndStartIndex(tables.eth.constants, countKey, lengthName, parms)); 
+//      L({arrayName, alsi});
       if (D(alsi.value) && !D(alsi.length)) alsi.length = parseInt(alsi.value);
-     // L({arrayName, lengthName, countKey, alsi});
-      await this.updateGenericArray(olp, arrayName, alsi, countKey, tables.eth.constants, tables.eth[arrayName], parms);
+      // L({arrayName, lengthName, countKey, alsi});
+  //    L({arrayName, alsi});
+      let dp = {};
+      let donePromise = new Promise((resolve, reject) => { dp = ({resolve, reject }) });
+      await this.updateGenericArray(olp, arrayName, alsi, countKey, tables.eth.constants, tables.eth[arrayName], parms);//, U, U, () => dp.resolve());
+      //await amfx.flushBatch();
+      //await donePromise;
     });
     await this.measureTime(`Cache '${arrayName}' array`, async () => this.syncCache.setData(arrayName, (await this.idb.getAll(tables.eth[arrayName]))));  
   } 
@@ -437,7 +448,7 @@ class Data extends Persistent {
     }, err => L(`Error while getting array length for '${countTable}-${dataTable}' for investor ${investor.data}: ${S(err)}`));
   }
 
-  async updateInvestorMappedArray(onLoadProgress, { countTable, dataTable }) { this.measureTime(`Update invsetor mapped array '${dataTable}'`, async () => {
+  async updateInvestorMappedArray(onLoadProgress, { countTable, dataTable }) { await this.measureTime(`Update invsetor mapped array '${dataTable}'`, async () => {
       //L(`uima(${countTable}, ${dataTable})`);
       let olp = onLoadProgress;
       let { startIndex, length, investorMapCountKey } = await this.getInvestorMapUpdateCountData(countTable, dataTable, `eth`);
