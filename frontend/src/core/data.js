@@ -9,6 +9,7 @@ import JSONBig from 'json-bigint';
 import Accounts from 'web3-eth-accounts';
 //import aggregate from './aggregate.js';
 import aggregate from '@makerdao/multicall/src/aggregate';
+import { pubKeyToEthAddress, pubKeyToBtcAddress } from '../core/wallet';
 
 let newDB = false //|| true;  
 
@@ -172,8 +173,7 @@ let timeFunc = async f => {
 }
  
 let getInvestorDataKey = investor => `investor_${investor.data}`;
-let getInvestorWalletDataKey = investor => `investor_Wallet_${investor.btcAddress}`;
-let getInvestorWithdrawTxDataKey = investor => `investor_WithdrawTx_${investor.btcAddress}`;
+let getInvestorWalletDataKey = investor => `investor_Wallet_${investor.btcAddress}`; 
 
 class Transaction { constructor(method, parms) { A(this, { method, parms }); } }
 
@@ -294,28 +294,32 @@ class Data extends Persistent {
 //    (async() => L(`Personal accounts: ${S(await oF(oO(w3.web3.eth.personal).getAccounts)())}`))();
   }
 
-  getFundDepositAddresses() { I('getFundDepositAddresses'); return L(this.syncCache.getData("fundDepositAddresses")).map(x => x.data); }
+  getFundDepositAddresses() { I('getFundDepositAddresses'); return L(this.syncCache.getData("fundDepositAddresses")).map(x => x.data).filter(z => z.length > 0); }
 
   async loadFundDeposits() {
-    let fundDeposits = G((F(await Promise.all((this.getFundDepositAddresses().filter(z => z.length > 0).map(async a => [a, oO(await btcRpc("GET", (`getdeposits/toAddress/${a}`))).data]))))), 
+    let fundDeposits = G((F(await Promise.all((this.getFundDepositAddresses().map(async a => [a, oO(await btcRpc("GET", (`getdeposits/toAddress/${a}`))).data]))))), 
       v => oA(v && v.map(decodeFundDeposit)));
     this.syncCache.setData("fundDeposits", (fundDeposits));
     L(`Loaded fund deposits`);
     //L({fundDeposits})
   };
 
-  async retrieveInvestorFundTxData(investor) { /*
-    let key = this.getInvestorFundTxDataKey(investor);
-    let cached = await this.syncCache.getData(key);
-    if (D(cached)) return cached;  
-    let fundDeposits = G((F(await Promise.all((this.getFundDepositAddresses().map(async a => [a, oO(await btcRpc("GET", `getdeposits/toAddress/${a}`)).data]))))), v => v.map(decodeFundDeposit)); 
-    this.syncCache.setData(key, (fundDeposits));
-    L(`Loaded fund tx for investor ${S(investor)}`)
-    L({fundDeposits})  */
+  async retrieveInvestorInvestmentTxData(investor) { L({investor});
+    let fundDeposits = G((F(await Promise.all((this.getFundDepositAddresses().map(async a => [a, oO(await btcRpc("GET", `getdeposits/toAddress/${a}/fromPublicKey/${investor.pubKey}`)).data]))))), v => v.map(decodeFundDeposit)); 
+    L(`Loaded fund tx for investor ${S(investor)}: ${S(fundDeposits)}`)
+    return fundDeposits; 
   }
 
   async retrieveInvestorWalletData(investor) {
-    return {};
+    let key = getInvestorWalletDataKey(investor);
+    let cached = await this.syncCache.getData(key);
+    if (D(cached)) return cached;  
+
+    let d = {
+      Investments: await this.retrieveInvestorInvestmentTxData(investor)
+    };
+    this.syncCache.setData(key, d);
+    return d;
   }
 
   getDecimals() { return this.syncCache.getData('decimals'); } 
@@ -522,9 +526,7 @@ class Data extends Persistent {
       investors.push(i);
       investor.Deposits.forEach(d => { approvedDeposits[d.txId] = true; });
     }   
-    L(`${V(approvedDeposits).length} approved deposits`);
-    L(`${V(fundDeposits).length} fund deposits`);
-    L(`${S(approvedDeposits)}`);
+    this.syncCache.set({ investorsAddresses }); 
     this.syncCache.set({ investors, withdrawalRequests: investors.map(i => i.Withdrawal_Requests).flat(), pendingDeposits: G(fundDeposits, v => v.filter(d => !approvedDeposits[d.txId])) });  
     this.updateLoadProgress(olp, investorsAddresses.length, investorsAddresses.length);
   }); };
@@ -572,6 +574,30 @@ class Data extends Persistent {
 
     let toObj = a => F(a.map(e => [e.txId, e]));
     let dedup = d => V(toObj(d)); // XXX: does not check if duplicates are identical -- only retains one of them with same txId  
+    /*
+Pubkey error for (515) 33ns4GGpz7vVAfoXDpJttwd7XkwtnvtTjw," tools.mjs:18
+"Pubkey error for (1061) 03f3f296282085762aae8cc08c30b205143d74e3a736234bbf74a6028bcac87bc0" tools.mjs:18
+"Pubkey error for (3428) 3045022100ca261c4e385445c6596e4446d1fb92c718714262d5f32fa13dd1865fb092c252022028a8abad0645ce08f4179693ae6bcfcc08f2740557470ced5b44f3502a2ef41201" tools.mjs:18
+"Pubkey error for (3429) 76a914c969fb8ddb66f004e731cb518a045ee6c0b1d3bf88ac,473044022015ebfbc1cd9571eb00a8d0f3c077e363e84aebfb620ac39d7dcec9b0941844d30220411909933fc071840eea9be044af77365c048421d40027451c44e621038d499a0121026d5d1efa67c0a7f9579a0bfb97743a5c2dfa9b648f7a9ccc15a47ab37ffecbd9" tools.mjs:18
+"Pubkey error for (3437) 76a914c969fb8ddb66f004e731cb518a045ee6c0b1d3bf88ac" tools.mjs:18
+"Pubkey error for (3438) 76a914c969fb8ddb66f004e731cb518a045ee6c0b1d3bf88ac"
+    */
+    try {
+      let pubKeys = {};
+      txs.forEach(x => { if (!D(pubKeys[x.pubKey])) pubKeys[x.pubKey] = true; });
+      pubKeys = K(pubKeys);
+      investor.pubKeys = pubKeys.join(" : ");
+      investor.pubKeyCount = pubKeys.length;
+      investor.derivedEthAddresses = pubKeys.map(z => pubKeyToEthAddress(z, true)).join(" : "); 
+      investor.derivedBtcAddresses = pubKeys.map(z => pubKeyToBtcAddress(z)).join(" : ");  
+      investor.error = "No";
+      investor.pubKey = pubKeys[0];
+      investor.btcAddress = investor.derivedBtcAddresses[0];
+    } catch (err) { investor.pubKeys = []; investor.error = "Yes"; } 
+//    try {
+  //    investor.pubKeys = K(F(txs.map(x => [x.pubKey, true]))).map(z => `${(z)}` + (`(eth: ${pubKeyToEthAddress(z)}`) + (`btc: ${pubKeyToBtcAddress(z)})`));
+    //} catch (err) { investor.pubKeys = []; L(`Pubkey error for (${investor.index}) ${K(F(txs.map(x => [x.pubKey, true])))}`) } 
+    //investor.pubKeyCount = investor.pubKeys.length;
     let data = F(["Deposits", "Withdrawals"].map((k, i) => [k, dedup(txs.filter(x => x.action === S(i)))]));
     data.Withdrawal_Requests = dedup(reqWD);
     let objs = G(data, toObj);

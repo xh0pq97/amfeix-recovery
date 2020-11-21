@@ -5,17 +5,16 @@ import { data, getInvestorWalletDataKey, getInvestorDataKey, stati } from '../co
 // eslint-disable-next-line
 import { tabulize, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, ValidatableComp, wrapEllipsisDiv, displayBtcTransaction, OpenDialogButton, Comp, TabbedView, List, cleanText, button, TabTimeline } from './components'; 
 
-class InvestorDependentView extends Comp {
+class DataDependentView extends Comp {
   componentDidMount() { this.componentDidUpdate({}); }
   componentDidUpdate(prevP) { if (prevP.investor !== this.props.investor) this.updateInvestor(this.props.investor); } 
 } 
-
-class InvestorDependentView_Eth extends InvestorDependentView { 
+class InvestorDependentView_Eth extends DataDependentView { 
   updateInvestor(investor) { if (investor) { this.addSyncKeyObserver(data, getInvestorDataKey(investor)); data.retrieveInvestorData(investor); } }
   getInvestorData() { return oO(this.props.investor && this.state[getInvestorDataKey(this.props.investor)]); }
 } 
 
-class InvestorDependentView_Btc extends InvestorDependentView { 
+class InvestorDependentView_Btc extends DataDependentView { 
   updateInvestor(investor) { if (investor) { this.addSyncKeyObserver(data, getInvestorWalletDataKey(investor)); data.retrieveInvestorWalletData(investor); } }
   getInvestorWalletData() { return oO(this.props.investor && this.state[getInvestorWalletDataKey(this.props.investor)]); }
 } 
@@ -37,8 +36,7 @@ class EthTxView extends InvestorDependentView_Eth {
   }
 }
 
-class InvestorList extends Comp {
-  componentDidMount() { this.addSyncKeyObserver(data, "investorsAddresses"); }
+class InvestorList extends Comp { componentDidMount() { this.addSyncKeyObserver(data, "investorsAddresses"); }
   ren(p, s) { return <List caption={p.caption || "Investors"} data={s.investorsAddresses} onChange={d => oF(p.onChangedSelectedInvestor)(oA(s.investorsAddresses)[d.selectedIx])} />; }
 }
 

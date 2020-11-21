@@ -33,10 +33,18 @@ urlParams.testMode = D(L(getUrlParam("8e763620037a1054b3656092dece8d324eef5dd5ef
 class Settings extends Comp {
   ethInterfaceChanged(v) { data.setEthRPCUrl(ethInterfaceUrls[v]) }
   ren(p, s) { 
-    return tabulize(1/3, [[ 
-      <Selector options={ethInterfaceUrls} onChanged={v => this.ethInterfaceChanged(v)}/>],
-      [button("Clear data cache", () => {})],
+    return tabulize(1/3, [
+      [<Selector options={ethInterfaceUrls} onChanged={v => this.ethInterfaceChanged(v)}/>],
       [button("Compute data", () => { data.computeData(); })],
+    ]) 
+  }
+}
+
+class Cache extends Comp {
+  ethInterfaceChanged(v) { data.setEthRPCUrl(ethInterfaceUrls[v]) }
+  ren(p, s) { 
+    return tabulize(1/3, [
+      [button("Clear data cache", () => {})],
       [button("Clear bitcoin transaction cache", async () => { await data.clearTransactionCache('btc'); })], //  window.location.reload();
       [button("Clear ethereum registered transaction cache", async () => { await data.clearTransactionCache('eth'); })]
     ]) 
