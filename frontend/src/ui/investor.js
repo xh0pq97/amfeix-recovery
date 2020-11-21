@@ -23,7 +23,7 @@ let applyWithdrawalRequestStatus = wr => { A(oO(wr.status), { caption: "Action",
 class Withdraw extends Comp { ren(p, s) { return <TabTimeline tabs={{ ValidatableComp }} onAccept={p.onAccept} />; } }
 
 class InvestorID extends Comp {
-  ren(p, s) { let i = oO(p.investor); return tabulize(1/7, [['Public key', i.publicKey || '?'], ['Investor address (eth)', i.data || '?'], ['Wallet address (btc)', i.btcAddress || '?']]) }
+  ren(p, s) { let i = oO(p.investor); return tabulize(1/7, [['Public key', i.pubKey || '?'], ['Investor address (eth)', i.data || '?'], ['Wallet address (btc)', i.btcAddress || '?']]) }
 }
 
 class EthTxView extends InvestorDependentView_Eth { 

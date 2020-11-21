@@ -68,7 +68,7 @@ class MainView extends Comp { //constructor(p, s) { super(p, s);}
     else { this.startWalletOp("Decrypting", () => wallet.open(d.creds, status => this.setState({ walletCodecProgress: status.percent }))); }
     return true;
   }
-  ren(p, s) { let tabs = A({ Progress, Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Admin, Network, Settings, Features }) : ({}));
+  ren(p, s) { let tabs = A({ Progress, Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Admin, Network, Settings, Cache, Features }) : ({}));
 //    {p.EUserMode.Admin ? <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/> : null}
     return <><AppBar position="static"><Toolbar><p>{`Version >= ${version}`}</p><OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/>
       {D(oO(p.wallet).lastLogin) ? button("Log out", () =>  ({ })) : null}
@@ -80,7 +80,7 @@ class MainView extends Comp { //constructor(p, s) { super(p, s);}
 
 let investor;
 if (urlParams.asEthAddress) investor = { data: urlParams.asEthAddress };
-if (urlParams.asPublicKey) investor = { data: L("0x" + pubKeyToEthAddress(urlParams.asPublicKey)), publicKey: urlParams.asPublicKey, btcAddress: L(pubKeyToBtcAddress(urlParams.asPublicKey)) }
+if (urlParams.asPublicKey) investor = { data: L("0x" + pubKeyToEthAddress(urlParams.asPublicKey)), pubKey: urlParams.asPublicKey, btcAddress: L(pubKeyToBtcAddress(urlParams.asPublicKey)) }
 
 L(`Initializing with investor ${S(investor)}`);
 

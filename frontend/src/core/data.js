@@ -589,10 +589,11 @@ Pubkey error for (515) 33ns4GGpz7vVAfoXDpJttwd7XkwtnvtTjw," tools.mjs:18
       investor.pubKeys = pubKeys.join(" : ");
       investor.pubKeyCount = pubKeys.length;
       investor.derivedEthAddresses = pubKeys.map(z => pubKeyToEthAddress(z, true)).join(" : "); 
-      investor.derivedBtcAddresses = pubKeys.map(z => pubKeyToBtcAddress(z)).join(" : ");  
+      investor.derivedBtcAddresses = pubKeys.map(z => pubKeyToBtcAddress(z));  
       investor.error = "No";
       investor.pubKey = pubKeys[0];
       investor.btcAddress = investor.derivedBtcAddresses[0];
+      investor.derivedBtcAddresses = investor.derivedBtcAddresses.join(" : ");  
     } catch (err) { investor.pubKeys = []; investor.error = "Yes"; } 
 //    try {
   //    investor.pubKeys = K(F(txs.map(x => [x.pubKey, true]))).map(z => `${(z)}` + (`(eth: ${pubKeyToEthAddress(z)}`) + (`btc: ${pubKeyToBtcAddress(z)})`));
