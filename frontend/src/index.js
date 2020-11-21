@@ -19,8 +19,7 @@ import { InvestorID, InvestorList, EthTxView, InvestorDependentView } from './ui
 import { wallet, pubKeyToEthAddress, pubKeyToBtcAddress } from './core/wallet';
 // eslint-disable-next-line
 import { basePallette, getMainLightness, seriesColors, getMainColor, darkMode } from './ui/colors';
-import { version } from './version.js';
-import { features } from './projectManagement/features';
+import { version } from './version.js'; 
 import { data, ethInterfaceUrls } from './core/data'; 
 // eslint-disable-next-line
 import { EPallette, EUserMode, EDeveloperMode, enumDefault, enumDefObj } from './core/enums';  
@@ -50,16 +49,7 @@ class Cache extends Comp {
     ]) 
   }
 }
-
-class Features extends Comp { ren(p, s) { // <Typography><div style={{textAlign: "left", backgroundColor: 'hsla(0, 0, 0, 10%)'}}>{f.name}</div></Typography>
-    let mapFeature = (f, i) => <div key={i} style={{borderStyle: "solid", borderWidth: "1px", borderRadius: "0.3em", borderColor: "#27F"}}>{tabulize(0, [
-      [tabulize(1/9, [[<div style={{textAlign: "left"}}>{f.name}</div>, <FormControlLabel control={<Switch/>} label={"Done"}/>, <FormControlLabel control={<Switch/>} label={"Tested"}/>]])],
-      [<div>{D(f.subFeatures) ? tabulize(1/9, (f.subFeatures ? mapFeatures(f.subFeatures) : []).map(x => [x])) : null}</div>]
-    ])}</div>
-    let mapFeatures = v => oA(v).map(mapFeature); 
-    return mapFeatures([features]);
-  }
-}
+ 
 // wc52mNR2qTpFfNP 
 class MainView extends Comp { //constructor(p, s) { super(p, s);} 
   startWalletOp(walletOperation, f) { this.setState({ walletOperation, progressDialogOpen: true }, () => setTimeout(async () => { await f(); this.setState({ progressDialogOpen: false }) }, 500));  }
@@ -68,7 +58,7 @@ class MainView extends Comp { //constructor(p, s) { super(p, s);}
     else { this.startWalletOp("Decrypting", () => wallet.open(d.creds, status => this.setState({ walletCodecProgress: status.percent }))); }
     return true;
   }
-  ren(p, s) { let tabs = A({ Progress, Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Admin, Network, Settings, Cache, Features }) : ({}));
+  ren(p, s) { let tabs = A({ Progress, Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Admin, Network, Settings, Cache }) : ({}));
 //    {p.EUserMode.Admin ? <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/> : null}
     return <><AppBar position="static"><Toolbar><p>{`Version >= ${version}`}</p><OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/>
       {D(oO(p.wallet).lastLogin) ? button("Log out", () =>  ({ })) : null}
