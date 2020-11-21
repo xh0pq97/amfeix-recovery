@@ -37,7 +37,7 @@ class EthTxView extends InvestorDependentView_Eth {
 }
 
 class InvestorList extends Comp { componentDidMount() { this.addSyncKeyObserver(data, "investorsAddresses"); }
-  ren(p, s) { return <List caption={p.caption || "Investors"} data={s.investorsAddresses} onChange={d => oF(p.onChangedSelectedInvestor)(oA(s.investorsAddresses)[d.selectedIx])} />; }
+  ren(p, s) { return <List caption={p.caption || "Investors"} data={s.investorsAddresses} headers={V(genHeaders(s.investorsAddresses))} onChange={d => oF(p.onChangedSelectedInvestor)(oA(s.investorsAddresses)[d.selectedIx])} />; }
 }
 
 export { InvestorList, InvestorID, EthTxView, applyWithdrawalRequestStatus, InvestorDependentView_Eth, InvestorDependentView_Btc }

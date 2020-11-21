@@ -15,6 +15,8 @@ let newDB = false //|| true;
 
 let stati = { Deposits: makeEnum("Active Withdrawn Withdrawal_Requested"), Withdrawal_Requests: makeEnum("Pending Processed") }; 
 
+let anomalousInvestorIndexMap = F([2339, 74, 418, 419, 424, 464, 515, 3429, 515, 1061, 3428, 3429, 3437, 3438].map(i => [(i), true]));
+
 let hostname = window.location.hostname;
 hostname = (hostname === "localhost") ? "spacetimemanifolds.com" : hostname;
 const btcRpcUrl = `https://btc.${hostname}/`; //`http://157.245.35.34/`,  
@@ -260,9 +262,13 @@ class Data extends Persistent {
     await Promise.all(investorMaps.map(m => this.updateBitcoinTxs(this.onLoadProgress(`Bitcoin transactions: ${m.dataTable}`), m))); 
   }); }
 
+  async updateInvestorAddresses() { await this.measureTime("Update Investor Addresses", async () => {
+    await this.updateArray("investorsAddresses");  
+  }); }
+
   async genericLoad() { await this.measureTime("Generic Load", async () => {
     await this.basicLoad(); 
-    await this.updateArray("investorsAddresses");  
+    await this.updateInvestorAddresses(); this.onGlobalLoad(4);
     await this.updateRegisteredTransactions(); this.onGlobalLoad(5);
     this.onGlobalLoad(5, 5, true);
     for (let q of oA(this.functionsToPerformAfterGenericLoad)) await q();
@@ -417,7 +423,7 @@ class Data extends Persistent {
     }
   }
 
-  async updateArray(arrayName, lengthName, parms) { 
+  async updateArray(arrayName, lengthName, parms, postProcess) { 
     await this.measureTime(`Update '${arrayName}' array`, async () => { 
       let olp = this.onLoadProgress(`Update '${arrayName}' array`);
       let countKey = ({ name: lengthName || `${arrayName}.counts` }); 
@@ -516,11 +522,16 @@ class Data extends Persistent {
     let fundDeposits =  this.syncCache.getData("fundDeposits"); 
     let investors = [];
     let investorsAddresses = this.syncCache.getData("investorsAddresses"); let olp = this.onLoadProgress("Computing data structures");  
+    L(`Investor 3428: ${S(investorsAddresses[3428])}`);
+    L(anomalousInvestorIndexMap[3428]);
     let d = await Promise.all(investorMaps.map(async im => await Promise.all(['eth', 'btc'].map(t => this.idb.getAll(tables[t][im.dataTable])))));
     let e = d.map(im => im.map(x => F(x.map(z => [z.investorIx, []]))));
     d.forEach((im, a) => im.forEach((x, b) => x.forEach(z => { e[a][b][z.investorIx].push(z); } ))); 
     let approvedDeposits = {};
+//    L({investorsAddresses});
     for (let ix = 0; ix < investorsAddresses.length; ++ix) { this.updateLoadProgress(olp, ix, investorsAddresses.length);
+      if (ix === 3428) L(`3428: ${S(investorsAddresses[ix])}`);
+      if (investorsAddresses[ix].index === 3428) L(`3428': ${S(investorsAddresses[ix])}`);
       let investor = await this.retrieveInvestorData(investorsAddresses[ix], U, e); 
       let i = { index: investorsAddresses[ix].index, address: investorsAddresses[ix].data, investmentValue: investor.investmentValue, Withdrawal_Requests: investor.Withdrawal_Requests };
       investors.push(i);
@@ -533,7 +544,7 @@ class Data extends Persistent {
 
   async retrieveInvestorData(investor, lengths, allData) { //L(`retrieveInvestorData = ${S(investor)}`);
     let cached = this.syncCache.getData(getInvestorDataKey(investor));
-    if (cached) return cached;
+    if (cached) { L('cached'); return cached; }
     if (!D(investor.index)) {
       L(`finding index for investor.data = ${investor.data}`);
       let i = await this.idb.get(tables.eth.investorsAddresses, { data: investor.data }, "data", ["data"]);
@@ -555,8 +566,7 @@ class Data extends Persistent {
 //        process.exit();
       });
     } else {
-      let getList = async (m, j) => { 
-        L({invKey});
+      let getList = async (m, j) => {  
         let fastLength = (oO(oA(lengths)[j]))[(invKey.investorIx)];
         let length = D(fastLength) ? (fastLength) : ((oO(await this.idb.get((tables.eth[(m).countTable]), (invKey)))).length || 0);
         let [e, b] = await Promise.all(['eth', 'btc'].map(async t => {             
@@ -573,32 +583,17 @@ class Data extends Persistent {
     }
 
     let toObj = a => F(a.map(e => [e.txId, e]));
-    let dedup = d => V(toObj(d)); // XXX: does not check if duplicates are identical -- only retains one of them with same txId  
-    /*
-Pubkey error for (515) 33ns4GGpz7vVAfoXDpJttwd7XkwtnvtTjw," tools.mjs:18
-"Pubkey error for (1061) 03f3f296282085762aae8cc08c30b205143d74e3a736234bbf74a6028bcac87bc0" tools.mjs:18
-"Pubkey error for (3428) 3045022100ca261c4e385445c6596e4446d1fb92c718714262d5f32fa13dd1865fb092c252022028a8abad0645ce08f4179693ae6bcfcc08f2740557470ced5b44f3502a2ef41201" tools.mjs:18
-"Pubkey error for (3429) 76a914c969fb8ddb66f004e731cb518a045ee6c0b1d3bf88ac,473044022015ebfbc1cd9571eb00a8d0f3c077e363e84aebfb620ac39d7dcec9b0941844d30220411909933fc071840eea9be044af77365c048421d40027451c44e621038d499a0121026d5d1efa67c0a7f9579a0bfb97743a5c2dfa9b648f7a9ccc15a47ab37ffecbd9" tools.mjs:18
-"Pubkey error for (3437) 76a914c969fb8ddb66f004e731cb518a045ee6c0b1d3bf88ac" tools.mjs:18
-"Pubkey error for (3438) 76a914c969fb8ddb66f004e731cb518a045ee6c0b1d3bf88ac"
-    */
+    let dedup = d => V(toObj(d)); // XXX: does not check if duplicates are identical -- only retains one of them with same txId   
     try {
-      let pubKeys = {};
-      txs.forEach(x => { if (!D(pubKeys[x.pubKey])) pubKeys[x.pubKey] = true; });
-      pubKeys = K(pubKeys);
-      investor.pubKeys = pubKeys.join(" : ");
-      investor.pubKeyCount = pubKeys.length;
-      investor.derivedEthAddresses = pubKeys.map(z => pubKeyToEthAddress(z, true)).join(" : "); 
-      investor.derivedBtcAddresses = pubKeys.map(z => pubKeyToBtcAddress(z));  
-      investor.error = "No";
-      investor.pubKey = pubKeys[0];
-      investor.btcAddress = investor.derivedBtcAddresses[0];
-      investor.derivedBtcAddresses = investor.derivedBtcAddresses.join(" : ");  
-    } catch (err) { investor.pubKeys = []; investor.error = "Yes"; } 
-//    try {
-  //    investor.pubKeys = K(F(txs.map(x => [x.pubKey, true]))).map(z => `${(z)}` + (`(eth: ${pubKeyToEthAddress(z)}`) + (`btc: ${pubKeyToBtcAddress(z)})`));
-    //} catch (err) { investor.pubKeys = []; L(`Pubkey error for (${investor.index}) ${K(F(txs.map(x => [x.pubKey, true])))}`) } 
-    //investor.pubKeyCount = investor.pubKeys.length;
+      investor.pubKey = oO(oA(txs)[0]).pubKey;
+      investor.derivedEthAddress = pubKeyToEthAddress(investor.pubKey, true); 
+      investor.btcAddress = pubKeyToBtcAddress(investor.pubKey);   
+      investor.anomalous = anomalousInvestorIndexMap[investor.index] ? "Yes" : "No";
+      if (investor.derivedEthAddress.toLowerCase() != investor.data.toLowerCase()) {
+        L(`Investor (${investor.index}): Address discrepancy ${investor.data} !== ${investor.derivedEthAddress}`)
+      }
+    } catch (err) { investor.pubKeys = []; investor.error = "Yes"; investor.anomalous = "Yes"; } 
+    
     let data = F(["Deposits", "Withdrawals"].map((k, i) => [k, dedup(txs.filter(x => x.action === S(i)))]));
     data.Withdrawal_Requests = dedup(reqWD);
     let objs = G(data, toObj);

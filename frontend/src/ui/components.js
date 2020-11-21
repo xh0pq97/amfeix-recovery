@@ -63,7 +63,7 @@ class ListView extends Comp {
     let headers = p.headers || K(oO(oA(p.data)[0])).map(h => ({ label: h, caption: h }));
     let rows = oA(p.data).map((d, _id) => ({ _id, ...d }));
     if (D(s.sortColumn)) rows = rows.sort((a, b) => { let h = headers[s.sortColumn];
-      let x = (h.compare || ((x, y) => x - y))(a[h.label], b[h.label]);
+      let x = (h.compare || ((x, y) => (x === y ? 0 : (x < y ? -1 : 1))))(a[h.label], b[h.label]);
       return [x, -x][s.sortOrder];
     });
     let elimObjects = (d, h) => { if (isO(d)) { L(`${h} is an object: ${S(K(d))}`); } else return d; };
@@ -78,7 +78,7 @@ class ListView extends Comp {
           {p.checkable ? <TableCell padding="checkbox"><Checkbox checked={isChecked(d)} inputProps={{ 'aria-labelledby': i }} /></TableCell> : null}
           {headers.map((h, j) => <TableCell key={j} align={h.align || "center"}>{(h.displayFunc || I)(d[h.label], d)}</TableCell>)}
         </TableRow>)}</TableBody>
-        {oA(p.data).length > 5 ? <TableFooter><TableRow><TablePagination component={TableCell} colSpan={(columnCount - 1)} rowsPerPageOptions={[5, 10, 25]} count={rows.length} rowsPerPage={s.rowsPerPage} page={s.page} onChangePage={(e, page) => X({ page })} onChangeRowsPerPage={e => X({ rowsPerPage: parseInt(e.target.value, 10) })} /></TableRow></TableFooter> : null}
+        {oA(p.data).length > 5 ? <TableFooter><TableRow><TablePagination component={TableCell} colSpan={(columnCount - 1)} rowsPerPageOptions={[5, 10, 25, 50, 100, 250, 500, 1000]} count={rows.length} rowsPerPage={s.rowsPerPage} page={s.page} onChangePage={(e, page) => X({ page })} onChangeRowsPerPage={e => X({ rowsPerPage: parseInt(e.target.value, 10) })} /></TableRow></TableFooter> : null}
       </Table></TableContainer>   
   }
 }

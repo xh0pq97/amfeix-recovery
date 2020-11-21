@@ -46,6 +46,8 @@ let generateForm = (preambleText, aa) => {
 let changeDataForms = {
   Owner: generateForm("Please enter the new Owner", [[textField("Owner")]]),
   AUM: generateForm("Please enter the new AUM", [[textField("AUM")]]),
+  BtcPrice: generateForm("Please enter the new BtcPrice", [[textField("BtcPrice")]]),
+  RequestGas: generateForm("Please enter the new AUM", [[textField("RequestGas")]]),
   Daily_change: generateForm("Please enter the new Daily_change", [[textField("Daily_change")]]),
   Fees: generateForm("Please enter the new Fees", [T("fee1 fee2 fee3").map(textField)]),
   Fund_deposit_address: generateForm("Please enter the new Fund_deposit_address", [[textField("Fund_deposit_address")]]),
@@ -69,6 +71,8 @@ let qEthTx = (method, params) => data.queuedEthTransactions.push(L(new Transacti
 class Change_data extends Comp { 
   Owner(d) { qEthTx("transferOwnership", [BN(d["Owner"]).toString()]); }
   AUM(d) { qEthTx("setAum", [BN(d["AUM"]).times(data.getFactor()).toString()]); }
+  BtcPrice(d) { qEthTx("setBtcPrice", [BN(d["BtcPrice"]).times(data.getFactor()).toString()]); }
+  RequestGas(d) { qEthTx("setRequestGas", [BN(d["RequestGas"]).toString()]); }
   Daily_change(d) { qEthTx("setDataBlock", [(BN(d["Daily_change"]).times(data.getFactor())).toFixed().toString()]); }
   Fees(d) { d = G(d, x => BN(x).toString()); qEthTx("setFee", [d["fee1"], d["fee2"], d["fee3"]]); }
   Fund_deposit_address(d) { qEthTx("setfundDepositAddress", [d["Fund_deposit_address"]]) }
