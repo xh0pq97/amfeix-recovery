@@ -1,12 +1,13 @@
 import dotenv from "dotenv"; import request from "request";
 //const rpcMethods = require("./routes/api");
-import * as bip32 from 'bip32';
+//import * as bip32 from 'bip32';
 import JSONBig from 'json-bigint';
 import BigNumber from 'bignumber.js';
 import bs58check from 'bs58check'; 
 import { A, D, E, F, I, K, L, P, S, T, U, V, oA, oO, oS, oF, singleKeyObject } from './tools.mjs'; 
 import mariadb from  'mariadb';
 import Memcached from 'memcached';
+import { investors } from './investorData.mjs';
 dotenv.config(); const cfg = process.env;  
 
 const verbose = true; 
@@ -67,6 +68,54 @@ let coin = (new BigNumber(10)).pow(18);
 
 let pubKeyFromScriptSig = ss => { let asm = oS(oO(ss).asm), k = "[ALL] "; let p = asm.indexOf(k); return p >= 0 ? asm.substr(p + k.length) : U; }
 
+let fundDepositAddresses = ["33ns4GGpz7vVAfoXDpJttwd7XkwtnvtTjw"];
+let fundDepositPubKeys = ["03f1da9523bf0936bfe1fed5cd34921e94a78cac1ea4cfd36b716e440fb8de90aa"];
+
+// Deposits --> Transfer to inv btc address 
+// Withdrawals --> Transfer from inv pub key
+// Returns --> Transfer from fund deposit pub key to inv btc address
+// --> Scan for transfers 
+// * to inv btc address 
+// * from inv pub key
+
+let watchedToAddresses = fundDepositAddresses.concat(investors.map(x => x.btcAddress));
+let watchedFromPubKeys = fundDepositPubKeys.concat(investors.map(x => x.pubKey));
+let watchedToAddressesMap = F(watchedToAddresses.map(k => [k, true]));
+let watchedFromPubKeysMap = F(watchedFromPubKeys.map(k => [k, true]));
+
+let processTransaction = async (tx, idBlock, conn) => {
+  let idTransaction;
+  let getIdTransaction = async () => (D(idTransaction) ? idTransaction : (idTransaction = (await insertIfNotExists(conn, "transaction", { v:  htb(tx.txid) })).id)); 
+
+  let foundWatchedToAddress = false;
+  for (let ix = 0; ix < tx.vout.length; ++ix) { let vout = tx.vout[ix]; 
+    if (D(vout.scriptPubKey)) for (let toAddress of oA(vout.scriptPubKey.addresses)) {
+      if (watchedToAddressesMap[toAddress]) { foundWatchedToAddress = true;
+        let idToAddress = (await insertIfNotExists(conn, "address", { v: bs58check.decode(toAddress) })).id;
+        if (D(idToAddress)) {
+          let value = (new BigNumber(new BigNumber(vout.value).multipliedBy(coin).toFixed())).toString(16);
+          if (value.length % 2 === 1) value = '0' + value; 
+          await insertIfNotExists(conn, "vout", { idToAddress, idBlock, idTransaction: await getIdTransaction(), ix, value: htb(value) }, T("idToAddress idBlock idTransaction ix")); 
+        }
+      }
+    }
+  } 
+
+  let foundWatchedFromPubKey = false;
+  for (let ix = 0; ix < tx.vin.length; ++ix) { let vin = tx.vin[ix];
+    let pubKey = pubKeyFromScriptSig(vin.scriptSig);
+    vin.pubKey = pubKey && pubKey.length === 66 ? pubKey : U; 
+    if (watchedFromPubKeysMap[vin.pubKey]) foundWatchedFromPubKey = true;
+  }
+  if (foundWatchedFromPubKey || foundWatchedToAddress) for (let ix = 0; ix < tx.vin.length; ++ix) { let vin = tx.vin[ix];
+    let idSourceTransaction = D(vin.txid) ? (await insertIfNotExists(conn, "transaction", { v : htb(vin.txid) })).id : U;
+    let idPubKey = vin.pubKey ? (await insertIfNotExists(conn, "pubKey", { v: htb(vin.pubKey) })).id : U;
+    if (idSourceTransaction) { let srcTx = { voutIx: vin.vout, idPubKey, idTransaction: await getIdTransaction(), idSourceTransaction };
+      await insertIfNotExists(conn, "vin", P(srcTx, K(srcTx).filter(k => D(srcTx[k]))));
+    }
+  }
+}
+
 let blockScan = (async (offset) => { let conn = await pool.getConnection(); //LOG('DB connection opened.') // Create db
   try {
     for (let x of objGenesis) await conn.query((x)); 
@@ -80,40 +129,7 @@ let blockScan = (async (offset) => { let conn = await pool.getConnection(); //LO
       if (D(idBlock) && !(r.processed === 1)) { 
         let block = await rpc("getblock", [blockHash]);
         await conn.query("UPDATE block SET time = FROM_UNIXTIME(?) WHERE id = ?", [block.time, idBlock]);
-        for (let txHash of block.tx) { 
-          let tx = await rpc("decoderawtransaction", [(await rpc("getrawtransaction", [txHash]))]);
-          let idTransaction;
-          let getIdTransaction = async () => (D(idTransaction) ? idTransaction : (idTransaction = (await insertIfNotExists(conn, "transaction", { v:  htb(tx.txid) })).id)); 
-
-          let foundFundDeposit = false;
-          for (let ix = 0; ix < tx.vout.length; ++ix) { let vout = tx.vout[ix]; 
-            if (D(vout.scriptPubKey)) {
-              for (let toAddress of oA(vout.scriptPubKey.addresses)) {
-                if (//(toAddress[0] === "1") || 
-                (toAddress === "33ns4GGpz7vVAfoXDpJttwd7XkwtnvtTjw")) { foundFundDeposit = true;
-                  let idToAddress = (await insertIfNotExists(conn, "address", { v: bs58check.decode(toAddress) })).id;
-                  if (D(idToAddress)) {
-                    let value = (new BigNumber(new BigNumber(vout.value).multipliedBy(coin).toFixed())).toString(16);
-                    if (value.length % 2 === 1) value = '0' + value; 
-                    await insertIfNotExists(conn, "vout", { idToAddress, idBlock, idTransaction: await getIdTransaction(), ix, value: htb(value) }, T("idToAddress idBlock idTransaction ix")); 
-                  }
-                }
-              }
-            }
-          } 
-
-          if (foundFundDeposit)
-          for (let ix = 0; ix < tx.vin.length; ++ix) { let vin = tx.vin[ix];
-            let pubKey = pubKeyFromScriptSig(vin.scriptSig);
-            pubKey = pubKey && pubKey.length === 66 ? pubKey : U; 
-            let idPubKey = pubKey ? (await insertIfNotExists(conn, "pubKey", { v: htb(pubKey) })).id : U;
-            let idSourceTransaction = D(vin.txid) ? (await insertIfNotExists(conn, "transaction", { v : htb(vin.txid) })).id : U;
-            if (idSourceTransaction) { let srcTx = { voutIx: vin.vout, idPubKey, idTransaction: await getIdTransaction(), idSourceTransaction };
-              await insertIfNotExists(conn, "vin", P(srcTx, K(srcTx).filter(k => D(srcTx[k]))));
-            }
-          }
-
-        } 
+        for (let txHash of block.tx) await processTransaction(await rpc("decoderawtransaction", [(await rpc("getrawtransaction", [txHash]))]), idBlock, conn);
         await conn.query("UPDATE block SET processed = 1 WHERE id = ?", [idBlock]); 
       }
     }

@@ -9,7 +9,7 @@ import JSONBig from 'json-bigint';
 import Accounts from 'web3-eth-accounts';
 //import aggregate from './aggregate.js';
 import aggregate from '@makerdao/multicall/src/aggregate';
-import { pubKeyToEthAddress, pubKeyToBtcAddress } from '../core/wallet';
+import { pubKeyToEthAddress, pubKeyToBtcAddress } from "./crypto";
 
 let newDB = false //|| true;  
 
@@ -519,25 +519,19 @@ class Data extends Persistent {
   async measureTime(name, promise) { this.loadProgress.timings[name] = (await timeFunc(promise)).time; } 
 
   async computeData() { await this.measureTime("computeData", async () => {
-    let fundDeposits =  this.syncCache.getData("fundDeposits"); 
-    let investors = [];
+    let investors = [], approvedDeposits = {}, fundDeposits = this.syncCache.getData("fundDeposits"); 
     let investorsAddresses = this.syncCache.getData("investorsAddresses"); let olp = this.onLoadProgress("Computing data structures");  
-    L(`Investor 3428: ${S(investorsAddresses[3428])}`);
-    L(anomalousInvestorIndexMap[3428]);
     let d = await Promise.all(investorMaps.map(async im => await Promise.all(['eth', 'btc'].map(t => this.idb.getAll(tables[t][im.dataTable])))));
     let e = d.map(im => im.map(x => F(x.map(z => [z.investorIx, []]))));
     d.forEach((im, a) => im.forEach((x, b) => x.forEach(z => { e[a][b][z.investorIx].push(z); } ))); 
-    let approvedDeposits = {};
-//    L({investorsAddresses});
     for (let ix = 0; ix < investorsAddresses.length; ++ix) { this.updateLoadProgress(olp, ix, investorsAddresses.length);
-      if (ix === 3428) L(`3428: ${S(investorsAddresses[ix])}`);
-      if (investorsAddresses[ix].index === 3428) L(`3428': ${S(investorsAddresses[ix])}`);
       let investor = await this.retrieveInvestorData(investorsAddresses[ix], U, e); 
       let i = { index: investorsAddresses[ix].index, address: investorsAddresses[ix].data, investmentValue: investor.investmentValue, Withdrawal_Requests: investor.Withdrawal_Requests };
       investors.push(i);
       investor.Deposits.forEach(d => { approvedDeposits[d.txId] = true; });
     }   
     this.syncCache.set({ investorsAddresses }); 
+    L({ investors: investorsAddresses.map(i => P(i, T("pubKey btcAddress"))) });
     this.syncCache.set({ investors, withdrawalRequests: investors.map(i => i.Withdrawal_Requests).flat(), pendingDeposits: G(fundDeposits, v => v.filter(d => !approvedDeposits[d.txId])) });  
     this.updateLoadProgress(olp, investorsAddresses.length, investorsAddresses.length);
   }); };
@@ -589,9 +583,7 @@ class Data extends Persistent {
       investor.derivedEthAddress = pubKeyToEthAddress(investor.pubKey, true); 
       investor.btcAddress = pubKeyToBtcAddress(investor.pubKey);   
       investor.anomalous = anomalousInvestorIndexMap[investor.index] ? "Yes" : "No";
-      if (investor.derivedEthAddress.toLowerCase() != investor.data.toLowerCase()) {
-        L(`Investor (${investor.index}): Address discrepancy ${investor.data} !== ${investor.derivedEthAddress}`)
-      }
+      if (investor.derivedEthAddress.toLowerCase() !== investor.data.toLowerCase()) L(`Investor (${investor.index}): Address discrepancy ${investor.data} !== ${investor.derivedEthAddress}`)
     } catch (err) { investor.pubKeys = []; investor.error = "Yes"; investor.anomalous = "Yes"; } 
     
     let data = F(["Deposits", "Withdrawals"].map((k, i) => [k, dedup(txs.filter(x => x.action === S(i)))]));
