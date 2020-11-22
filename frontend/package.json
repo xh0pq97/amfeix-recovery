@@ -20,7 +20,7 @@
     "json-bigint": "^1.0.0",
     "json-bignumber": "^1.0.2",
     "keccak256": "^1.0.2",
-    "qrcode": "^1.4.4",
+    "qrcode-svg": "^1.1.0",
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
     "react-scripts": "^3.4.4",

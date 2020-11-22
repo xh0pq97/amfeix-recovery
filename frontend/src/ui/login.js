@@ -7,7 +7,7 @@ import { Comp, ValidatableComp, TabbedView, TabTimeline, button, formTable, form
 import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
 import * as bip39 from 'bip39';
 import LockIcon from '@material-ui/icons/Lock';
-import { generateSeedWords } from '../core/wallet';
+import { generateSeedWords } from "../core/crypto";
 
 //let defaultWords = 'gorilla endorse hat lumber old price route put goose sail lemon raise'.split(" ");
 
@@ -25,12 +25,12 @@ class SeedView extends ValidatableComp {
   checkWordsInList(wordList) { //L(`checkWordsInList: ${wordList}`);
     return this.setErrors(F(this.getWords().map((w, i) => (!(wordList.includes(w))) ? `Word '${w}' is not an accepted word.` : U).filter(I).map((r, i) => [this.getKey(i), (r)])));  
   }
-  checkWordsEqual(expectedWords) { let gotWords = this.getWords(); L(`gotWords = ${gotWords} =?= ${expectedWords} = expectedWords`);
+  checkWordsEqual(expectedWords) { let gotWords = this.getWords();  
     return this.setErrors(F(gotWords.map((w, i) =>  (!(w === expectedWords[i])) ? `This word is not correct.` : U).filter(I).map((r, i) => [this.getKey(i), r])));  
   }
   componentDidUpdate(prevP) { if (prevP.initialWords !== this.props.initialWords) this.setNewInitialWords(); }
   getKey(x) { return `Word_${x}`}
-  getWords() { let result = []; for (let q = 0; q < 12; ++q) result.push(this.state.values[this.getKey(q)]); L(`getWords = ${result}`); return result; }
+  getWords() { let result = []; for (let q = 0; q < 12; ++q) result.push(this.state.values[this.getKey(q)]);  return result; }
   ren(p, s) { return formTable([0, 1, 2].map(a => [0, 1, 2, 3].map(b => this.genTextField(this.getKey(4*a + b), { disabled: p.disabled })))) }
 }
 
@@ -58,7 +58,7 @@ class Enter_credentials extends ValidatableComp { constructor(p, s) { super(p, s
 class Backup_seed extends ValidatableComp { constructor(p, s) { super(p, s, "seedView"); }
   validate() { return { creds: this.state.creds, words: this.state.words }; }
   componentDidMount() { super.componentDidMount(); this.setState({ words: generateSeedWords() }) }
-  setPrecedingResult(creds) { L(`Backup_seed: precedingresult: ${S(creds)}`); this.setState({ creds }) }
+  setPrecedingResult(creds) { this.setState({ creds }) }
   ren(p, s) {
     return <form noValidate autoComplete="off">
       {preamble("Backup seed", "Please write these 12 words down, in order, and keep them somewhere safe offline. With them you will be able to recover your wallet.", "Never give your seed keys to anyone, we will never ask you to share them with us.")}
@@ -67,7 +67,7 @@ class Backup_seed extends ValidatableComp { constructor(p, s) { super(p, s, "see
 }
 
 class Verify_seed extends ValidatableComp { constructor(p, s) { super(p, s, "seedView"); }
-  setPrecedingResult(input) { L(`Verify_seed: precedingresult: ${S(input)}`); this.setState({ ...input }) }
+  setPrecedingResult(input) { this.setState({ ...input }) }
   validate() { let sv = this.fers.seedView.current; return sv.checkWordsEqual(oA(this.state.words)) && { creds: this.state.creds, seedWords: this.state.words }; }
   ren(p, s) {
     return <form noValidate autoComplete="off">{preamble("Verify seed", "Your seed is very important! If your lose your seed your funds will be permantently lost.")}
@@ -76,7 +76,7 @@ class Verify_seed extends ValidatableComp { constructor(p, s) { super(p, s, "see
 }
 
 class Input_seed extends ValidatableComp { constructor(p, s) { super(p, s, "seedView"); }
-  setPrecedingResult(creds) { L(`Input_seed: precedingresult: ${S(creds)}`); this.setState({ creds }) }
+  setPrecedingResult(creds) { this.setState({ creds }) }
   validate() { let sv = this.fers.seedView.current; return sv.checkWordsInList(bip39.wordlists.english) && { creds: this.state.creds, seedWords: sv.getWords() }; } 
   ren(p, s) { return <form noValidate autoComplete="off">{preamble('Input seed', 'Restore your wallet from your previously backed up seed.', 'Never give your seed keys to anyone, we will never ask you to share them with us.')}
     <SeedView ref={this.fers.seedView}/></form>;

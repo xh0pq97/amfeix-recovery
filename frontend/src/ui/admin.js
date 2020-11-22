@@ -10,7 +10,8 @@ import { Typography } from '@material-ui/core';
 import { BN }  from '../core/bignumber';
 import { satoshiToBTCString } from '../core/satoshi';
 import { formatTimestamp } from './formatting';
-import { pubKeyToEthAddress, wallet } from '../core/wallet';
+import { wallet } from '../core/wallet';
+import { pubKeyToEthAddress } from "../core/crypto";
 
 class Approve_actions_Form extends ValidatableComp { constructor(p, s, actionName, propertyLabel) { super(p, s); A(this, { actionName, propertyLabel });  }
   validate() { return this.props[this.propertyLabel]; }

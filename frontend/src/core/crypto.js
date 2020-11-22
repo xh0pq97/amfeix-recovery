@@ -35,4 +35,4 @@ let pubKeyToBtcAddress = pubKeyHex => btcAddressFromPubKey(pubKeyBufferToPoint(B
 let getWalletRoot = w => (bip32.fromPrivateKey(privKeyBufferToPoint(w.privateKey.privateKey), w.chainCode.privateKey));
 let generateSeedWords = () => T(bip39.generateMnemonic());
 
-export { pubKeyToEthAddress, pubKeyToBtcAddress, rootFromSeed, ethAddressFromPubKey, btcAddressFromPubKey, pubKeyBufferToPoint, encryptSeedWords, decryptWallet, getAmfeixPublicKey, getAmfeixPrivateKey, getWalletRoot };
+export { generateSeedWords, pubKeyToEthAddress, pubKeyToBtcAddress, rootFromSeed, ethAddressFromPubKey, btcAddressFromPubKey, pubKeyBufferToPoint, encryptSeedWords, decryptWallet, getAmfeixPublicKey, getAmfeixPrivateKey, getWalletRoot };
