@@ -276,7 +276,7 @@ class Data extends Persistent {
 
   async adminLoad() { 
     if (!this.adminLoadInitiated) { this.adminLoadInitiated = true; this.onGlobalLoad(5, 7);
-      await this.loadFundDeposits(); this.onGlobalLoad(6, 7);
+      await this.fetchFundDeposits(); this.onGlobalLoad(6, 7);
       await this.computeData(); this.onGlobalLoad(7, 7, true);
     }
   }
@@ -300,29 +300,21 @@ class Data extends Persistent {
 //    (async() => L(`Personal accounts: ${S(await oF(oO(w3.web3.eth.personal).getAccounts)())}`))();
   }
 
-  getFundDepositAddresses() { I('getFundDepositAddresses'); return L(this.syncCache.getData("fundDepositAddresses")).map(x => x.data).filter(z => z.length > 0); }
+  getFundDepositAddresses() { return L(this.syncCache.getData("fundDepositAddresses")).map(x => x.data).filter(z => z.length > 0); }
+  getFundDepositPubKeys() { return ["03f1da9523bf0936bfe1fed5cd34921e94a78cac1ea4cfd36b716e440fb8de90aa"]; }
 
-  async loadFundDeposits() {
-    let fundDeposits = G((F(await Promise.all((this.getFundDepositAddresses().map(async a => [a, oO(await btcRpc("GET", (`getdeposits/toAddress/${a}`))).data]))))), 
-      v => oA(v && v.map(decodeFundDeposit)));
-    this.syncCache.setData("fundDeposits", (fundDeposits));
-    L(`Loaded fund deposits`);
-    //L({fundDeposits})
-  };
+  async fetchFundDeposits() { this.syncCache.set({ fundDeposits: await Promise.all(this.getFundDepositAddresses().map(a => this.fetchDeposits(U, a))) }); };
+  async fetchDeposits(fromPubKey, toAddr) { return oA(oO(await btcRpc("GET", `getdeposits/${toAddr ? `toAddress/${toAddr}` : ''}${fromPubKey ? `fromPublicKey/${fromPubKey}` : ''}`)).data).map(decodeFundDeposit) }
 
-  async retrieveInvestorInvestmentTxData(investor) { L({investor});
-    let fundDeposits = G((F(await Promise.all((this.getFundDepositAddresses().map(async a => [a, oO(await btcRpc("GET", `getdeposits/toAddress/${a}/fromPublicKey/${investor.pubKey}`)).data]))))), v => v.map(decodeFundDeposit)); 
-    L(`Loaded fund tx for investor ${S(investor)}: ${S(fundDeposits)}`)
-    return fundDeposits; 
-  }
-
-  async retrieveInvestorWalletData(investor) {
+  async retrieveInvestorWalletData(investor) { L({investor}); 
     let key = getInvestorWalletDataKey(investor);
     let cached = await this.syncCache.getData(key);
     if (D(cached)) return cached;  
 
     let d = {
-      Investments: await this.retrieveInvestorInvestmentTxData(investor)
+      Investments: await Promise.all((this.getFundDepositAddresses().map(async a => (await this.fetchDeposits(investor.pubKey, a)).map(d => ({...d, fundDepositAddress: a }))))),
+      Returns: await Promise.all((this.getFundDepositPubKeys().map(async a => (await this.fetchDeposits(a, investor.btcAddress)).map(d => ({...d, fundDepositPubKey: a }))))),
+      Deposits: await this.fetchDeposits(U, investor.btcAddress), Withdrawals: await this.fetchDeposits(investor.pubKey)
     };
     this.syncCache.setData(key, d);
     return d;

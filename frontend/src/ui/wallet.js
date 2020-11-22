@@ -32,32 +32,13 @@ class Account extends Comp { constructor(p, s) { super(p, s, "dlgWithdraw"); }
 
 let investorCompIfTestMode = (p) => testModeComp(p.urlParams.testMode, () => <InvestorID investor={p.investor} />)
 
-class All_transactions extends Comp { 
-  ren(p, s) { return <Box/>; } 
-}
-class Deposits extends Comp { 
-  ren(p, s) { return <>{investorCompIfTestMode(p)}<Box/></>; } 
-}
-class Withdrawals extends Comp { 
-  ren(p, s) { return <Box/>; } 
-}
-class Investments extends Comp { 
-  ren(p, s) { let inv = oA(V(oO(p.walletData.Investments)).flat()); 
-    L({inv});
-    let headers = genHeaders(inv);
-    L({headers});
-    return <List data={inv} headers={V(headers)}/>; } 
-}
-class Returns extends Comp { 
-  ren(p, s) { return <Box/>; } 
-}
+let walletLists = T("Deposits Investments Returns Withdrawals");
+let simpleList = data => <List data={data} headers={V(genHeaders(data))}/>; 
   
 class History extends InvestorDependentView_Btc { 
-//  componentDidMount() { this.addSyncKeyObserver(data, data.getInvestorWalletDepositsKey()); }
-  //ren(p, s) { return loadingComponent(s.fundDeposits, <TabbedView tabs={F(E(s.fundDeposits).map(([k, v], i) => [`Deposit address #${i}`, () => <List data={v} headers={V(genHeaders(v))}/>]))}/>) }
   ren(p, s) { let walletData = this.getInvestorWalletData(); L(`p.wallet = ${S(p.wallet)}`)
-    return <>{investorCompIfTestMode(p)}
-      <TabbedView tabs={{ All_transactions, Deposits, Withdrawals, Investments, Returns }} parentProps={{ walletData, wallet: oO(p.wallet).lastLogin, urlParams: p.urlParams, investor: p.investor }} /></>; 
+    let All_transactions = () => simpleList(walletLists.map(type => p.walletData.map(d => ({...d, type }))).flat());
+    return <>{investorCompIfTestMode(p)}<TabbedView tabs={{ All_transactions, ...F(walletLists.map(l => [l, () => simpleList(p.walletData[l])])) }} parentProps={{ walletData, wallet: oO(p.wallet).lastLogin }} /></>; 
   } 
 }
 

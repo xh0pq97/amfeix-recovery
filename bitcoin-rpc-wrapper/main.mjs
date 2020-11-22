@@ -84,23 +84,7 @@ let compressValue = v => htb(trimLeadingZeroes(v)).toString('base64');
   "CREATE TABLE IF NOT EXISTS vout (id INT PRIMARY KEY AUTO_INCREMENT, ix INT, idToAddress INT, idBlock INT, idTransaction INT, value VARBINARY(16), INDEX ix (ix), INDEX idToAddress (idToAddress), INDEX idBlock (idBlock), INDEX idTransaction (idTransaction), INDEX value (value))",
   "CREATE TABLE IF NOT EXISTS vin (id INT PRIMARY KEY AUTO_INCREMENT, idSourceTransaction INT, voutIx INT, idPubKey INT, INDEX idSourceTransaction (idSourceTransaction), INDEX voutIx (voutIx), INDEX idPubKey (idPubKey))",
   "CREATE TABLE IF NOT EXISTS address (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(21), INDEX v (v))",
-*/
-app.get(`/gettransfers/toAddress/:toAddress/`, async (req, a) => { L(`req = ${S(req.params)}`); //addCorsHeaders(a);
-  let conn = await pool.getConnection(); 
-  //let [txHashes, depositAddresses] = req.body && req.body.params;
-  if (conn) {
-    try { let binToAddress = bs58check.decode(req.params.toAddress);
-      try { let r = await conn.query("USE transfers");
-        let q;
-        try { q = await conn.query((`SELECT ${commonFields}, pubKey.v as pubKey, vout.value as value, vout.ix as voutIx FROM ${commonTables}, address, pubKey, vout, vin WHERE address.v = ? AND address.id = idToAddress AND pubKey.id = idPubKey AND transaction.id = vin.idTransaction AND transaction.id = vout.idTransaction AND block.id = idBlock`), [binToAddress]); } 
-        catch(e) { a.send(S({ err: `Query failed: ${S(e)}` })) }
-        try { a.send(S(({ data: q.map(v => [v.time, compressValue(v.value), v.txid.toString('base64'), v.pubKey.toString('base64'), v.voutIx]) }))); } 
-        catch(e) { a.send(S({ err: `Send failed: ${S(e)}` })) }
-      } catch(e) { a.send(S({ err: `DB error: ${S(e)}` })) }
-    } catch(e) { a.send(S({ err: `Invalid address: ${S(e)}` })) }
-    finally { if (conn) conn.close(); }
-  } else { a.send(S({ err: `No db connection` })); }
-});
+*/ 
 
 let getDeposits = async (toAddress, fromPublicKey) => {
   let conn = await pool.getConnection(); 
@@ -149,22 +133,4 @@ app.get(`/getAddressId/:toAddress/`, async (req, a) => { L(`req = ${req.params}`
   finally { if (conn) conn.close(); }
 });
 
-app.get(`/gettransfers/fromPubKey/:pubKey/`, async (req, a) => { L(`req = ${req.params}`); //addCorsHeaders(a);
-  let conn = await pool.getConnection(); 
-  try { let binPubKey = htb(req.params.pubKey);
-    try { let r = await conn.query("USE transfers");
-      let rPubKey = await conn.query("SELECT * FROM pubKey WHERE v = ?", [binPubKey]);
-      if (rPubKey.length > 0) { let idPubKey = rPubKey[0].id;
-        let q = await conn.query(`SELECT ${commonFields}, (address.v) as toAddress FROM ${commonTables}, address WHERE idPubKey = ? AND transfer.idToAddress = address.id AND transaction.id = transfer.idTransaction AND block.id = idBlock`, [idPubKey]);
-        a.send(S({ data: q.map(v => [v.time, compressValue(v.value), v.transaction.toString('base64'), v.toAddress.toString('base64')]) }));
-      } else { a.send(S({ err: "Address not found" })) }  
-    } catch(e) { a.send(S({ err: `DB error: ${S(e)}` })) }
-  } catch(e) { a.send(S({ err: `Invalid pub key: ${S(e)}` })) }
-  finally { if (conn) conn.close(); }
-});
-
-app.get(`/gettransfers/fromPubKey/:pubKey/toAddress/:toAddress/`, async (req, a) => { 
-  let conn = await pool.getConnection(); 
-});
- 
 (p => app.listen(p, () => L(`Server running on port ${p}`)))(cfg.port = cfg.port || 4444)
