@@ -2,7 +2,7 @@ import React from 'react';
 import { A, S, V, oA, oO } from '../tools';
 import { amfeixAddressLists, btcRpcUrl, btcFields, data, ethBasicFields } from '../core/data';
 // eslint-disable-next-line
-import { button, genHeaders, displayBtcAddress, Selector, Comp, TabbedView, List, captionMap, tabulize } from './components';
+import { button, genHeaders, commonDataTypes, Selector, Comp, TabbedView, List, captionMap, tabulize } from './components';
 //import { genHeaders } from './investor';
 
 class Bitcoin_P2P_Network extends Comp {
@@ -23,7 +23,7 @@ class Ethereum_P2P_Network extends Comp {
       [button("Refresh", data.updateConstants['eth'])],
       [tabulize(1/3, [amfeixAddressLists.map(k => {
         let h = genHeaders(s[k]);
-        A(oO(h.data), { caption: "Address", displayFunc: displayBtcAddress });
+        A(oO(h.data), { caption: "Address", displayFunc: commonDataTypes.btcAddress.displayFunc });
         return tabulize(1/3, [[<List caption={captionMap[k]} data={(oA(s[k]))} headers={V(h)} />], [button("Refresh", () => data.updateFixedLengthArray(k))]]);
       })])]
     ]);

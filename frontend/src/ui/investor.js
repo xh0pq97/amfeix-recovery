@@ -3,7 +3,7 @@ import React from 'react';
 import { A, D, E, F, G, I, K, L, S, T, V, oA, oF, oO, singleKeyObject } from '../tools';
 import { data, getInvestorWalletDataKey, getInvestorDataKey, stati } from '../core/data';
 // eslint-disable-next-line
-import { tabulize, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, ValidatableComp, wrapEllipsisDiv, displayBtcTransaction, OpenDialogButton, Comp, TabbedView, List, cleanText, button, TabTimeline } from './components'; 
+import { tabulize, commonDataTypes, genHeaders, ValidatableComp, Comp, TabbedView, List, cleanText, button, TabTimeline } from './components'; 
 
 class DataDependentView extends Comp {
   componentDidMount() { this.componentDidUpdate({}); }
@@ -29,7 +29,7 @@ class InvestorID extends Comp {
 class EthTxView extends InvestorDependentView_Eth { 
   ren(p, s) { let i = this.getInvestorData(); 
     let headers = F(T("Deposits Withdrawals Withdrawal_Requests").map(k => [k, genHeaders(i[k])]));
-    A(oO(headers.Deposits.status), { caption: "Action", displayFunc: (v, d) => (v !== stati.Deposits.Active) ? cleanText(v) : <OpenDialogButton id="Withdraw" comp={Withdraw} onAccept={I} /> });
+    A(oO(headers.Deposits.status), { caption: "Status", displayFunc: cleanText });
     applyWithdrawalRequestStatus(headers.Withdrawal_Requests);
     headers = G(headers, v => V(v).filter(h => (p.EDeveloperMode.Developer) || T("status value txId pubKey timestamp").includes(h.label)));
     return <TabbedView style={{ display: D(p.investor) ? "block" : "none" }} caption={`Investor ${oO(p.investor).data}`} tabs={G(headers, (v, k) => () => <List data={i[k]} headers={v} />)} />;
@@ -37,7 +37,10 @@ class EthTxView extends InvestorDependentView_Eth {
 }
 
 class InvestorList extends Comp { componentDidMount() { this.addSyncKeyObserver(data, "investorsAddresses"); }
-  ren(p, s) { return <List caption={p.caption || "Investors"} data={s.investorsAddresses} headers={V(genHeaders(s.investorsAddresses))} onChange={d => oF(p.onChangedSelectedInvestor)(oA(s.investorsAddresses)[d.selectedIx])} />; }
+  ren(p, s) { 
+    let h = genHeaders(s.investorsAddresses);
+    A(oO(h.data), { caption: "Address", displayFunc: commonDataTypes.btcAddress.displayFunc });
+    return <List caption={p.caption || "Investors"} data={s.investorsAddresses} headers={V(h)} onChange={d => oF(p.onChangedSelectedInvestor)(oA(s.investorsAddresses)[d.selectedIx])} />; }
 }
 
 export { InvestorList, InvestorID, EthTxView, applyWithdrawalRequestStatus, InvestorDependentView_Eth, InvestorDependentView_Btc }

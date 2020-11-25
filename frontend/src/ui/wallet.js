@@ -8,6 +8,7 @@ import { A, D, E, F, H, I, K, L, P, S, T, U, V, oA, oF, oO, oS, asA, singleKeyOb
 import { InvestorDependentView_Btc, InvestorID } from './investor'
 // eslint-disable-next-line
 import QRCode from 'qrcode-svg';
+import { pubKeyToBtcAddress } from '../core/crypto';
 // wc52mNR2qTpFfNP
 // eslint-disable-next-line
 class _Withdraw_ extends Comp { ren(p, s) { return <TabTimeline tabs={{ Withdraw, Review, Done }} onCancel={p.onCancel} onAccept={p.onAccept}/>; } }
@@ -55,6 +56,7 @@ class Withdraw extends ValidatableComp { ren(p, s) { return form(null, [[this.ge
 export class Bitcoin_Wallet extends Comp { ren(p, s) { 
   L(`Lastlogin = ${S(p.wallet)}`); L(`invstor = ${S(p.investor)}`);
   let investor = p.investor || oO(oO(p.wallet).lastLogin);
+  if (!D(investor.btcAddress) && D(investor.pubKey)) investor.btcAddress = pubKeyToBtcAddress(investor.pubKey);
   //return !D(p.wallet) ? <Box/> : <>{formTable([[<Account wallet={(p.wallet)} />]])}
   return <>{investorCompIfTestMode(p)}<TabbedView tabs={{ History, Invest, _Withdraw_ }} parentProps={{investor, ...(P(p, T("urlParams wallet")))}} /></>
   // <Invest bitcoinAddress={oO(p.wallet).bitcoinAddress}/>

@@ -44,8 +44,8 @@ class Cache extends Comp {
   ethInterfaceChanged(v) { data.setEthRPCUrl(ethInterfaceUrls[v]) }
   ren(p, s) { 
     return tabulize(1/3, [
-      [button("Clear data cache", () => {})],
-      [button("Clear bitcoin transaction cache", async () => { await data.clearTransactionCache('btc'); })], //  window.location.reload();
+      [button("Clear data cache", async () => { await data.clearCache() })],
+      [button("Clear bitcoin transaction cache", async () => { await data.clearTransactionCache('btc'); })],  
       [button("Clear ethereum registered transaction cache", async () => { await data.clearTransactionCache('eth'); })]
     ]) 
   }
@@ -87,12 +87,8 @@ class App extends Comp { constructor(p) { super(p, { wallet, investor, ...G({EDe
   } 
   ren(p, s) { 
     return <ThemeProvider theme={s.theme}>{urlParams.testMode ? <>
-      {tabulize(1/3, [[...E({EUserMode, EDeveloperMode, EPallette}).map(([k, v]) => <Selector options={K(v).map(cleanText)} horizontal={true} onChanged={i => this.setState(singleKeyObject(k, singleKeyObject(V(v)[i], true)), 
-        async () => {
-          if (this.state.EUserMode.Admin) data.performAfterGenericLoad(async () => await data.adminLoad());
-          this.setState({ theme: this.createTheme() });
-        })}/>)]])}
-      <InvestorList caption={"Choose an investor to simulate the UI"} onChangedSelectedInvestor={investor => this.setState({ investor })} {...(P(s, T("EUserMode EDeveloperMode")))} />
+      {tabulize(1/3, [[...E({EUserMode, EDeveloperMode, EPallette}).map(([k, v]) => <Selector options={K(v).map(cleanText)} horizontal={true} onChanged={i => this.setState(singleKeyObject(k, singleKeyObject(V(v)[i], true)), this.setState({ theme: this.createTheme() }))}/>)]])}
+      <InvestorList caption={"Choose an investor to simulate the UI"} onChangedSelectedInvestor={investor => this.setState(L({ investor }))} {...(P(s, T("EUserMode EDeveloperMode")))} />
       <InvestorID investor={s.investor} />
     </> : null}
     <p>Future UI (work in progress) below this line.  Numbers shown may be inaccurate or entirely incorrect due to the development process being in progress.</p>

@@ -5,7 +5,7 @@ import { A, D, E, F, G, I, K, L, U, V, S, oA, oB, oF, oO, oS, isO, singleKeyObje
 import { List, ListItem, ListItemText, ListItemIcon, Hidden, Drawer, Stepper, Step, StepLabel, CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, Typography, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 // eslint-disable-next-line
 import { HistoryIcon, AttachMoneyIcon, CallMadeIcon } from '@material-ui/icons';
-import { satoshiToBTCString } from '../core/satoshi';
+import { btcToString, satoshiToBTCString } from '../core/satoshi';
 import LockIcon from '@material-ui/icons/Lock';
 import { captionIconMap } from './icons';
 import { formatTimestamp } from './formatting';
@@ -180,8 +180,7 @@ let testModeComp = (testMode, C) => (testMode ? <div style={{borderStyle: "dashe
 
 let wrapEllipsisDiv = v => <div style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap"}}>{v}</div>;
 let newTabRef = (link, caption) => <a target="_blank" rel="noopener noreferrer" href={link}>{caption}</a>;
-let displayBtcTransaction = v => wrapEllipsisDiv(newTabRef(`https://www.blockchain.com/en/btc/tx/${v}`, v));
-let displayBtcAddress = v => wrapEllipsisDiv(newTabRef(`https://www.blockchain.com/en/btc/address/${v}`, v));
+let aLink = (src, caption) => wrapEllipsisDiv(newTabRef(src, caption)); 
 let extractHeaders = d => F(K(oO(oA(d)[0])).map(h => [h, { label: h, caption: h }]));
 let genHeaders = d => applyListHeaders(extractHeaders(d), commonTableHeaders);
 
@@ -189,18 +188,21 @@ let applyListHeaders = (h, mods)  => { E(mods).forEach(([k, v]) => A(oO(h[k]), v
 
 let compareStrings = (a, b) => a.localeCompare(b);
 let compareBNs = (a, b) => a.isLessThan(b); 
-let compareBNStrings = (a, b) => compareBNs(BN(a), BN(b)); 
-let commonTableHeaders = {
-  txId: { caption: "BTC Transaction", displayFunc: displayBtcTransaction, compare: compareStrings },
-  timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp },
+let commonDataTypes = {
+  btcAddress: { caption: "BTC Address", displayFunc: v => aLink(`https://www.blockchain.com/en/btc/address/${v}`, v), compare: compareStrings },
+  ethAddress: { caption: "ETH Address", displayFunc: v => aLink(`https://etherscan.io/address/${v}`, v), compare: compareStrings },
+  btcTx: { caption: "Bitcoin Tx", displayFunc: v => aLink(`https://www.blockchain.com/en/btc/tx/${v}`, v), compare: compareStrings },
   pubKey: { caption: "Public key", displayFunc: wrapEllipsisDiv, compare: compareStrings },
-//  value: { caption: "Amount (BTC) -- deprecated", align: "right", alignCaption: "right" },
-  satoshiBN: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => satoshiToBTCString(x), compare: compareBNs },
-  finalValue: { caption: "Final value (BTC)", align: "right", alignCaption: "right", displayFunc: x => (x), compare: compareBNStrings },
-  value: { caption: "Value (BTC)", align: "right", alignCaption: "right", displayFunc: x => (x), compare: compareBNStrings }
+  status: { caption: "Status", displayFunc: cleanText, compare: compareStrings },
+  btcSatoshis: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => satoshiToBTCString(x), compare: compareBNs },
+  btc: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => btcToString(x), compare: compareBNs }
 }
+let commonTableHeaders = G({ txId: { type: "btcTx" }, btcAddress: { type: "btcAddress" }, ethAddress: { type: "ethAddress" }, pubKey: { type: "pubKey" }, satoshiBN: { type: "btcSatoshis" }, finalValue: { type: "btcSatoshis" }, value: { type: "btcSatoshis" }, status: { type: "status" },
+  derivedEthAddress: { caption: "Derived ETH Address", type: "ethAddress" }, 
+  timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp },
+}, v => ({...v, ...(D(v.type) ? commonDataTypes[v.type] : {})}));
  
 let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{title}</h2><p style={{textAlign: "left"}}>{text}</p><p style={{textAlign: "left", color: "#FF2170"}}>{warning}</p></>;
 let loadingComponent = (data, c) => D(data) ? c  : tabulize(5, [[<CircularProgress/>]]);
 
-export { testModeComp, GetPasswordDialog, preamble, loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, displayBtcTransaction, displayBtcAddress, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, ListView as List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form }
+export { testModeComp, GetPasswordDialog, preamble, loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, ListView as List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form, commonDataTypes }
