@@ -1,19 +1,19 @@
-     100 files     127 text files.
-classified 127 filesDuplicate file check 127 files (106 known unique)Unique:      100 files                                               109 unique files.                              
-Counting:  100      52 files ignored.
+     100 files     116 text files.
+classified 116 filesDuplicate file check 116 files (95 known unique)      98 unique files.                              
+      48 files ignored.
 
-github.com/AlDanial/cloc v 1.81  T=2.22 s (37.9 files/s, 103821.3 lines/s)
+github.com/AlDanial/cloc v 1.81  T=1.65 s (46.8 files/s, 139747.5 lines/s)
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-JSON                            20              0              0         227207
-JavaScript                      41            238            260           1628
+JSON                            19              0              0         227188
+JavaScript                      36            231            239           1588
 CSS                              2              1             28            236
 Solidity                         1             43             11            149
 Bourne Shell                    10              6              1             61
-HTML                             3              6             32             47
+HTML                             2              6             32             46
 Markdown                         1             32              0             38
 SVG                              6              0              0              6
 -------------------------------------------------------------------------------
-SUM:                            84            326            332         229372
+SUM:                            77            319            311         229312
 -------------------------------------------------------------------------------

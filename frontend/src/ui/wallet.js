@@ -40,7 +40,7 @@ class History extends InvestorDependentView_Btc {
   L({walletData});
     let All_transactions = () => simpleList(L(walletLists).map(type => 
       oA(L(oO(walletData)[type])).map(d => ({...d, type: type.slice(0, type.length - 1) }))).flat());
-    return <TabbedView tabs={{ All_transactions, ...F(walletLists.map(l => [l, () => simpleList(oA(oO(walletData)[l]).slice(0, 5))])) }} parentProps={{ walletData, wallet: oO(p.wallet).lastLogin }} />; 
+    return <TabbedView tabs={{ All_transactions, ...F(walletLists.map(l => [l, () => simpleList(oA(oO(walletData)[l])])) }} parentProps={{ walletData, wallet: oO(p.wallet).lastLogin }} />; 
   } 
 }
 
