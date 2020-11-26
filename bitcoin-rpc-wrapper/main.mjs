@@ -94,9 +94,7 @@ let getDeposits = async (toAddress, fromPublicKey) => { if ((toAddress.length > 
     let data = [];
     try { 
       let parmConstraints = (binToAddress ? ` AND address.v = ? ` : '') + (binFromPublicKey ? ` AND pubKey.v = ? ` : '');
-      let parmTables = ', address, pubKey';// (binToAddress ? ', address' : '') + (binFromPublicKey ? ', pubKey' : '');
-      let parmFields = (true ? ', address.v AS address' : '') + (true ? ', pubKey.v AS pubKey' : '');
-      let q = await conn.query(L(`SELECT ${commonFields}, HEX(vout.value) as value, vout.ix as voutIx, transaction.id as tIx ${parmFields} FROM ${commonTables}, vout, vin ${parmTables} WHERE address.id = idToAddress AND pubKey.id = idPubKey AND transaction.id = vin.idTransaction AND transaction.id = vout.idTransaction AND block.id = idBlock ${parmConstraints} ORDER BY tIx`), L([binToAddress, binFromPublicKey].filter(I))); 
+      let q = await conn.query(L(`SELECT ${commonFields}, HEX(vout.value) as value, vout.ix as voutIx, transaction.id as tIx, address.v AS address, pubKey.v AS pubKey FROM ${commonTables}, vout, vin, address, pubKey WHERE address.id = idToAddress AND pubKey.id = idPubKey AND transaction.id = vin.idTransaction AND transaction.id = vout.idTransaction AND block.id = idBlock ${parmConstraints} ORDER BY tIx`), L([binToAddress, binFromPublicKey].filter(I))); 
       L(`result = ${q.length}`);
       let txs = {};
       q.forEach(transfer => { let y = txs[transfer.tIx]; if (y) { y.push(transfer); } else { txs[transfer.tIx] = [transfer]; } });
@@ -114,9 +112,7 @@ let getDeposits = async (toAddress, fromPublicKey) => { if ((toAddress.length > 
 } catch(e) { return { err: `Invalid address: ${S(e)}` } } 
 finally { conn.close(); } } else { return { err: `No db connection` }; } } else { return { err: 'Specify toAddress or fromPublicKey or both.' } } }
 
-app.get(`/getdeposits/toAddress/:toAddress/fromPublicKey/:fromPublicKey/`, async (req, a) => { L(`req = ${S(req.params)}`); //addCorsHeaders(a);
-  a.send(S(await getDeposits(req.params.toAddress, req.params.fromPublicKey)));
-});
+app.get(`/getdeposits/toAddress/:toAddress/fromPublicKey/:fromPublicKey/`, async (req, a) => a.send(S(await getDeposits(L(req.params).toAddress, req.params.fromPublicKey))));
 
 app.get(`/getAddressId/:toAddress/`, async (req, a) => { L(`req = ${req.params}`); //addCorsHeaders(a);
   let conn = await pool.getConnection(); 

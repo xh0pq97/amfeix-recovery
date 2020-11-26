@@ -1,4 +1,3 @@
-import Web3 from 'web3';
 import amfeixCjson from '../amfeixC.json'; 
 // eslint-disable-next-line
 import { A, D, E, F, G, H, I, K, L, S, T, P, U, V, W, oA, oO, oF, isO, isA, isS, singleKeyObject, makeEnum } from '../tools'; 
@@ -9,8 +8,9 @@ import JSONBig from 'json-bigint';
 //import Accounts from 'web3-eth-accounts';
 //import aggregate from './aggregate.js';
 import { satoshiToBTCString } from './satoshi';
-import aggregate from '@makerdao/multicall/src/aggregate';
 import { pubKeyToEthAddress, pubKeyToBtcAddress } from "./crypto";
+import { SyncCache } from './syncCache';
+import { amfx } from './amfeixContract';
 
 let newDB = false //|| true;  
 
@@ -25,7 +25,7 @@ const ethInterfaceUrl = `https://eth.${hostname}/`; //"ws://46.101.6.38/ws";
 const ethInterfaceUrls = [ethInterfaceUrl, ethInterfaceUrl + 'ganache/']; //"ws://46.101.6.38/ws"; 
 //ethInterfaceUrl = "http://46.101.6.38:8547/";  
 //const web3 =  new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/v3/efc3fa619c294bc194161b66d8f3585e"));
-let amfeixAddress = "0xb0963da9baef08711583252f5000Df44D4F56925";
+export let amfeixAddress = "0xb0963da9baef08711583252f5000Df44D4F56925";
  
 let b64ToHex = v => Buffer.from(v, 'base64').toString('hex');
 let decodeFundDeposit = ([timestamp, amountX, transactionX, pubKeyX]) => 
@@ -38,80 +38,7 @@ class ABI {
   }
 }
 
-let abi = new ABI(amfeixCjson.abi);
-//L(`abi keys = ${K(abi)}`);
-//
-class MultiCallBatch {
-  constructor() { this.calls = []; }
-  add(target, method, params, onSuccess, onError) { this.calls.push(({ target, method, params, onSuccess, onError })); }
-  async execute(rpcUrl) { 
-   // L(`Executing multicall length: ${this.calls.length}`)
-    //L(`I = ${S(I)}`);
-//    L(`MultiCallBatch input = ${S(this.calls)}`);
-    let calls = this.calls.map((c, i) => { let m = abi.methodMap[c.method]; 
-      return ({ target: c.target, call: [`${c.method}(${m.inputs.map(x => x.type).join(",")})(${m.outputs.map(x => x.type).join(",")})`, ...c.params], returns: m.outputs.map((x, j) => [`${i}_${j}`, I])       
-      })
-    });
-//    L({calls});
-    let response = await aggregate(calls, { rpcUrl, multicallAddress: '0x5e227AD1969Ea493B43F840cfF78d08a6fc17796' });
-    let results = oO(oO(response).results).original;
-    //L(`MultiCallBatch results = ${S(results)}`)
-    this.calls.forEach((c, i) => { let m = abi.methodMap[c.method];
-      let q = m.outputs.map((x, j) => {
-        let r = results[`${i}_${j}`];
-        if (oO(r)._hex) { r = BN(r._hex.slice(2), 16).toString(); }
-        return r;
-      });
-//      L({method: c.method, parms: c.params, q});
-      return c.onSuccess(q.length === 1 ? q[0] : q);
-    });
-  }
-}
-
-class AmfeixContract {
-  setWeb3Url(url) { //L(`Setting web3 url to ${url}`);
-    this.url = url;
-    this.web3 = new Web3(new (this.url.indexOf("ws://") === 0 ? Web3.providers.WebsocketProvider : Web3.providers.HttpProvider)(this.url, { timeout: 60000 }));  
-    this.amfeixM = () => (new this.web3.eth.Contract(amfeixCjson.abi, amfeixAddress, { from: this.from })).methods; 
-    A(this, { queuedOps: [], batchIx: 0, queuedOpCount: 0, processedOpCount: 0, queuedBatches: [], processing: false, inFlight: [], maxInFlight: 16, nextIx: 0, batchSize: 64, activeBatch: Promise.resolve() });
-  }
-
-  setFrom(address) { this.from = address; }
-
-  queueOp(method, params, onSuccess, onError) { this.queuedOpCount++
-    this.queuedOps.push(({ method, params, onSuccess, onError }));
-//    if (this.queuedOps.length  >= this.batchSize) this.flushBatch(); 
-  } 
-
-  async execute(op) { try { return await amfx.amfeixM()[op.method](...oA(op.params)).call(); } catch(err) { return { err } } }
-
-  async executeBatch() {
-    let batch = new MultiCallBatch();
-    for (let op of this.queuedOps.slice(0, this.batchSize)) batch.add(amfeixAddress, op.method, oA(op.params), op.onSuccess, op.onError); 
-    this.queuedOps = this.queuedOps.slice(this.batchSize);
-    await batch.execute(this.url); 
-  }    
-
-  async actualFlushBatch() {  
-    while (this.queuedOps.length > 0) { 
-//      L({length: this.inFlight.length, queued: this.queuedOps.length, mif: this.maxInFlight});
-      if (this.inFlight.length === this.maxInFlight) { await this.inFlight[0]; this.inFlight.shift(); }
-      if (this.inFlight.length > this.maxInFlight) L(`>> ${S({length: this.inFlight.length, mif: this.maxInFlight})}`);
-      this.inFlight.push(this.executeBatch()); 
-//      await Promise.all(this.inFlight);
-    }
-  } 
-
-  async flushBatch() {   
-    await new Promise((resolve, reject) => { try {
-        setTimeout(() => resolve(this.actualFlushBatch()), 0);
-      } catch (err) { reject(err); }
-    })
-  } 
-}
-
-let amfx = new AmfeixContract();
-
+export let abi = new ABI(amfeixCjson.abi);
 let amfeixFeeFields = T("fee1 fee2 fee3");
 let invMap = (countTable, dataTable) => ({countTable, dataTable});
 let amfeixAddressLists = ["fundDepositAddresses", "feeAddresses"];
@@ -133,29 +60,6 @@ let tables = hierName({
   btc: { constants: struc(["name"], [["name", "name", true]]), ...invMapDBStruc(investorMaps[0]), ...invMapDBStruc(investorMaps[1]) },
   queue: { ethTransactions: struc(["index"]) }
 }); 
-
-class Observer {  
-  constructor(observable, onChange, context, index) { A(this, { observable, onChange, context, index }); }
-  detach() { this.observable.remove(this); } 
-}
-
-class Observable { 
-  constructor() { A(this, { observers: {}, observerIx: 0 }) } 
-  watch(key, onChange, context) { let obs = new Observer(this, onChange, context, this.observerIx++); 
-    (this.observers[key] = oA(this.observers[key])).push(obs); 
-    if (D(this.data[key])) obs.onChange(this.data[key], context);
-    return obs; 
-  }
-  observe(key, data) { oA(this.observers[key]).forEach(o => o.onChange(data, o.context)); return data; }
-  remove(obs) { if (D(this.observers[obs.index])) delete this.observers[obs.index]; }
-}
-
-class SyncCache extends Observable {
-  constructor() { super(); A(this, { data: {} }) }
-  setData(key, data) { this.observe(key, this.data[key] = data); return data; } //  L(`syncCache.setData(${key}, ${S(data)})`);
-  getData(key, retriever) { return this.data[key] = (D(this.data[key]) ? this.data[key] : (retriever && this.observe(key, retriever()))) }
-  set(obj) { E(obj).forEach(([k, v]) => this.setData(k, v)); }
-}
 
 let constantFields = { btc: btcFields, eth: ethBasicFields };
 let constantRetrievers = { 
@@ -179,6 +83,8 @@ class Scheduler {
     this.intervalHandle = setInterval(async () => { await onUpdate(); this.lastUpdate = Date.now(); }, interval);
   }
 }
+
+let fetchDeposits = async (fromPubKey, toAddr) => oA(oO(await btcRpc("GET", L(`getdeposits/toAddress/${toAddr || '_'}/fromPublicKey/${fromPubKey || '_'}`))).data).map(decodeFundDeposit);
 
 class Data extends Persistent {
   constructor() { super("data", ["localData"], { localData: { dbix: 173 } }); L('Creating Data class instance.');
@@ -288,22 +194,18 @@ f
   getFundDepositAddresses() { return L(this.syncCache.getData("fundDepositAddresses")).map(x => x.data).filter(z => z.length > 0); }
   getFundDepositPubKeys() { return ["03f1da9523bf0936bfe1fed5cd34921e94a78cac1ea4cfd36b716e440fb8de90aa"]; }
 
-  async fetchFundDeposits() { this.syncCache.set({ fundDeposits: await Promise.all(this.getFundDepositAddresses().map(a => this.fetchDeposits(U, a))) }); };
-  async fetchDeposits(fromPubKey, toAddr) { return oA(oO(await btcRpc("GET", L(`getdeposits/toAddress/${toAddr || '_'}/fromPublicKey/${fromPubKey || '_'}`))).data).map(decodeFundDeposit) }
+  async fetchFundDeposits() { this.syncCache.set({ fundDeposits: await Promise.all(this.getFundDepositAddresses().map(a => fetchDeposits(U, a))) }); };
 
   async retrieveInvestorWalletData(investor) { L({investor}); if (investor.pubKey && investor.btcAddress) {
     let key = getInvestorWalletDataKey(investor);
     let cached = await this.syncCache.getData(key);
     if (D(cached)) return cached;  
 
-    let investorWalletData = G(await W({
-      Investments: Promise.all(this.getFundDepositAddresses().map(async a => (await this.fetchDeposits(investor.pubKey, a)).map(d => ({...d, fundDepositAddress: a })))),
-      Returns: Promise.all(this.getFundDepositPubKeys().map(async a => (await this.fetchDeposits(a, investor.btcAddress)).map(d => ({...d, fundDepositPubKey: a })))),
-      Deposits: this.fetchDeposits(U, investor.btcAddress), Withdrawals: this.fetchDeposits(investor.pubKey)
+    let investorWalletData = G(await W({ Deposits: fetchDeposits(U, investor.btcAddress), Withdrawals: fetchDeposits(investor.pubKey),
+      Investments: Promise.all(this.getFundDepositAddresses().map(async a => (await fetchDeposits(investor.pubKey, a)).map(d => ({...d, fundDepositAddress: a })))),
+      Returns: Promise.all(this.getFundDepositPubKeys().map(async a => (await fetchDeposits(a, investor.btcAddress)).map(d => ({...d, fundDepositPubKey: a })))),
     }), v => v.flat());
-    return this.syncCache.setData(key, investorWalletData);
-    //L({investorWalletData});
-    //return investorWalletData;
+    return this.syncCache.setData(key, investorWalletData); 
   } }
 
   getDecimals() { return this.syncCache.getData('decimals'); } 

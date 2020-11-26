@@ -4,12 +4,11 @@ import { A, D, E, F, G, I, K, L, U, V, S, oA, oB, oF, oO, oS, isO, singleKeyObje
 // eslint-disable-next-line
 import { List, ListItem, ListItemText, ListItemIcon, Hidden, Drawer, Stepper, Step, StepLabel, CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, Typography, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 // eslint-disable-next-line
-import { HistoryIcon, AttachMoneyIcon, CallMadeIcon } from '@material-ui/icons';
+//import { HistoryIcon, AttachMoneyIcon, CallMadeIcon } from '@material-ui/icons';
 import { btcToString, satoshiToBTCString } from '../core/satoshi';
 import LockIcon from '@material-ui/icons/Lock';
 import { captionIconMap } from './icons';
-import { formatTimestamp } from './formatting';
-import { BN } from '../core/bignumber';
+import { formatTimestamp } from './formatting'; 
 
 let captionMap = {
   timestamp: "Time", value: "Value", txId: "Transaction ID", deposits: "Deposits", withdrawals: "Withdrawals", withdrawalRequests: "Withdrawal Requests", fundDepositAddresses: "Fund deposit addresses", feeAddresses: "Fee addresses", _: ""
@@ -143,7 +142,7 @@ class ValidatableComp extends Comp {
 }
 
 let tabulize = (borderSpacing, cells, cellStyles) => <table style={{borderSpacing: `${borderSpacing || 0}em`}}><tbody>{cells.map((r, i) => <tr key={i}>{r.map((c, j) => 
-  <td key={j} style={oO(oA(oA(cellStyles)[i])[j])}>{c}</td>)}</tr>)}</tbody></table> 
+  <td key={j} style={cellStyles && oO(oA(oA(cellStyles)[i])[j])}>{c}</td>)}</tr>)}</tbody></table> 
 let formTable = cells => tabulize(1.5, cells)
 let form = (preamble, cells) => <form noValidate autoComplete="off">{preamble}{formTable(cells)}</form>
 
@@ -189,9 +188,10 @@ let applyListHeaders = (h, mods)  => { E(mods).forEach(([k, v]) => A(oO(h[k]), v
 let compareStrings = (a, b) => a.localeCompare(b);
 let compareBNs = (a, b) => a.isLessThan(b); 
 let commonDataTypes = {
-  btcAddress: { caption: "BTC Address", displayFunc: v => aLink(`https://www.blockchain.com/en/btc/address/${v}`, v), compare: compareStrings },
-  ethAddress: { caption: "ETH Address", displayFunc: v => aLink(`https://etherscan.io/address/${v}`, v), compare: compareStrings },
-  btcTx: { caption: "Bitcoin Tx", displayFunc: v => aLink(`https://www.blockchain.com/en/btc/tx/${v}`, v), compare: compareStrings },
+  btcAddress: { caption: "BTC address", displayFunc: v => aLink(`https://www.blockchain.com/en/btc/address/${v}`, v), compare: compareStrings },
+  fundDepositAddress: { caption: "Fund deposit address", displayFunc: v => aLink(`https://www.blockchain.com/en/btc/address/${v}`, v), compare: compareStrings },
+  ethAddress: { caption: "ETH address", displayFunc: v => aLink(`https://etherscan.io/address/${v}`, v), compare: compareStrings },
+  btcTx: { caption: "Bitcoin transaction", displayFunc: v => aLink(`https://www.blockchain.com/en/btc/tx/${v}`, v), compare: compareStrings },
   pubKey: { caption: "Public key", displayFunc: wrapEllipsisDiv, compare: compareStrings },
   status: { caption: "Status", displayFunc: cleanText, compare: compareStrings },
   btcSatoshis: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => satoshiToBTCString(x), compare: compareBNs },
