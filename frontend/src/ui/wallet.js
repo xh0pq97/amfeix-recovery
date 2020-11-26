@@ -36,9 +36,11 @@ let investorCompIfTestMode = (p) => testModeComp(p.urlParams.testMode, () => <In
 let walletLists = T("Deposits Investments Returns Withdrawals");
 let simpleList = data => <List data={data} headers={V(genHeaders(data))}/>; 
 class History extends InvestorDependentView_Btc { 
-  ren(p, s) { let walletData = this.getInvestorWalletData(); L(`p.wallet = ${S(p.wallet)}`)
-    let All_transactions = () => simpleList(walletLists.map(type => oA(oO(walletData)[type]).map(d => ({...d, type }))).flat());
-    return <>{investorCompIfTestMode(p)}<TabbedView tabs={{ All_transactions, ...F(walletLists.map(l => [l, () => simpleList(oO(walletData)[l])])) }} parentProps={{ walletData, wallet: oO(p.wallet).lastLogin }} /></>; 
+  ren(p, s) { let walletData = this.getInvestorWalletData(); //L(`p.wallet = ${S(p.wallet)}`)
+  L({walletData});
+    let All_transactions = () => simpleList(L(walletLists).map(type => 
+      oA(L(oO(walletData)[type])).map(d => ({...d, type: type.slice(0, type.length - 1) }))).flat());
+    return <>{investorCompIfTestMode(p)}<TabbedView tabs={{ All_transactions, ...F(walletLists.map(l => [l, () => simpleList(oA(oO(walletData)[l]).slice(0, 5))])) }} parentProps={{ walletData, wallet: oO(p.wallet).lastLogin }} /></>; 
   } 
 }
 
@@ -54,7 +56,8 @@ class Review extends ValidatableComp { ren(p, s) { return <Box/>; } }
 class Withdraw extends ValidatableComp { ren(p, s) { return form(null, [[this.genTextField("To", "The address of the recipient")], [this.genTextField("Amount", "Amount to be sent")], [this.genTextField("Fees")]]); } }
 
 export class Bitcoin_Wallet extends Comp { ren(p, s) { 
-  L(`Lastlogin = ${S(p.wallet)}`); L(`invstor = ${S(p.investor)}`);
+  //L(`Lastlogin = ${S(p.wallet)}`); 
+  L(`invstor = ${S(p.investor)}`);
   let investor = p.investor || oO(oO(p.wallet).lastLogin);
   if (!D(investor.btcAddress) && D(investor.pubKey)) investor.btcAddress = pubKeyToBtcAddress(investor.pubKey);
   //return !D(p.wallet) ? <Box/> : <>{formTable([[<Account wallet={(p.wallet)} />]])}

@@ -5,7 +5,7 @@ import { Transaction, data } from '../core/data';
 
 // eslint-disable-next-line
 import { form, formTable, ProgressDialog, GetPasswordDialog, loadingComponent, applyListHeaders, commonTableHeaders, genHeaders, ValidatableComp, OpenDialogButton, Comp, TabbedView, List, tabulize, TabTimeline, preamble, button } from './components';
-import { InvestorList, EthTxView, applyWithdrawalRequestStatus } from './investor';
+import { InvestorList, EthTxView } from './investor';
 import { Typography } from '@material-ui/core';
 import { BN }  from '../core/bignumber';
 import { satoshiToBTCString } from '../core/satoshi';
@@ -98,7 +98,7 @@ class Withdrawal_Requests extends Comp { componentDidMount() { this.addSyncKeyOb
   ren(p, s) {  let pendingWithdrawals = oA(s.withdrawalRequests);
     return loadingComponent(s.withdrawalRequests, tabulize(5/3, [
     [<OpenDialogButton id="Approve_all_pending_withdrawals" parentProps={{ pendingWithdrawals }} comp={Approve_all_pending_withdrawals} onAccept={d => this.approveAll(d)} />],
-    [<List data={s.withdrawalRequests} headers={V(applyWithdrawalRequestStatus(genHeaders(s.withdrawalRequests)))} />]
+    [<List data={s.withdrawalRequests} headers={V((genHeaders(s.withdrawalRequests)))} />]
   ])) }
 }
 
@@ -119,7 +119,7 @@ class Queued_Eth_Transactions extends Comp {
     return tabulize(5/3, [ 
       [<>{button("Sign and submit queued transactions", () => this.setState({ getPwdDialogOpen: true }))}<ProgressDialog open={s.progressDialogOpen || false} title={s.progressDialogTitle} progress={U} />
       <GetPasswordDialog open={s.getPwdDialogOpen} walletName={Wallet} onAccept={creds => this.signAndSubmit({ ...creds, Wallet })} onCancel={() => this.setState({ getPwdDialogOpen: false })}/></>],
-      [<List data={s.queuedEthTransactions} headers={V(applyWithdrawalRequestStatus(genHeaders(s.queuedEthTransactions)))} />]
+      [<List data={s.queuedEthTransactions} headers={V((genHeaders(s.queuedEthTransactions)))} />]
     ]) 
   }
 }

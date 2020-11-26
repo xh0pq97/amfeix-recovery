@@ -1,7 +1,7 @@
 import Web3 from 'web3';
 import amfeixCjson from '../amfeixC.json'; 
 // eslint-disable-next-line
-import { A, D, E, F, G, H, I, K, L, S, T, P, U, V, oA, oO, oF, isO, isA, isS, singleKeyObject, makeEnum } from '../tools'; 
+import { A, D, E, F, G, H, I, K, L, S, T, P, U, V, W, oA, oO, oF, isO, isA, isS, singleKeyObject, makeEnum } from '../tools'; 
 import { IndexedDB } from './db'; 
 import { Persistent } from './persistent';
 import { BN, ALPHABET }  from './bignumber';
@@ -119,7 +119,7 @@ let timeAndAmount = T("time amount"), indexMaps = amfeixAddressLists, investorMa
 let ethBasicFields = T("owner aum decimals btcPrice").concat(amfeixFeeFields).concat(amfeixAddressLists.map(k => `${k}Length`));
 const btcFields = T("blockcount connectioncount difficulty blockchaininfo");
 
-let btcRpc = async (method, func, params) => JSONBig.parse((await ((await fetch(`${btcRpcUrl}${func}/${method === "GET" ? `?${E(oO(params)).map(x => x.map(encodeURIComponent).join("=")).join("&")}` : ''}`, 
+let btcRpc = async (method, func, params) => JSONBig.parse((await ((await fetch(`${btcRpcUrl}${func}/${method === "GET" && params ? `?${E(oO(params)).map(x => x.map(encodeURIComponent).join("=")).join("&")}` : ''}`, 
  { method, mode: 'cors', headers: { "content-type": "application/json" }, ...(method === "POST" ? { body: S({params}) }: {}) })).text())));
 
 let invMapDBStruc = ({countTable, dataTable}) => ({ ...singleKeyObject(countTable, struc(["investorIx"])), ...singleKeyObject(dataTable, struc(["investorIx", "index"], [["investorIx", "investorIx", false]])) })
@@ -289,21 +289,22 @@ f
   getFundDepositPubKeys() { return ["03f1da9523bf0936bfe1fed5cd34921e94a78cac1ea4cfd36b716e440fb8de90aa"]; }
 
   async fetchFundDeposits() { this.syncCache.set({ fundDeposits: await Promise.all(this.getFundDepositAddresses().map(a => this.fetchDeposits(U, a))) }); };
-  async fetchDeposits(fromPubKey, toAddr) { return oA(oO(await btcRpc("GET", `getdeposits/${toAddr ? `toAddress/${toAddr}` : ''}${fromPubKey ? `fromPublicKey/${fromPubKey}` : ''}`)).data).map(decodeFundDeposit) }
+  async fetchDeposits(fromPubKey, toAddr) { return oA(oO(await btcRpc("GET", L(`getdeposits/toAddress/${toAddr || '_'}/fromPublicKey/${fromPubKey || '_'}`))).data).map(decodeFundDeposit) }
 
-  async retrieveInvestorWalletData(investor) { L({investor}); 
+  async retrieveInvestorWalletData(investor) { L({investor}); if (investor.pubKey && investor.btcAddress) {
     let key = getInvestorWalletDataKey(investor);
     let cached = await this.syncCache.getData(key);
     if (D(cached)) return cached;  
 
-    let d = {
-      Investments: await Promise.all((this.getFundDepositAddresses().map(async a => (await this.fetchDeposits(investor.pubKey, a)).map(d => ({...d, fundDepositAddress: a }))))),
-      Returns: await Promise.all((this.getFundDepositPubKeys().map(async a => (await this.fetchDeposits(a, investor.btcAddress)).map(d => ({...d, fundDepositPubKey: a }))))),
-      Deposits: await this.fetchDeposits(U, investor.btcAddress), Withdrawals: await this.fetchDeposits(investor.pubKey)
-    };
-    this.syncCache.setData(key, d);
-    return d;
-  }
+    let investorWalletData = G(await W({
+      Investments: Promise.all(this.getFundDepositAddresses().map(async a => (await this.fetchDeposits(investor.pubKey, a)).map(d => ({...d, fundDepositAddress: a })))),
+      Returns: Promise.all(this.getFundDepositPubKeys().map(async a => (await this.fetchDeposits(a, investor.btcAddress)).map(d => ({...d, fundDepositPubKey: a })))),
+      Deposits: this.fetchDeposits(U, investor.btcAddress), Withdrawals: this.fetchDeposits(investor.pubKey)
+    }), v => v.flat());
+    return this.syncCache.setData(key, investorWalletData);
+    //L({investorWalletData});
+    //return investorWalletData;
+  } }
 
   getDecimals() { return this.syncCache.getData('decimals'); } 
   getFactor() { return BN(10).pow(this.getDecimals()); } 
@@ -396,8 +397,8 @@ f
   }
 
   async updateArray(arrayName, lengthName, parms) { 
+    let olp = this.onLoadProgress(`Update '${arrayName}' array`);
     await this.measureTime(`Update '${arrayName}' array`, async () => { L(`update array ${arrayName}`);
-      let olp = this.onLoadProgress(`Update '${arrayName}' array`);
       let countKey = ({ name: lengthName || `${arrayName}.counts` }); 
       let alsi = (await this.getArrayLengthAndStartIndex(tables.eth.constants, countKey, lengthName, parms)); 
 //      L({arrayName, alsi});
@@ -416,6 +417,7 @@ f
       //await donePromise;
     });
     await this.measureTime(`Cache '${arrayName}' array`, async () => this.syncCache.setData(arrayName, (await this.idb.getAll(tables.eth[arrayName]))));  
+//    this.updateLoadProgress(olp, alsi.)
   } 
 
   async getArrayLengthAndStartIndex(countTable, countKey, lengthName, parms) { //L(`galsi(${countTable}, ${S(countKey)}, ${lengthName}, ${parms})`)

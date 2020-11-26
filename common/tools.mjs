@@ -24,17 +24,18 @@ let S = JSON.stringify;
 let T = s => oS(s).split(" ");
 let U = undefined;
 let V = Object.values; 
+let W = async o => F(await Promise.all(E(o).map(async ([k, v]) => [k, await v])));
 
 // Optionals
 let oA = a => a || [];
 let oB = b => b || false;
 let oF = f => f || (() => {});
 let oO = o => o || {};
-let oS = s => s || "";
+let oS = s => s || ""; 
 
 let asA = a => (b => isA(b) ? b : [b])(oA(a))
 
 let singleKeyObject = (k, v) => { let o = {}; o[k] = v; return o; }
-let makeEnum = soo => Object.freeze(F(T(soo).map(k => [k, k])));
+let makeEnum = soo => Object.freeze(F(T(soo).map(k => [k, k]))); 
 
-export { A, D, E, F, G, GA, H, I, K, L, P, R, S, T, U, V, oA, oB, oO, oS, oF, isA, isO, isF, isS, isP, asA, singleKeyObject, makeEnum }
+export { A, D, E, F, G, GA, H, I, K, L, P, R, S, T, U, V, W, oA, oB, oO, oS, oF, isA, isO, isF, isS, isP, asA, singleKeyObject, makeEnum }
