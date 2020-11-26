@@ -17,7 +17,7 @@ import { Bitcoin_Wallet } from './ui/wallet';
 import { InvestorID, InvestorList, EthTxView, InvestorDependentView } from './ui/investor';
 //import ImpactFundIcon from './assets/impactFund.svg'
 import { wallet } from './core/wallet';
-import { pubKeyToEthAddress, pubKeyToBtcAddress } from "./core/crypto";
+import { pubKeyToEthAddress, pubKeyToBtcAddress } from "./core/pubKeyConvertor";
 // eslint-disable-next-line
 import { basePallette, getMainLightness, seriesColors, getMainColor, darkMode } from './ui/colors';
 import { version } from './version.js'; 

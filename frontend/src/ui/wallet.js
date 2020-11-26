@@ -8,7 +8,7 @@ import { A, D, E, F, H, I, K, L, P, S, T, U, V, oA, oF, oO, oS, asA, singleKeyOb
 import { InvestorDependentView_Btc, InvestorID } from './investor'
 // eslint-disable-next-line
 import QRCode from 'qrcode-svg';
-import { pubKeyToBtcAddress } from '../core/crypto';
+import { pubKeyToBtcAddress } from '../core/pubKeyConvertor';
 // wc52mNR2qTpFfNP
 // eslint-disable-next-line
 class _Withdraw_ extends Comp { ren(p, s) { return <TabTimeline tabs={{ Withdraw, Review, Done }} onCancel={p.onCancel} onAccept={p.onAccept}/>; } }
@@ -40,7 +40,7 @@ class History extends InvestorDependentView_Btc {
   L({walletData});
     let All_transactions = () => simpleList(L(walletLists).map(type => 
       oA(L(oO(walletData)[type])).map(d => ({...d, type: type.slice(0, type.length - 1) }))).flat());
-    return <TabbedView tabs={{ All_transactions, ...F(walletLists.map(l => [l, () => simpleList(oA(oO(walletData)[l])])) }} parentProps={{ walletData, wallet: oO(p.wallet).lastLogin }} />; 
+    return <TabbedView tabs={{ All_transactions, ...F(walletLists.map(l => [l, () => simpleList(oA(oO(walletData)[l]))])) }} parentProps={{ walletData, wallet: oO(p.wallet).lastLogin }} />; 
   } 
 }
 
