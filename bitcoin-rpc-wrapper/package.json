@@ -4,21 +4,27 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "server": "nodemon server.js"
+    "server": "nodemon server.js",
+    "build": "webpack --config webpack.config.js"
   },
   "keywords": [],
   "dependencies": {
     "bignumber.js": "^9.0.1",
     "bip32": "^2.0.6",
+    "bip38": "^3.1.1",
+    "bip39": "^3.0.3",
+    "bitcoinjs-lib": "^5.2.0",
     "body-parser": "^1.19.0",
     "bs58check": "^2.1.2",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "json-bigint": "^1.0.0",
     "json-bignumber": "^1.0.2",
+    "keccak256": "^1.0.2",
     "mariadb": "^2.5.1",
     "memcached": "^2.2.2",
     "node-fetch": "^2.6.1",
-    "request": "^2.88.2"
+    "request": "^2.88.2",
+    "secp256k1": "^4.0.2"
   }
 }

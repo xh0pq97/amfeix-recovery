@@ -11,6 +11,7 @@ import { satoshiToBTCString } from './satoshi';
 import { pubKeyToEthAddress, pubKeyToBtcAddress } from "../common/pubKeyConvertor";
 import { SyncCache } from '../common/syncCache';
 import { amfx, amfeixAddress } from './amfeixContract';
+import bs58check from 'bs58check'; 
 
 let newDB = false //|| true;   
  
@@ -21,11 +22,13 @@ let anomalousInvestorIndexMap = F([2339, 74, 418, 419, 424, 464, 515, 3429, 515,
 let b64ToHex = v => Buffer.from(v, 'base64').toString('hex');
 let decodeFundDeposit = s => (([timestamp, amountX, transactionX, fromPubKeyX]) => { let fromPubKey = b64ToHex(fromPubKeyX);
   return {timestamp, txId: b64ToHex(transactionX), fromPubKey, fromBtcAddress: pubKeyToBtcAddress(fromPubKey), satoshiBN: BN(b64ToHex(amountX), 16)}; } )(T(s)); 
-
+let decodeDeposit = s => (([timestamp, amountX, transactionX, fromBtcAddressX]) => {  
+  return {timestamp, txId: b64ToHex(transactionX), fromBtcAddress: fromBtcAddressX && bs58check.encode(Buffer.from(fromBtcAddressX, 'base64')), satoshiBN: BN(b64ToHex(amountX), 16)}; } )(T(s)); 
+  
 let hostname = window.location.hostname;
 hostname = (hostname === "localhost") ? "spacetimemanifolds.com" : hostname;
 const btcRpcUrl = `https://btc.${hostname}/`; //`http://157.245.35.34/`,  
-const ethInterfaceUrl = `https://eth.${hostname}/`; //"ws://46.101.6.38/ws"; 
+const ethInterfaceUrl = `https://eth.${hostname}/`; //"ws://46.101.6.38/ws";  
 const ethInterfaceUrls = [ethInterfaceUrl, ethInterfaceUrl + 'ganache/']; //"ws://46.101.6.38/ws";  
 //ethInterfaceUrl = "http://46.101.6.38:8547/";  
 //const web3 =  new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/v3/efc3fa619c294bc194161b66d8f3585e"));
@@ -74,7 +77,7 @@ class Scheduler {
   }
 }
 
-let fetchDeposits = async (fromPubKey, toAddr) => oA(oO(await btcRpc("GET", L(`getdeposits/toAddress/${toAddr || '_'}/fromPublicKey/${fromPubKey || '_'}`))).data).map(decodeFundDeposit);
+let fetchDeposits = async (fromPubKey, toAddr) => oA(oO(await btcRpc("GET", L(`getdeposits/toAddress/${toAddr || '_'}/fromPublicKey/${fromPubKey || '_'}`))).data).map(decodeDeposit);
 
 class Data extends Persistent {
   constructor() { super("data", ["localData"], { localData: { dbix: 173 } }); L('Creating Data class instance.');
@@ -191,9 +194,9 @@ f
     let cached = await this.syncCache.getData(key);
     if (D(cached)) return cached;  
 
-    let investorWalletData = G(await W({ Deposits: fetchDeposits(U, investor.btcAddress), Withdrawals: fetchDeposits(investor.pubKey),
+    let investorWalletData = G(await W({ Deposits: fetchDeposits(U, investor.btcAddress), Withdrawals: [],//fetchDeposits(investor.pubKey),
       Investments: Promise.all(this.getFundDepositAddresses().map(async a => (await fetchDeposits(investor.pubKey, a)).map(d => ({...d, fundDepositAddress: a })))),
-      Returns: Promise.all(this.getFundDepositPubKeys().map(async a => (await fetchDeposits(a, investor.btcAddress)).map(d => ({...d, fundDepositPubKey: a })))),
+      Returns: []//Promise.all(this.getFundDepositPubKeys().map(async a => (await fetchDeposits(a, investor.btcAddress)).map(d => ({...d, fundDepositPubKey: a })))),
     }), v => v.flat());
     return this.syncCache.setData(key, investorWalletData); 
   } }

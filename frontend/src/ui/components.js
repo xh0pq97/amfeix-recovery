@@ -201,7 +201,7 @@ let commonTableHeaders = G({ txId: { type: "btcTx" }, btcAddress: { type: "btcAd
   fromPubKey: { caption: "From public key", type: "pubKey" }, fromBtcAddress: { caption: "From BTC address", type: "btcAddress" },
   derivedEthAddress: { caption: "Derived ETH Address", type: "ethAddress" }, 
   timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp },
-}, v => ({...v, ...(D(v.type) ? commonDataTypes[v.type] : {})}));
+}, v => ({...(D(v.type) ? commonDataTypes[v.type] : {}), ...v}));
  
 let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{title}</h2><p style={{textAlign: "left"}}>{text}</p><p style={{textAlign: "left", color: "#FF2170"}}>{warning}</p></>;
 let loadingComponent = (data, c) => D(data) ? c  : tabulize(5, [[<CircularProgress/>]]);

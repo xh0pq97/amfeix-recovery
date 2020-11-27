@@ -69,8 +69,6 @@ let generateCall = (method) => async (req, ans) => { try {
 getMethods.forEach(method => app.get(`/${method}/`, generateCall(method)));
 postMethods.forEach(method => app.post(`/${method}/`, generateCall(method)));
 
-let trimLeadingZeroes = v => { while ((v.length > 0) && (v[0] === '0')) v = v.substr(1); return v; }
-let compressValue = v => htb(trimLeadingZeroes(v)).toString('base64');
 
 /*
   "CREATE TABLE IF NOT EXISTS block (id INT PRIMARY KEY AUTO_INCREMENT, height INT, time TIMESTAMP, hash BINARY(32), processed BOOL, INDEX height (height), INDEX hash (hash))",
@@ -81,9 +79,11 @@ let compressValue = v => htb(trimLeadingZeroes(v)).toString('base64');
   "CREATE TABLE IF NOT EXISTS address (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(21), INDEX v (v))",
 */ 
 
+let trimLeadingZeroes = v => { while ((v.length > 0) && (v[0] === '0')) v = v.substr(1); return v; }
+let compressValue = v => htb(trimLeadingZeroes(v)).toString('base64');
 let formatOutput = v => [ v.time, compressValue(v.value), v.txid.toString('base64'), v.pubKey.toString('base64'), v.voutIx ].join(" ");
 
-let getDeposits = async (toAddress, fromPublicKey) => { 
+let getTransfers = async (toAddress, fromPublicKey) => { 
   toAddress = (toAddress.length > 1) ? toAddress : U;
   if (toAddress || (fromPublicKey.length > 1)) { let conn = await pool.getConnection(); if (conn) { try { 
   let binToAddress = toAddress && bs58check.decode(toAddress);
@@ -97,8 +97,12 @@ let getDeposits = async (toAddress, fromPublicKey) => {
       L(`result = ${q.length}`);
       let txs = B(q, "tIx");
       for (let tx of V(txs)) {
-        let outs = B(tx, "address"); 
-        for (let v of (toAddress ? outs[binToAddress] : tx)) data.push(formatOutput(v));
+        let ins = B(tx, "pubKey", pk => pubKeyToBtcAddress(pk.toString("hex")));
+        if ((K(ins).length > 1) || (!D[ins[toAddress]])) {
+          let selfDeposit = ins.reduce((p, c) => BN(c.value).plus(p), BN(0));
+          let outs = B(tx, "address"); 
+          for (let v of (toAddress ? outs[binToAddress] : tx)) data.push(formatOutput(v));
+        }
 //        if ((K(F(tx.map(t => [t.pubKey.toString('hex'), true])))).length !== 1) { L(`Ignoring tx ${v.tIx}: Several input pubkeys`); continue; }
 //        if (K(F(tx.map(t => [t.voutIx, true]))).length !== 1) { L(`Ignoring tx ${v.tIx}: Several voutIx`); continue; } 
 //          let value = tx.reduce((p, c) => p.plus(BN(c.value, 16)), BN(0)); 
@@ -110,6 +114,47 @@ let getDeposits = async (toAddress, fromPublicKey) => {
   } catch(e) { return { err: `DB error: ${S(e)}` } }
 } catch(e) { return { err: `Invalid address: ${S(e)}` } } 
 finally { conn.close(); } } else { return { err: `No db connection` }; } } else { return { err: 'Specify toAddress or fromPublicKey or both.' } } }
+
+let formatDeposit = v => [ (v).time, compressValue(v.value), v.txid.toString('base64'), v.fromBtcAddress ? bs58check.decode(v.fromBtcAddress).toString('base64') : U ].join(" ");
+let getDeposits = async (toAddress, fromPublicKey) => { if (toAddress.length <= 1) return { err: `To address required.` };
+  let conn = await pool.getConnection(); if (conn) { try { 
+    let binToAddress = bs58check.decode(toAddress);
+    L({toAddress, fromPublicKey});
+    try { await conn.query("USE transfers");
+      let idToAddress = oO(oA(await conn.query('SELECT id FROM address WHERE address.v = ?', [binToAddress]))[0]).id;
+      L({idToAddress});
+      if (!D(idToAddress)) return { err: `To address '${toAddress}' not found.`}
+
+      try {
+        if (fromPublicKey.length <= 1) fromPublicKey = U;
+        let fromBtcAddress = fromPublicKey && pubKeyToBtcAddress(fromPublicKey);
+        let binFromPublicKey = fromPublicKey && htb(fromPublicKey);
+
+        let data = [];
+        try { 
+          let txs = B(await conn.query(L(`SELECT UNIX_TIMESTAMP(block.time) as time, transaction.v as txid, HEX(vout.value) as value, transaction.id as tIx FROM transaction, block, vout WHERE vout.idToAddress = ? AND transaction.id = vout.idTransaction AND block.id = vout.idBlock`), L([idToAddress])), "tIx");
+          L(`result = ${K(txs).length} transactions`);
+          for (let [tIx, tx] of E(txs)) {
+            let sumValueBN = tx.reduce((p, c) => BN(c.value, 16).plus(p), BN(0));
+            let vins = B(await conn.query((`SELECT HEX(pubKey.v) as fromPubKey FROM vin, pubKey WHERE vin.idTransaction = ? AND vin.idPubKey = pubKey.id ${fromPublicKey ? 'AND pubKey.v = ?' : ''}`), ([tIx, binFromPublicKey].filter(D))), "fromPubKey");
+            if (K(vins).length === 1) { let vinFromBtcAddress = fromBtcAddress || pubKeyToBtcAddress(K(vins)[0]);
+              if (vinFromBtcAddress !== toAddress) {
+                let hexToBs58 = h => bs58check.encode(Buffer.from(h, 'hex'));
+                let vouts = B(await conn.query((`SELECT HEX(address.v) as toAddress FROM vout, address WHERE vout.idTransaction = ? AND vout.idToAddress = address.id`), ([tIx])), "toAddress");
+                let otherToAddresses = K(vouts).filter(a => hexToBs58(a) !== toAddress);
+                if ((otherToAddresses.length <= 1) && ((otherToAddresses.length === 0) || (hexToBs58(otherToAddresses[0]) === vinFromBtcAddress))) { //L('x')
+                  data.push(formatDeposit(({ time: tx[0].time, value: sumValueBN.toString(16), txid: tx[0].txid, fromBtcAddress: D(fromPublicKey) ? U : vinFromBtcAddress })));
+                }
+              }
+            }
+          }
+          L(`data = ${data.length}`);
+        } catch(e) { return { err: `Query failed: ${S(e)}` }; }
+        return { data }; 
+      } catch(e) { return { err: `Invalid public key '${fromPublicKey}': ${S(e)}` } } 
+    } catch(e) { return { err: `DB error: ${S(e)}` } }
+  } catch(e) { return { err: `Invalid address '${toAddress}': ${S(e)}` } } 
+finally { conn.close(); } } else { return { err: `No db connection` }; } }
 
 let getOutTransfers = async (toAddress, fromPublicKey) => { if ((toAddress.length > 1) || (fromPublicKey.length > 1)) { let conn = await pool.getConnection(); if (conn) { try { 
   fromPublicKey = (fromPublicKey.length > 1) ? (fromPublicKey.length > 1) : U;
