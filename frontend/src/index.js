@@ -1,7 +1,7 @@
 import React from 'react'; import ReactDOM from 'react-dom';
 import * as serviceWorker from './serviceWorker';
 // eslint-disable-next-line
-import { A, D, E, F, G, H, I, K, L, P, S, T, U, V, oA, oO, oS, asA, makeEnum, singleKeyObject } from './tools';  
+import { A, D, E, F, G, H, I, K, L, P, S, T, U, V, oA, oO, oS, asA, makeEnum, singleKeyObject } from './common/tools';  
 // eslint-disable-next-line
 import { FormControlLabel, Switch, List, ListItem, ListItemText, ListItemIcon, AppBar, Toolbar, Typography, Button, Box, TextField, Paper, Accordion, AccordionSummary, AccordionDetails } from '@material-ui/core';
 import { createMuiTheme, ThemeProvider}  from '@material-ui/core/styles';
@@ -17,7 +17,7 @@ import { Bitcoin_Wallet } from './ui/wallet';
 import { InvestorID, InvestorList, EthTxView, InvestorDependentView } from './ui/investor';
 //import ImpactFundIcon from './assets/impactFund.svg'
 import { wallet } from './core/wallet';
-import { pubKeyToEthAddress, pubKeyToBtcAddress } from "./core/pubKeyConvertor";
+import { pubKeyToEthAddress, pubKeyToBtcAddress } from "./common/pubKeyConvertor";
 // eslint-disable-next-line
 import { basePallette, getMainLightness, seriesColors, getMainColor, darkMode } from './ui/colors';
 import { version } from './version.js'; 

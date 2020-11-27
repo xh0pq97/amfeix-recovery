@@ -1,10 +1,14 @@
 import Web3 from 'web3';
 import amfeixCjson from '../amfeixC.json';
-import { A, I, L, S, oA, oO } from '../tools';
+import { A, F, I, L, S, oA, oO } from '../common/tools';
 import { BN } from './bignumber';
 import aggregate from '@makerdao/multicall/src/aggregate';
-import { abi, amfeixAddress } from './data';
 
+export let amfeixAddress = "0xb0963da9baef08711583252f5000Df44D4F56925";
+ 
+class ABI { constructor(abi) { this.methodMap = F(abi.filter(x => x.type === "function").map(x => [x.name, x])); } }
+
+let abi = new ABI(amfeixCjson.abi);
 //L(`abi keys = ${K(abi)}`);
 //
 class MultiCallBatch {
@@ -37,10 +41,9 @@ class MultiCallBatch {
 
 class AmfeixContract {
   setWeb3Url(url) {
-    this.url = url;
+    A(this, { url, queuedOps: [], batchIx: 0, queuedOpCount: 0, processedOpCount: 0, queuedBatches: [], processing: false, inFlight: [], maxInFlight: 16, nextIx: 0, batchSize: 64, activeBatch: Promise.resolve() });
     this.web3 = new Web3(new (this.url.indexOf("ws://") === 0 ? Web3.providers.WebsocketProvider : Web3.providers.HttpProvider)(this.url, { timeout: 60000 }));
     this.amfeixM = () => (new this.web3.eth.Contract(amfeixCjson.abi, amfeixAddress, { from: this.from })).methods;
-    A(this, { queuedOps: [], batchIx: 0, queuedOpCount: 0, processedOpCount: 0, queuedBatches: [], processing: false, inFlight: [], maxInFlight: 16, nextIx: 0, batchSize: 64, activeBatch: Promise.resolve() });
   }
 
   setFrom(address) { this.from = address; }
@@ -73,6 +76,4 @@ class AmfeixContract {
   async flushBatch() { await new Promise((resolve, reject) => { try { setTimeout(() => resolve(this.actualFlushBatch()), 0); } catch (err) { reject(err); } }); }
 }
 
-let amfx = new AmfeixContract();
-
-export { amfx };
+export let amfx = new AmfeixContract();

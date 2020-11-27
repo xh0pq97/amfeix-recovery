@@ -1,6 +1,6 @@
 // eslint-disable-next-line
-import { A, D, E, H, I, K, L, P, R, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
-import { decryptWallet, getWalletRoot, getAmfeixPublicKey, btcAddressFromPubKey, pubKeyBufferToPoint, ethAddressFromPubKey, encryptSeedWords, rootFromSeed, getAmfeixPrivateKey } from './crypto';
+import { A, D, E, H, I, K, L, P, R, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools'; 
+import { decryptWallet, getWalletRoot, getAmfeixPublicKey, btcAddressFromPubKey, pubKeyBufferToPoint, ethAddressFromPubKey, encryptSeedWords, rootFromSeed, getAmfeixPrivateKey } from '../common/crypto';
 import { Persistent } from './persistent'
 
 class Wallet extends Persistent { 

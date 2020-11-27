@@ -34,23 +34,13 @@ let rpc = async (method, params) => (await rpcRequest(method, params)).result;
 
 let getDecodedTx = async txHash => await rpc("decoderawtransaction", [(await rpc("getrawtransaction", [txHash]))]);
 
-let argOffset = 0, args = process.argv.slice(2), command = (args[argOffset++]); L(`args = ${process.argv}`); L({command});
-if (command === "decodeTx") {
-  let txHash = args[argOffset++];
-  (async () => {
-    L(await getDecodedTx(txHash));
-  })();
-} else {
-  let offset = parseInt(args[argOffset++]), groupSize = parseInt(args[argOffset++]);
-  blockScan(offset, groupSize);
-}
-
 //if (offset < 0) { L(S(memcached.settings((e, d) => L(`Memcache stats = ${S(e)} ${S(d)}`)))); process.exit(0); }
 // DB Init 
 const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: 7 });
 let objGenesis = [ "USE transfers",
   "CREATE TABLE IF NOT EXISTS block (id INT PRIMARY KEY AUTO_INCREMENT, height INT, time TIMESTAMP, hash BINARY(32), processed BOOL, INDEX height (height), INDEX hash (hash))",
   "CREATE TABLE IF NOT EXISTS transaction (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(32), INDEX v (v))",
+//  "CREATE TABLE IF NOT EXISTS investment (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(32), INDEX v (v))",
   "CREATE TABLE IF NOT EXISTS pubKey (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(33), INDEX v (v))",
   "CREATE TABLE IF NOT EXISTS vout (id INT PRIMARY KEY AUTO_INCREMENT, ix INT, idToAddress INT, idBlock INT, idTransaction INT, value VARBINARY(16), INDEX ix (ix), INDEX idToAddress (idToAddress), INDEX idBlock (idBlock), INDEX idTransaction (idTransaction), INDEX value (value))",
   "CREATE TABLE IF NOT EXISTS vin (id INT PRIMARY KEY AUTO_INCREMENT, idSourceTransaction INT, idTransaction INT, voutIx INT, idPubKey INT, INDEX idTransaction (idTransaction), INDEX idSourceTransaction (idSourceTransaction), INDEX voutIx (voutIx), INDEX idPubKey (idPubKey))",
@@ -124,13 +114,14 @@ let processTransaction = async (tx, idBlock, conn) => {
   }
 }
 
-let blockScan = (async (offset) => { let conn = await pool.getConnection(); //LOG('DB connection opened.') // Create db
+let blockScan = (async (offset, groupSize) => { let conn = await pool.getConnection(); //LOG('DB connection opened.') // Create db
+  L({offset, groupSize});
   try {
     for (let x of objGenesis) await conn.query((x)); 
-    let blockHeights = [570802, 617005];
-    let blockCount = await rpc("getblockcount", []);
+    let blockHeights = [570802, 617005]; // 570650
+    let firstBlock = 570650, blockCount = await rpc("getblockcount", []);
 //    for (let height = blockHeights[0] - (blockHeights[0] % groupSize) + offset; height <= blockCount; height += groupSize) if (height <= blockCount) { process.stdout.write(`[${height}]`);
-    for (let height = blockCount - (blockCount % groupSize) - groupSize + offset; height >= 0; height -= groupSize) if (height >= 0) { process.stdout.write(`[${height}]`);
+    for (let height = firstBlock - (blockCount % groupSize) - groupSize + offset; height >= 0; height += groupSize) if (height >= 0) { process.stdout.write(`[${height}]`);
       let blockHash = await rpc("getblockhash", [height]);
       let r = (await insertIfNotExists(conn, "block", { height, hash: htb(blockHash) })); 
       let idBlock = r.id;
@@ -143,4 +134,15 @@ let blockScan = (async (offset) => { let conn = await pool.getConnection(); //LO
     }
   } finally { if (conn) conn.release(); }
 });
+
+let argOffset = 0, args = process.argv.slice(2), command = (args[argOffset++]); L(`args = ${process.argv}`); L({command});
+if (command === "decodeTx") {
+  let txHash = args[argOffset++];
+  (async () => {
+    L(await getDecodedTx(txHash));
+  })();
+} else {
+  let offset = parseInt(args[argOffset++]), groupSize = parseInt(args[argOffset++]);
+  blockScan(offset, groupSize);
+}
 

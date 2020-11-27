@@ -4,10 +4,10 @@ import { Box, TextField } from '@material-ui/core';
 // eslint-disable-next-line
 import { Comp, ValidatableComp, TabbedView, TabTimeline, button, formTable, form, preamble } from './components'; 
 // eslint-disable-next-line
-import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
+import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools'; 
 import * as bip39 from 'bip39';
 import LockIcon from '@material-ui/icons/Lock';
-import { generateSeedWords } from "../core/crypto";
+import { generateSeedWords } from "../common/crypto";
 
 //let defaultWords = 'gorilla endorse hat lumber old price route put goose sail lemon raise'.split(" ");
 

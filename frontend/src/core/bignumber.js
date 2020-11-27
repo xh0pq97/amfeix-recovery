@@ -1,6 +1,6 @@
 import { BigNumber } from 'bignumber.js'
 
-let ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+let ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ$@';
 
 BigNumber.config({ ALPHABET }); //DECIMAL_PLACES: 20 });
 

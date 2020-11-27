@@ -1,4 +1,4 @@
-import { D } from '../tools';
+import { D } from '../common/tools';
 
 export let darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 export let getMainLightness = (fg, dm) => ((D(dm) ? dm : darkMode) ^ fg) ? 0 : 1;

@@ -4,11 +4,11 @@ import { Box, TextField } from '@material-ui/core';
 // eslint-disable-next-line
 import { testModeComp, wrapEllipsisDiv, applyListHeaders, OpenDialogButton, DialogWrap, Comp, ValidatableComp, tabulize, form, formTable, TabbedView, TabTimeline, button, List, genHeaders  } from './components'; 
 // eslint-disable-next-line
-import { A, D, E, F, H, I, K, L, P, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../tools'; 
+import { A, D, E, F, H, I, K, L, P, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools'; 
 import { InvestorDependentView_Btc, InvestorID } from './investor'
 // eslint-disable-next-line
 import QRCode from 'qrcode-svg';
-import { pubKeyToBtcAddress } from '../core/pubKeyConvertor';
+import { pubKeyToBtcAddress } from '../common/pubKeyConvertor';
 // wc52mNR2qTpFfNP
 // eslint-disable-next-line
 class _Withdraw_ extends Comp { ren(p, s) { return <TabTimeline tabs={{ Withdraw, Review, Done }} onCancel={p.onCancel} onAccept={p.onAccept}/>; } }

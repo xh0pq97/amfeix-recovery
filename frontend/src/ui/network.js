@@ -1,5 +1,5 @@
 import React from 'react';
-import { A, S, V, oA, oO } from '../tools';
+import { A, S, V, oA, oO } from '../common/tools';
 import { amfeixAddressLists, btcRpcUrl, btcFields, data, ethBasicFields } from '../core/data';
 // eslint-disable-next-line
 import { button, genHeaders, commonDataTypes, Selector, Comp, TabbedView, List, captionMap, tabulize } from './components';

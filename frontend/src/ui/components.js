@@ -1,6 +1,6 @@
 import React from 'react';
 // eslint-disable-next-line
-import { A, D, E, F, G, I, K, L, U, V, S, oA, oB, oF, oO, oS, isO, singleKeyObject } from '../tools';
+import { A, D, E, F, G, I, K, L, U, V, S, oA, oB, oF, oO, oS, isO, singleKeyObject } from '../common/tools';
 // eslint-disable-next-line
 import { List, ListItem, ListItemText, ListItemIcon, Hidden, Drawer, Stepper, Step, StepLabel, CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, Typography, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 // eslint-disable-next-line
@@ -189,7 +189,6 @@ let compareStrings = (a, b) => a.localeCompare(b);
 let compareBNs = (a, b) => a.isLessThan(b); 
 let commonDataTypes = {
   btcAddress: { caption: "BTC address", displayFunc: v => aLink(`https://www.blockchain.com/en/btc/address/${v}`, v), compare: compareStrings },
-  fundDepositAddress: { caption: "Fund deposit address", displayFunc: v => aLink(`https://www.blockchain.com/en/btc/address/${v}`, v), compare: compareStrings },
   ethAddress: { caption: "ETH address", displayFunc: v => aLink(`https://etherscan.io/address/${v}`, v), compare: compareStrings },
   btcTx: { caption: "Bitcoin transaction", displayFunc: v => aLink(`https://www.blockchain.com/en/btc/tx/${v}`, v), compare: compareStrings },
   pubKey: { caption: "Public key", displayFunc: wrapEllipsisDiv, compare: compareStrings },
@@ -197,7 +196,9 @@ let commonDataTypes = {
   btcSatoshis: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => satoshiToBTCString(x), compare: compareBNs },
   btc: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => btcToString(x), compare: compareBNs }
 }
-let commonTableHeaders = G({ txId: { type: "btcTx" }, btcAddress: { type: "btcAddress" }, ethAddress: { type: "ethAddress" }, pubKey: { type: "pubKey" }, satoshiBN: { type: "btcSatoshis" }, finalValue: { type: "btcSatoshis" }, value: { type: "btcSatoshis" }, status: { type: "status" },
+let commonTableHeaders = G({ txId: { type: "btcTx" }, btcAddress: { type: "btcAddress" }, ethAddress: { type: "ethAddress" }, pubKey: { type: "pubKey" }, satoshiBN: { type: "btcSatoshis" }, finalValue: { type: "btcSatoshis" }, value: { type: "btcSatoshis" }, status: { type: "status" }, 
+  fundDepositAddress: { caption: "Fund deposit address", type: "btcAddress"}, 
+  fromPubKey: { caption: "From public key", type: "pubKey" }, fromBtcAddress: { caption: "From BTC address", type: "btcAddress" },
   derivedEthAddress: { caption: "Derived ETH Address", type: "ethAddress" }, 
   timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp },
 }, v => ({...v, ...(D(v.type) ? commonDataTypes[v.type] : {})}));

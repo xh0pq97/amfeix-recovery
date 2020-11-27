@@ -1,38 +1,36 @@
 import express, { query } from "express"; import bodyParser from "body-parser"; //import fetch from "node-fetch";
 import dotenv from "dotenv"; import request from "request";
 //const rpcMethods = require("./routes/api");
-import * as bip32 from 'bip32';
+import { pubKeyToBtcAddress } from './pubKeyConvertor.mjs';
 import JSONBig from 'json-bigint';
 import BigNumber from 'bignumber.js';
 import bs58check from 'bs58check'; 
-import { A, D, E, F, I, K, L, P, S, T, U, V, oA, oO, oS, oF, singleKeyObject } from './tools.mjs'; 
+import { A, B, D, E, F, I, K, L, P, S, T, U, V, oA, oO, oS, oF, singleKeyObject } from './tools.mjs'; 
 import mariadb from  'mariadb';
 dotenv.config(); const cfg = process.env;  
-let BN = (v, b) => new BigNumber(v, b);
+let BN = (v, b) => new BigNumber(v, b); 
 
-const verbose = true; 
+const verbose = true;  
 let LOG = d => verbose ? L(d) : d; 
 
 L(`args = ${process.argv}`);
  
-// DB Init 
 const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: 7 }); 
  
-const url = `http://${cfg.rpcuser}:${cfg.rpcpassword}@127.0.0.1:8332/`;
+const url = `http://${cfg.rpcuser}:${cfg.rpcpassword}@127.0.0.1:8332/`; LOG({url});
 const headers = { "content-type": "text/plain;" };
-
-LOG({url}); 
-let htb = h => Buffer.from(h, "hex");
+ 
+let htb = h => h && Buffer.from(h, "hex");
 
 let getRPCData = (method, params) => ({ jsonrpc: "1.0", id: 0, method, params })
 let getRPCRequestOptions = (method, params) => ({ headers, url, method: "POST", body: S(getRPCData(method, params)),
   //    mode: 'cors', // no-cors, *cors, same-origin
   //    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-  //    credentials: 'same-origin', // include, *same-origin, omit 
-  //    redirect: 'follow', // manual, *follow, error
+  //    credentials: 'same-origin', // include, *same-origin, omit   
+  //    redirect: 'follow', // manual, *follow, error 
   //    referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
-       // body data type must match "Content-Type" header
-})
+       // body data type must match "Content-Type" header 
+}) 
 let rpcRequest = (method, params) => new Promise((resolve, reject) => {
   request(getRPCRequestOptions(method, params), (err, r, body) => (!err  && r.statusCode == 200) ? resolve((JSONBig.parse((body)))) : reject(LOG({ err, statusCode: oO(r).statusCode, body })));  
 });
@@ -71,9 +69,6 @@ let generateCall = (method) => async (req, ans) => { try {
 getMethods.forEach(method => app.get(`/${method}/`, generateCall(method)));
 postMethods.forEach(method => app.post(`/${method}/`, generateCall(method)));
 
-let commonFields = "UNIX_TIMESTAMP(block.time) as time, transaction.v as txid";
-//, HEX(transfer.value) as value";
-let commonTables = "transaction, block";
 let trimLeadingZeroes = v => { while ((v.length > 0) && (v[0] === '0')) v = v.substr(1); return v; }
 let compressValue = v => htb(trimLeadingZeroes(v)).toString('base64');
 
@@ -86,24 +81,57 @@ let compressValue = v => htb(trimLeadingZeroes(v)).toString('base64');
   "CREATE TABLE IF NOT EXISTS address (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(21), INDEX v (v))",
 */ 
 
-let getDeposits = async (toAddress, fromPublicKey) => { if ((toAddress.length > 1) || (fromPublicKey.length > 1)) { let conn = await pool.getConnection(); if (conn) { try { 
-  let binToAddress = (toAddress.length > 1) && bs58check.decode(toAddress);
+let formatOutput = v => [ v.time, compressValue(v.value), v.txid.toString('base64'), v.pubKey.toString('base64'), v.voutIx ].join(" ");
+
+let getDeposits = async (toAddress, fromPublicKey) => { 
+  toAddress = (toAddress.length > 1) ? toAddress : U;
+  if (toAddress || (fromPublicKey.length > 1)) { let conn = await pool.getConnection(); if (conn) { try { 
+  let binToAddress = toAddress && bs58check.decode(toAddress);
   let binFromPublicKey = (fromPublicKey.length > 1) && htb(fromPublicKey);
   L({toAddress, fromPublicKey});
   try { await conn.query("USE transfers");
     let data = [];
     try { 
       let parmConstraints = (binToAddress ? ` AND address.v = ? ` : '') + (binFromPublicKey ? ` AND pubKey.v = ? ` : '');
-      let q = await conn.query(L(`SELECT ${commonFields}, HEX(vout.value) as value, vout.ix as voutIx, transaction.id as tIx, address.v AS address, pubKey.v AS pubKey FROM ${commonTables}, vout, vin, address, pubKey WHERE address.id = idToAddress AND pubKey.id = idPubKey AND transaction.id = vin.idTransaction AND transaction.id = vout.idTransaction AND block.id = idBlock ${parmConstraints} ORDER BY tIx`), L([binToAddress, binFromPublicKey].filter(I))); 
+      let q = await conn.query(L(`SELECT UNIX_TIMESTAMP(block.time) as time, transaction.v as txid, HEX(vout.value) as value, vout.ix as voutIx, transaction.id as tIx, address.v AS address, pubKey.v AS pubKey FROM transaction, block, vout, vin, address, pubKey WHERE address.id = idToAddress AND pubKey.id = idPubKey AND transaction.id = vin.idTransaction AND transaction.id = vout.idTransaction AND block.id = idBlock ${parmConstraints} ORDER BY tIx`), L([binToAddress, binFromPublicKey].filter(I))); 
+      L(`result = ${q.length}`);
+      let txs = B(q, "tIx");
+      for (let tx of V(txs)) {
+        let outs = B(tx, "address"); 
+        for (let v of (toAddress ? outs[binToAddress] : tx)) data.push(formatOutput(v));
+//        if ((K(F(tx.map(t => [t.pubKey.toString('hex'), true])))).length !== 1) { L(`Ignoring tx ${v.tIx}: Several input pubkeys`); continue; }
+//        if (K(F(tx.map(t => [t.voutIx, true]))).length !== 1) { L(`Ignoring tx ${v.tIx}: Several voutIx`); continue; } 
+//          let value = tx.reduce((p, c) => p.plus(BN(c.value, 16)), BN(0)); 
+        //[ v.time, compressValue(v.value), v.txid.toString('base64'), v.pubKey.toString('base64'), v.voutIx ]);
+      }
+      L(`result = ${q.length} data = ${data.length}`);
+    } catch(e) { return { err: `Query failed: ${S(e)}` }; }
+    return { data }; 
+  } catch(e) { return { err: `DB error: ${S(e)}` } }
+} catch(e) { return { err: `Invalid address: ${S(e)}` } } 
+finally { conn.close(); } } else { return { err: `No db connection` }; } } else { return { err: 'Specify toAddress or fromPublicKey or both.' } } }
+
+let getOutTransfers = async (toAddress, fromPublicKey) => { if ((toAddress.length > 1) || (fromPublicKey.length > 1)) { let conn = await pool.getConnection(); if (conn) { try { 
+  fromPublicKey = (fromPublicKey.length > 1) ? (fromPublicKey.length > 1) : U;
+  let binToAddress = (toAddress.length > 1) && bs58check.decode(toAddress);
+  let binFromPublicKey = htb(fromPublicKey);
+  L({toAddress, fromPublicKey});
+  try { await conn.query("USE transfers");
+    let fromPublicKeyId = fromPublicKey && (await conn.query(`SELECT id FROM pubKey WERE pubKey.v = ?`, [binFromPublicKey])).id;
+    let fromAddress = fromPublicKey && pubKeyToBtcAddress(fromPublicKey);
+
+    let data = [];
+    try { 
+      let parmConstraints = (binToAddress ? ` AND address.v = ? ` : '');
+      let q = await conn.query(L(`SELECT UNIX_TIMESTAMP(block.time) as time, transaction.v as txid, HEX(vout.value) as value, vout.ix as voutIx, transaction.id as tIx, HEX(address.v) AS address, pubKey.v AS pubKey FROM transaction, block, vout, address, pubKey WHERE address.id = idToAddress AND pubKey.id = idPubKey AND transaction.id = vout.idTransaction AND block.id = idBlock ${parmConstraints} AND (SELECT COUNT(vin.id) as c FROM vin WHERE idTransaction = transaction.id AND idPubKey = ?).c = (SELECT COUNT(vin.id) as c FROM vin WHERE idTransaction = transaction.id).c ORDER BY tIx`), L([binToAddress, fromPublicKeyId].filter(x => D(x)))); 
       L(`result = ${q.length}`);
       let txs = {};
       q.forEach(transfer => { let y = txs[transfer.tIx]; if (y) { y.push(transfer); } else { txs[transfer.tIx] = [transfer]; } });
       for (let tx of V(txs)) {
-        let v = tx[0];
-//        if ((K(F(tx.map(t => [t.pubKey.toString('hex'), true])))).length !== 1) { L(`Ignoring tx ${v.tIx}: Several input pubkeys`); continue; }
-//        if (K(F(tx.map(t => [t.voutIx, true]))).length !== 1) { L(`Ignoring tx ${v.tIx}: Several voutIx`); continue; } 
-//          let value = tx.reduce((p, c) => p.plus(BN(c.value, 16)), BN(0)); 
-        data.push([ v.time, compressValue(v.value), v.txid.toString('base64'), v.pubKey.toString('base64'), v.voutIx ]);
+        let outs = F(tx.map(x => [x.address, x]));
+        if (((K(outs) === 1) && (K(outs)[0] === (toAddress))) || ((K(outs) === 2) && (K(outs).includes(toAddress) && K(outs).includes(fromAddress)))) {
+          for (let v of outs[toAddress]) data.push(formatOutput(v));
+        }
       }
       L(`result = ${q.length} data = ${data.length}`);
     } catch(e) { return { err: `Query failed: ${S(e)}` }; }

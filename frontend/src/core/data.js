@@ -1,6 +1,6 @@
 import amfeixCjson from '../amfeixC.json'; 
 // eslint-disable-next-line
-import { A, D, E, F, G, H, I, K, L, S, T, P, U, V, W, oA, oO, oF, isO, isA, isS, singleKeyObject, makeEnum } from '../tools'; 
+import { A, D, E, F, G, H, I, K, L, S, T, P, U, V, W, oA, oO, oF, isO, isA, isS, singleKeyObject, makeEnum } from '../common/tools'; 
 import { IndexedDB } from './db'; 
 import { Persistent } from './persistent';
 import { BN, ALPHABET }  from './bignumber';
@@ -8,39 +8,29 @@ import JSONBig from 'json-bigint';
 //import Accounts from 'web3-eth-accounts';
 //import aggregate from './aggregate.js';
 import { satoshiToBTCString } from './satoshi';
-import { pubKeyToEthAddress, pubKeyToBtcAddress } from "./crypto";
-import { SyncCache } from './syncCache';
-import { amfx } from './amfeixContract';
+import { pubKeyToEthAddress, pubKeyToBtcAddress } from "../common/pubKeyConvertor";
+import { SyncCache } from '../common/syncCache';
+import { amfx, amfeixAddress } from './amfeixContract';
 
-let newDB = false //|| true;  
-
+let newDB = false //|| true;   
+ 
 let stati = { Deposits: makeEnum("Active Withdrawn Withdrawal_Requested"), Withdrawal_Requests: makeEnum("Pending Processed") }; 
 
 let anomalousInvestorIndexMap = F([2339, 74, 418, 419, 424, 464, 515, 3429, 515, 1061, 3428, 3429, 3437, 3438].map(i => [(i), true]));
+
+let b64ToHex = v => Buffer.from(v, 'base64').toString('hex');
+let decodeFundDeposit = s => (([timestamp, amountX, transactionX, fromPubKeyX]) => { let fromPubKey = b64ToHex(fromPubKeyX);
+  return {timestamp, txId: b64ToHex(transactionX), fromPubKey, fromBtcAddress: pubKeyToBtcAddress(fromPubKey), satoshiBN: BN(b64ToHex(amountX), 16)}; } )(T(s)); 
 
 let hostname = window.location.hostname;
 hostname = (hostname === "localhost") ? "spacetimemanifolds.com" : hostname;
 const btcRpcUrl = `https://btc.${hostname}/`; //`http://157.245.35.34/`,  
 const ethInterfaceUrl = `https://eth.${hostname}/`; //"ws://46.101.6.38/ws"; 
-const ethInterfaceUrls = [ethInterfaceUrl, ethInterfaceUrl + 'ganache/']; //"ws://46.101.6.38/ws"; 
+const ethInterfaceUrls = [ethInterfaceUrl, ethInterfaceUrl + 'ganache/']; //"ws://46.101.6.38/ws";  
 //ethInterfaceUrl = "http://46.101.6.38:8547/";  
 //const web3 =  new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/v3/efc3fa619c294bc194161b66d8f3585e"));
-export let amfeixAddress = "0xb0963da9baef08711583252f5000Df44D4F56925";
- 
-let b64ToHex = v => Buffer.from(v, 'base64').toString('hex');
-let decodeFundDeposit = ([timestamp, amountX, transactionX, pubKeyX]) => 
-  ({timestamp, satoshiBN: BN(b64ToHex(amountX), 16), txId: b64ToHex(transactionX), pubKey: b64ToHex(pubKeyX)});
-
-class ABI {
-  constructor(abi) {
-    this.methodMap = {};
-    abi.forEach(x => { if (x.type === "function") { this.methodMap[x.name] = x } });
-  }
-}
-
-export let abi = new ABI(amfeixCjson.abi);
 let amfeixFeeFields = T("fee1 fee2 fee3");
-let invMap = (countTable, dataTable) => ({countTable, dataTable});
+let invMap = (countTable, dataTable) => ({countTable, dataTable}); 
 let amfeixAddressLists = ["fundDepositAddresses", "feeAddresses"];
 let timeAndAmount = T("time amount"), indexMaps = amfeixAddressLists, investorMaps = [invMap("ntx", "fundTx"), invMap("rtx", "reqWD")]; 
 let ethBasicFields = T("owner aum decimals btcPrice").concat(amfeixFeeFields).concat(amfeixAddressLists.map(k => `${k}Length`));

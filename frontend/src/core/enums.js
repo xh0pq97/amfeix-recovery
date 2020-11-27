@@ -1,4 +1,4 @@
-import { V, makeEnum, singleKeyObject } from '../tools'
+import { V, makeEnum, singleKeyObject } from '../common/tools'
 
 let EUserMode = makeEnum("Admin User");
 let EDeveloperMode = makeEnum("Production Developer");

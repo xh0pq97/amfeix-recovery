@@ -1,6 +1,6 @@
 import React from 'react';
 // eslint-disable-next-line
-import { A, D, E, F, G, I, K, L, S, T, U, V, oA, oO } from '../tools';
+import { A, D, E, F, G, I, K, L, S, T, U, V, oA, oO } from '../common/tools';
 import { Transaction, data } from '../core/data';
 
 // eslint-disable-next-line
@@ -11,7 +11,7 @@ import { BN }  from '../core/bignumber';
 import { satoshiToBTCString } from '../core/satoshi';
 import { formatTimestamp } from './formatting';
 import { wallet } from '../core/wallet';
-import { pubKeyToEthAddress } from "../core/crypto";
+import { pubKeyToEthAddress } from "../common/crypto";
 
 class Approve_actions_Form extends ValidatableComp { constructor(p, s, actionName, propertyLabel) { super(p, s); A(this, { actionName, propertyLabel });  }
   validate() { return this.props[this.propertyLabel]; }

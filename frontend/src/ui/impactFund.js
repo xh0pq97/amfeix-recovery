@@ -9,7 +9,7 @@ import { ProgressDialog, OpenDialogButton, DialogWrap, Selector, ValidatableComp
 // eslint-disable-next-line
 import { AppBar, Toolbar, Button, Box, TextField, Paper } from '@material-ui/core';
 // eslint-disable-next-line
-import { A, D, H, I, L, S, T, U, oA, oS, asA } from '../tools'; 
+import { A, D, H, I, L, S, T, U, oA, oS, asA } from '../common/tools'; 
 // eslint-disable-next-line
 import { InvestorID, InvestorList, EthTxView, InvestorDependentView_Eth } from './investor';
 // eslint-disable-next-line
@@ -40,7 +40,7 @@ export class Impact_Fund extends InvestorDependentView_Eth {
 return tabulize(1/3, [p.urlParams.testMode ? [<InvestorID investor={p.investor}/>] : U,
       [tabulize(1/3, [[tabulize(1/3, [[parfs([D(iData.investmentValue) && `${iData.investmentValue} BTC`, `Investment Value`])], [parfs([changePerc(s.roi), `ROI`])]]), <FundIndexChart dark={p.dark}/>]])],
       [tabulize(1/3, [T("dailyChange aum btcPrice").map((v, i) => `${v}: ${(displayTrafo[v] || I)(s[v])}`)])],
-      [<HighchartsReact constructorType={"stockChart"} highcharts={Highcharts} options={chartOpts('Investment Performance', " BTC", [timeDataTrafo("Value", iData.value)], p.dark)} />],
+      [<HighchartsReact constructorType={"stockChart"} highcharts={Highcharts} options={chartOpts('Investment Performance', " BTC", [timeDataTrafo("Value", iData.valueSeries())], p.dark)} />],
       [<EthTxView investor={p.investor} EDeveloperMode={p.EDeveloperMode}/>]
     ].filter(I)) 
   }
