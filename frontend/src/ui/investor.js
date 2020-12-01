@@ -3,7 +3,7 @@ import React from 'react';
 import { A, D, E, F, G, I, K, L, S, T, V, oA, oF, oO, singleKeyObject } from '../common/tools';
 import { data, getInvestorWalletDataKey, getInvestorDataKey, stati } from '../core/data';
 // eslint-disable-next-line
-import { tabulize, commonDataTypes, genHeaders, ValidatableComp, Comp, TabbedView, List, cleanText, button, TabTimeline } from './components'; 
+import { dataSummary, tabulize, commonDataTypes, genHeaders, ValidatableComp, Comp, TabbedView, List, cleanText, button, TabTimeline } from './components'; 
 
 class DataDependentView extends Comp {
   componentDidMount() { this.componentDidUpdate({}); }
@@ -30,7 +30,8 @@ class EthTxView extends InvestorDependentView_Eth {
   ren(p, s) { let i = this.getInvestorData(); 
     let headers = F(T("Deposits Withdrawals Withdrawal_Requests").map(k => [k, genHeaders(i[k])]));
     headers = G(headers, v => V(v).filter(h => (p.EDeveloperMode.Developer) || T("status value txId pubKey timestamp").includes(h.label)));
-    return <TabbedView style={{ display: D(p.investor) ? "block" : "none" }} caption={`Investor ${oO(p.investor).data}`} tabs={G(headers, (v, k) => () => <List data={i[k]} headers={v} />)} />;
+    return <TabbedView style={{ display: D(p.investor) ? "block" : "none" }} caption={`Investor ${oO(p.investor).data}`} tabs={G(headers, (v, k) => () => 
+    tabulize(1/2, [[dataSummary(k, i[k])], [<List data={i[k]} headers={v} />]]))} />;
   }
 }
 

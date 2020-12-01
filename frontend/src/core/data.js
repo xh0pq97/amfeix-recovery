@@ -296,23 +296,11 @@ f
     await this.measureTime(`Update '${arrayName}' array`, async () => { L(`update array ${arrayName}`);
       let countKey = ({ name: lengthName || `${arrayName}.counts` }); 
       let alsi = (await this.getArrayLengthAndStartIndex(tables.eth.constants, countKey, lengthName, parms)); 
-//      L({arrayName, alsi});
       if (D(alsi.value) && !D(alsi.length)) alsi.length = parseInt(alsi.value);
-      // L({arrayName, lengthName, countKey, alsi});
-  //    L({arrayName, alsi});
-//      await new Promise((resolve, reject) => { try {
-        let p = await this.updateGenericArray(olp, arrayName, alsi, countKey, tables.eth.constants, tables.eth[arrayName], parms);//, U, U, () => dp.resolve());
-        L(`before flushBatch for ${arrayName}`);
-        await amfx.flushBatch();
-        L(`waiting for p for ${arrayName}`);
-        await p;
-        L(`update array ${arrayName} done`);
-  //    } catch(err) { reject(err) } });
-      
-      //await donePromise;
+      let p = await this.updateGenericArray(olp, arrayName, alsi, countKey, tables.eth.constants, tables.eth[arrayName], parms);//, U, U, () => dp.resolve());
+      await amfx.flushBatch(); await p;
     });
     await this.measureTime(`Cache '${arrayName}' array`, async () => this.syncCache.setData(arrayName, (await this.idb.getAll(tables.eth[arrayName]))));  
-//    this.updateLoadProgress(olp, alsi.)
   } 
 
   async getArrayLengthAndStartIndex(countTable, countKey, lengthName, parms) { //L(`galsi(${countTable}, ${S(countKey)}, ${lengthName}, ${parms})`)
@@ -342,16 +330,10 @@ f
     let completed = 0;
     let p = Promise.resolve();
     while (ix < length) { let q = p;
-//      L({ix, length});
       let r = this.updateInvestorArray(investors[ix++], { countTable, dataTable }, localBuf, amfx);
-  //    L('post uia');
       p = (async () => { await q; await await r; this.updateLoadProgress(olp, ++completed, length); })();
     };
-    L('post uima loop');
-    await amfx.flushBatch(); 
-    L('post flushBatch');
-    await p;
-    L('post p');
+    await amfx.flushBatch(); await p;
     this.updateLoadProgress(olp, ix, length);
     await amfx.flushBatch(); L(`uima ${dataTable} local buf flush`);
     await localBuf.flush(); L(`uima ${dataTable} local buf done`);
@@ -416,7 +398,7 @@ f
   async retrieveInvestorData(investor, lengths, allData) { //L(`retrieveInvestorData = ${S(investor)}`);
     let cached = this.syncCache.getData(getInvestorDataKey(investor));
     if (cached) { L('cached'); return cached; }
-    if (!D(investor.index)) {
+    if (!D(investor.index)) { L({investor});
       L(`finding index for investor.data = ${investor.data}`);
       let i = await this.idb.get(tables.eth.investorsAddresses, { data: investor.data }, "data", ["data"]);
       investor.index = oO(i).index;
@@ -489,7 +471,7 @@ f
     }
   //  g.investment = investment.map(x => [1000*x.timestamp, parseFloat(x.accValue.toString())]);
     g.investmentValue = currentValueAcc && parseFloat(satoshiToBTCString(currentValueAcc));
-    g.valueSeries = () => g.computedValueSeries ? g.computedValueSeries : (g.g.computedValueSeries = investment.map(x => [1000*x.timestamp, parseFloat(x.accCurrentValue && satoshiToBTCString(x.accCurrentValue))]));
+    g.valueSeries = () => g.computedValues ? g.computedValues : (g.computedValues = investment.map(x => [1000*x.timestamp, parseFloat(x.accCurrentValue && satoshiToBTCString(x.accCurrentValue))]));
 //    for (let d of g.Deposits) { T("finalValue value").forEach(v => { if (D(d[v])) d[v] = d[v].toString(); }); }
   //  for (let d of g.Withdrawal_Requests) { T("value").forEach(v => { if (D(d[v])) d[v] = d[v].toString(); }); }
     //for (let d of g.Withdrawals) { T("value").forEach(v => { if (D(d[v])) d[v] = d[v].toString(); }); }
@@ -508,6 +490,9 @@ f
 
   getInvestorData(investor) { return this.investorData[investor] = D(this.investorData[investor]) ? this.investorData[investor] : this.retrieveInvestorData(investor); }
 }
+
+L(`032b54175dac49b86d33528488dc1770223be678fe9e283ff210d6841f109230c7 ==> ${S({btc: pubKeyToBtcAddress("032b54175dac49b86d33528488dc1770223be678fe9e283ff210d6841f109230c7"),
+eth: pubKeyToEthAddress("032b54175dac49b86d33528488dc1770223be678fe9e283ff210d6841f109230c7")})}`)
 
 let data = new Data(); 
   

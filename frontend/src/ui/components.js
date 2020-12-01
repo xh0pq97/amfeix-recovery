@@ -9,6 +9,7 @@ import { btcToString, satoshiToBTCString } from '../core/satoshi';
 import LockIcon from '@material-ui/icons/Lock';
 import { captionIconMap } from './icons';
 import { formatTimestamp } from './formatting'; 
+import { BN } from '../core/bignumber'
 
 let captionMap = {
   timestamp: "Time", value: "Value", txId: "Transaction ID", deposits: "Deposits", withdrawals: "Withdrawals", withdrawalRequests: "Withdrawal Requests", fundDepositAddresses: "Fund deposit addresses", feeAddresses: "Fee addresses", _: ""
@@ -66,9 +67,10 @@ class ListView extends Comp {
       return [x, -x][s.sortOrder];
     });
     let elimObjects = (d, h) => { if (isO(d)) { L(`${h} is an object: ${S(K(d))}`); } else return d; };
-    let X = d => this.setState(d, oF(p.onChange)(d));
+    let X = (d, f) => this.setState(d, () => { oF(p.onChange)(d); oF(f)(d); });
     let isChecked = d => s.checked[d.index], isSelected = d => s.selectedIx === d._id;
     let columnCount = headers.length + (p.checkable ? 1 : 0);
+    let prevRowsPerPage = s.rowsPerPage;
     let offset = s.page * s.rowsPerPage, end = Math.min(rows.length, offset + s.rowsPerPage);//, emptyRows = offset + s.rowsPerPage - end;
     let dense = true, onRequestSort = sortColumn => { this.setState({ sortColumn, sortOrder: this.state.sortOrder ^ ((this.state.sortColumn === sortColumn) ? 1 : 0) })}; 
     return <TableContainer component={Box}><p>{p.caption || null}</p><Table className={classes.table} aria-labelledby={p.title} size={(dense ? 'small' : 'medium')} aria-label={p.title}>
@@ -77,7 +79,7 @@ class ListView extends Comp {
           {p.checkable ? <TableCell padding="checkbox"><Checkbox checked={isChecked(d)} inputProps={{ 'aria-labelledby': i }} /></TableCell> : null}
           {headers.map((h, j) => <TableCell key={j} align={h.align || "center"}>{(h.displayFunc || I)(d[h.label], d)}</TableCell>)}
         </TableRow>)}</TableBody>
-        {oA(p.data).length > 5 ? <TableFooter><TableRow><TablePagination component={TableCell} colSpan={(columnCount - 1)} rowsPerPageOptions={[5, 10, 25, 50, 100, 250, 500, 1000]} count={rows.length} rowsPerPage={s.rowsPerPage} page={s.page} onChangePage={(e, page) => X({ page })} onChangeRowsPerPage={e => X({ rowsPerPage: parseInt(e.target.value, 10) })} /></TableRow></TableFooter> : null}
+        <TableFooter><TableRow><TablePagination component={TableCell} colSpan={(columnCount - 1)} rowsPerPageOptions={[5, 10, 25, 50, 100, 250, 500, 1000]} count={rows.length} rowsPerPage={s.rowsPerPage} page={s.page} onChangePage={(e, page) => X({ page })} onChangeRowsPerPage={e => X({ rowsPerPage: parseInt(e.target.value, 10) }, d => X({ page: Math.min(Math.round(s.page*(prevRowsPerPage/d.rowsPerPage)), Math.floor((rows.length - 1)/d.rowsPerPage) )}))} /></TableRow></TableFooter>
       </Table></TableContainer>   
   }
 }
@@ -203,7 +205,23 @@ let commonTableHeaders = G({ txId: { type: "btcTx" }, btcAddress: { type: "btcAd
   timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp },
 }, v => ({...(D(v.type) ? commonDataTypes[v.type] : {}), ...v}));
  
+let applyHeaders = h => applyListHeaders(h, {
+  //  txId: { caption: "BTC Transaction", displayFunc: displayBtcTransaction },
+    name: { caption: "Wallet name" },
+    privateKey: { caption: "Encrypted Private Key", displayFunc: wrapEllipsisDiv },
+    chainCode: { caption: "Encrypted Chain Code", displayFunc: wrapEllipsisDiv },
+    publicKey: { caption: "Public Key", displayFunc: wrapEllipsisDiv },
+    btcAddress: { caption: "Bitcoin Wallet Address", displayFunc: wrapEllipsisDiv },
+    ethAddress: { caption: "Ethereum Investor address", displayFunc: wrapEllipsisDiv },
+  //  value: { caption: "Amount (BTC)", align: "right", alignCaption: "right" }
+  });
+    
 let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{title}</h2><p style={{textAlign: "left"}}>{text}</p><p style={{textAlign: "left", color: "#FF2170"}}>{warning}</p></>;
 let loadingComponent = (data, c) => D(data) ? c  : tabulize(5, [[<CircularProgress/>]]);
 
-export { testModeComp, GetPasswordDialog, preamble, loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, ListView as List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form, commonDataTypes }
+let dataSummary = (n, data) => (d => tabulize(1/3, [[`Number of pending ${n}s:`, d.length], [`Total ${n} value:`, satoshiToBTCString(d.reduce((p, c) => p.plus((c.satoshiBN)), BN(0)))],
+  [`Time of first ${n}:`, formatTimestamp(d.reduce((p, c) => D(p) ? Math.min(p, c.timestamp) : c.timestamp, U))],
+  [`Time of last ${n}:`, formatTimestamp(d.reduce((p, c) => D(p) ? Math.max(p, c.timestamp) : c.timestamp, U))]
+]))(oA(data))
+
+export { dataSummary, testModeComp, GetPasswordDialog, preamble, loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, ListView as List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form, commonDataTypes }

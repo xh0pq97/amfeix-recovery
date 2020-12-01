@@ -86,20 +86,23 @@ let processTransaction = async (tx, idBlock, conn) => {
   let getIdTransaction = async () => (D(idTransaction) ? idTransaction : (idTransaction = (await insertIfNotExists(conn, "transaction", { v:  htb(tx.txid) })).id)); 
 
   let foundWatchedToAddress = false;
-  for (let ix = 0; ix < tx.vout.length; ++ix) { let vout = tx.vout[ix]; 
+  for (let ix = 0; ix < tx.vout.length; ++ix) { let vout = tx.vout[ix]; process.stdout.write(':');
+//    if (tx.txid.toLowerCase() === "934db754e9133c29dcdca8e4061f8141973152ec39f624391b44b7a0e1a1f1aa") L('found 934db754e9133c29dcdca8e4061f8141973152ec39f624391b44b7a0e1a1f1aa');
+    let LL = (tx.txid.toLowerCase() === "934db754e9133c29dcdca8e4061f8141973152ec39f624391b44b7a0e1a1f1aa") ? L : I;
     if (D(vout.scriptPubKey)) for (let toAddress of oA(vout.scriptPubKey.addresses)) {
       if (watchedToAddressesMap[toAddress]) { foundWatchedToAddress = true;
-        let idToAddress = (await insertIfNotExists(conn, "address", { v: bs58check.decode(toAddress) })).id;
+        let idToAddress = (await insertIfNotExists(conn, "address", { v: bs58check.decode(LL(toAddress)) })).id;
         if (D(idToAddress)) {
           let value = (new BigNumber(new BigNumber(vout.value).multipliedBy(coin).toFixed())).toString(16);
           if (value.length % 2 === 1) value = '0' + value; 
-          await insertIfNotExists(conn, "vout", { idToAddress, idBlock, idTransaction: await getIdTransaction(), ix, value: htb(value) }, T("idToAddress idBlock idTransaction ix")); 
+          await insertIfNotExists(conn, "vout", LL({ idToAddress, idBlock, idTransaction: await getIdTransaction(), ix, value: htb(value) }), T("idToAddress idBlock idTransaction ix")); 
         }
       }
     }
   } 
 
   let foundWatchedFromPubKey = false;
+  if (foundWatchedToAddress) L({foundWatchedToAddress});
   for (let ix = 0; ix < tx.vin.length; ++ix) { let vin = tx.vin[ix];
     let pubKey = pubKeyFromScriptSig(vin.scriptSig);
     vin.pubKey = pubKey && pubKey.length === 66 ? pubKey : U; 
@@ -114,6 +117,17 @@ let processTransaction = async (tx, idBlock, conn) => {
   }
 }
 
+let processBlockAtHeight = async (height, conn) => { process.stdout.write(`[${height}]`);
+  let blockHash = await rpc("getblockhash", [height]);
+  let r = (await insertIfNotExists(conn, "block", { height, hash: htb(blockHash) }));
+  let idBlock = r.id;
+  if (D(idBlock) && !(r.processed === 1)) { let block = await rpc("getblock", [blockHash]);
+    await conn.query("UPDATE block SET time = FROM_UNIXTIME(?) WHERE id = ?", [block.time, idBlock]);
+    for (let txHash of block.tx) await processTransaction(await rpc("decoderawtransaction", [(await rpc("getrawtransaction", [txHash]))]), idBlock, conn);
+    await conn.query("UPDATE block SET processed = 1 WHERE id = ?", [idBlock]);
+  }
+}
+
 let blockScan = (async (offset, groupSize) => { let conn = await pool.getConnection(); //LOG('DB connection opened.') // Create db
   L({offset, groupSize});
   try {
@@ -121,28 +135,47 @@ let blockScan = (async (offset, groupSize) => { let conn = await pool.getConnect
     let blockHeights = [570802, 617005]; // 570650
     let firstBlock = 570650, blockCount = await rpc("getblockcount", []);
 //    for (let height = blockHeights[0] - (blockHeights[0] % groupSize) + offset; height <= blockCount; height += groupSize) if (height <= blockCount) { process.stdout.write(`[${height}]`);
-    for (let height = firstBlock - (blockCount % groupSize) - groupSize + offset; height >= 0; height += groupSize) if (height >= 0) { process.stdout.write(`[${height}]`);
+    for (let height = firstBlock - (blockCount % groupSize) - groupSize + offset; height >= 0; height += groupSize) if (height >= 0) await processBlockAtHeight(height, conn);
+  } finally { if (conn) conn.release(); }
+});
+
+let blockTimeScan = (async (offset, groupSize) => { let conn = await pool.getConnection(); //LOG('DB connection opened.') // Create db
+  L({blockTimeScan: true, offset, groupSize});
+  try {
+    for (let x of objGenesis) await conn.query((x)); 
+    let blockHeights = [570802, 617005]; // 570650
+    let firstBlock = 570650, blockCount = await rpc("getblockcount", []);
+//    for (let height = blockHeights[0] - (blockHeights[0] % groupSize) + offset; height <= blockCount; height += groupSize) if (height <= blockCount) { process.stdout.write(`[${height}]`);
+    for (let height = firstBlock ; height < blockCount; height += 1) if (height >= 0) { process.stdout.write(`[${height}]`);
       let blockHash = await rpc("getblockhash", [height]);
       let r = (await insertIfNotExists(conn, "block", { height, hash: htb(blockHash) })); 
       let idBlock = r.id;
-      if (D(idBlock) && !(r.processed === 1)) { 
+      if (D(idBlock)) { 
         let block = await rpc("getblock", [blockHash]);
-        await conn.query("UPDATE block SET time = FROM_UNIXTIME(?) WHERE id = ?", [block.time, idBlock]);
-        for (let txHash of block.tx) await processTransaction(await rpc("decoderawtransaction", [(await rpc("getrawtransaction", [txHash]))]), idBlock, conn);
-        await conn.query("UPDATE block SET processed = 1 WHERE id = ?", [idBlock]); 
+        await conn.query("UPDATE block SET time = FROM_UNIXTIME(?) WHERE id = ?", ([(block.time), idBlock]));
       }
     }
   } finally { if (conn) conn.release(); }
 });
 
-let argOffset = 0, args = process.argv.slice(2), command = (args[argOffset++]); L(`args = ${process.argv}`); L({command});
+let argOffset = 0, args = process.argv.slice(2), command = (args[argOffset++]); L(`args = ${process.argv}`); L({command}); 
 if (command === "decodeTx") {
   let txHash = args[argOffset++];
   (async () => {
     L(await getDecodedTx(txHash));
   })();
+} else if (command === "blockTimeScan") {
+  let offset = parseInt(args[argOffset++]), groupSize = parseInt(args[argOffset++]);
+  blockTimeScan(offset, groupSize);
+} else if (command === "processBlockAtHeight") {
+  let height = parseInt(args[argOffset++]);
+  let conn = await pool.getConnection();
+  await conn.query("USE transfers");
+  await processBlockAtHeight(height, conn);
+  L('done');
 } else {
   let offset = parseInt(args[argOffset++]), groupSize = parseInt(args[argOffset++]);
   blockScan(offset, groupSize);
 }
+
 

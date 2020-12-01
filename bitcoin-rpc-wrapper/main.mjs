@@ -132,8 +132,7 @@ let getDeposits = async (toAddress, fromPublicKey) => { if (toAddress.length <= 
 
         let data = [];
         try { 
-          let txs = B(await conn.query(L(`SELECT UNIX_TIMESTAMP(block.time) as time, transaction.v as txid, HEX(vout.value) as value, transaction.id as tIx FROM transaction, block, vout WHERE vout.idToAddress = ? AND transaction.id = vout.idTransaction AND block.id = vout.idBlock`), L([idToAddress])), "tIx");
-          L(`result = ${K(txs).length} transactions`);
+          let txs = B(await conn.query(L(`SELECT UNIX_TIMESTAMP(block.time) as time, transaction.v as txid, HEX(vout.value) as value, transaction.id as tIx FROM transaction, block, vout WHERE vout.idToAddress = ? AND transaction.id = vout.idTransaction AND block.id = vout.idBlock`), L([idToAddress])), "tIx"); 
           for (let [tIx, tx] of E(txs)) {
             let sumValueBN = tx.reduce((p, c) => BN(c.value, 16).plus(p), BN(0));
             let vins = B(await conn.query((`SELECT HEX(pubKey.v) as fromPubKey FROM vin, pubKey WHERE vin.idTransaction = ? AND vin.idPubKey = pubKey.id ${fromPublicKey ? 'AND pubKey.v = ?' : ''}`), ([tIx, binFromPublicKey].filter(D))), "fromPubKey");
@@ -191,12 +190,16 @@ app.get(`/getAddressId/:toAddress/`, async (req, a) => { L(`req = ${req.params}`
   let conn = await pool.getConnection(); 
   try { let binToAddress = bs58check.decode(req.params.toAddress);
     try { let r = await conn.query("USE transfers");
-      try { let q = await conn.query(`SELECT * FROM address WHERE v = ?`, [binToAddress]);
+      try { let q = await conn.query(`SELECT  FROM address WHERE v = ?`, [binToAddress]);
         a.send(S(q));
       } catch(e) { a.send(S({ err: `Failed to open db: ${S(e)}` })) }
     } catch(e) { a.send(S({ err: `DB error: ${S(e)}` })) }
   } catch(e) { a.send(S({ err: `Invalid address: ${S(e)}` })) }
   finally { if (conn) conn.close(); }
+});
+
+app.get(`/getDecodedTx/:hash/`, async (req, a) => { L(`req = ${req.params}`); //addCorsHeaders(a);
+  a.send(S(await rpc("decoderawtransaction", [(await rpc("getrawtransaction", [req.params.hash]))]))); 
 });
 
 (p => app.listen(p, () => L(`Server running on port ${p}`)))(cfg.port = cfg.port || 4444)
