@@ -16,7 +16,7 @@ let H = (f, o) => G(o, (v, k, i, o) => isO(v) ? H(f, v) : f(v, k, i, o));
 let I = x => x;
 let K = Object.keys;
 let L = x => { 
-  console.log(S(x)); 
+  if (process.env.NODE_ENV === "development") console.log(S(x)); 
   return x; 
 }
 let P = (o, keys) => F(keys.map(k => [k, o[k]]));

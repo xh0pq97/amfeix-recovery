@@ -2,11 +2,13 @@ import express, { query } from "express"; import bodyParser from "body-parser"; 
 import dotenv from "dotenv"; import request from "request";
 //const rpcMethods = require("./routes/api");
 import { pubKeyToBtcAddress } from './pubKeyConvertor.mjs';
+import bs58check from 'bs58check'; 
 import JSONBig from 'json-bigint';
 import BigNumber from 'bignumber.js';
-import bs58check from 'bs58check'; 
 import { A, B, D, E, F, I, K, L, P, S, T, U, V, oA, oO, oS, oF, singleKeyObject } from './tools.mjs'; 
 import mariadb from  'mariadb';
+import { select, insertIfNotExists } from './utils.mjs';
+
 dotenv.config(); const cfg = process.env;  
 let BN = (v, b) => new BigNumber(v, b); 
 
@@ -35,12 +37,6 @@ let rpcRequest = (method, params) => new Promise((resolve, reject) => {
   request(getRPCRequestOptions(method, params), (err, r, body) => (!err  && r.statusCode == 200) ? resolve((JSONBig.parse((body)))) : reject(LOG({ err, statusCode: oO(r).statusCode, body })));  
 });
 let rpc = async (method, params) => (await rpcRequest(method, params)).result;
-
-let select = (conn, table, obj) => conn.query(`SELECT * FROM ${table} WHERE ${K(obj).map(k => `${k} = ?`).join(" AND ")}`, V(obj));
-let insertIfNotExists = async (conn, table, obj, idKeys) => { let r = await select(conn, table, P(obj, idKeys || K(obj)));
-  return (r.length === 0) ? { ...obj, id: oO(await conn.query(`INSERT INTO ${table} (${K(obj).join(", ")}) VALUES (${K(obj).map(() => '?').join(", ")})`, V(obj))).insertId } : r[0]
-}
-
 
 let pubKeyFromScriptSig = ss => { let asm = oS(oO(ss).asm), k = "[ALL] "; let p = asm.indexOf(k); return p >= 0 ? asm.substr(p + k.length) : U; }
 

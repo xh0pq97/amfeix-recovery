@@ -1,6 +1,6 @@
 import amfeixCjson from '../amfeixC.json'; 
 // eslint-disable-next-line
-import { A, D, E, F, G, H, I, K, L, S, T, P, U, V, W, oA, oO, oF, isO, isA, isS, singleKeyObject, makeEnum } from '../common/tools'; 
+import { A, D, E, F, G, H, I, K, L, S, T, P, U, V, W, oA, oO, oF, oS, isO, isA, isS, singleKeyObject, makeEnum } from '../common/tools'; 
 import { IndexedDB } from './db'; 
 import { Persistent } from './persistent';
 import { BN, ALPHABET }  from './bignumber';
@@ -10,6 +10,7 @@ import JSONBig from 'json-bigint';
 import { satoshiToBTCString } from './satoshi';
 import { pubKeyToEthAddress, pubKeyToBtcAddress } from "../common/pubKeyConvertor";
 import { SyncCache } from '../common/syncCache';
+import { ETransactionType } from './enums.js';
 import { amfx, amfeixAddress } from './amfeixContract';
 import bs58check from 'bs58check'; 
 
@@ -194,11 +195,30 @@ f
     let cached = await this.syncCache.getData(key);
     if (D(cached)) return cached;  
 
+    let toSat = x => BN(x).times(BN(10).pow(10));
+    let get = async offset => JSONBig.parse(await (await fetch(`https://blockchain.info/rawaddr/${investor.btcAddress}?cors=true&offset=${offset}`)).text());
+    let bci = await get(0);
+    let ntx = bci.n_tx;
+    let trafoTxs = txs => txs.map(tx => { 
+      let ins = tx.inputs.map(i => P(i.prev_out, T("addr value")));
+      let outs = tx.out.map(o => P(o, T("addr value")));
+      let froms = K(F(ins.map(i => [oS(i.addr), true]))); 
+      let tos = K(F(outs.map(i => [oS(i.addr), true])));
+      let isInvestment = tos.includes(this.getFundDepositAddresses());
+      let fromBTC = froms.length === 1 ? froms[0] : U;
+      let filteredTos = tos.filter(s => s !== fromBTC);
+      let toBTC = filteredTos.length === 1 ? filteredTos[0] : U;
+      return { ins, outs, froms, tos, fromBTC, toBTC, txId: tx.hash, time: tx.time, satoshiBN: toSat(tx.result), type: isInvestment ? ETransactionType.Investment : ((tx.result < 0) ? ETransactionType.Outgoing : ETransactionType.Incoming) }
+    });
+    let r = { finalBalance: toSat(bci.final_balance), txs: [trafoTxs(bci.txs)] }
+    //for (let q = 50; q < ntx; q += 50) r.txs.push(await get(q));
+    r.txs = r.txs.flat();
+/*
     let investorWalletData = G(await W({ Deposits: fetchDeposits(U, investor.btcAddress), Withdrawals: [],//fetchDeposits(investor.pubKey),
       Investments: Promise.all(this.getFundDepositAddresses().map(async a => (await fetchDeposits(investor.pubKey, a)).map(d => ({...d, fundDepositAddress: a })))),
       Returns: []//Promise.all(this.getFundDepositPubKeys().map(async a => (await fetchDeposits(a, investor.btcAddress)).map(d => ({...d, fundDepositPubKey: a })))),
-    }), v => v.flat());
-    return this.syncCache.setData(key, investorWalletData); 
+    }), v => v.flat());*/
+    return this.syncCache.setData(key, r); 
   } }
 
   getDecimals() { return this.syncCache.getData('decimals'); } 

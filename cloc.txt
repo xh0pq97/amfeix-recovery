@@ -1,19 +1,19 @@
-     100 files     136 text files.
-classified 136 filesDuplicate file check 136 files (107 known unique)Unique:      100 files                                               110 unique files.                              
-Counting:  100      60 files ignored.
+     100 files     152 text files.
+classified 152 filesDuplicate file check 152 files (113 known unique)Unique:      100 files                                               120 unique files.                              
+Counting:  100      70 files ignored.
 
-github.com/AlDanial/cloc v 1.81  T=2.17 s (39.1 files/s, 105999.5 lines/s)
+github.com/AlDanial/cloc v 1.81  T=2.13 s (42.6 files/s, 108024.2 lines/s)
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-JSON                            20              0              0         227645
-JavaScript                      42            242            252           1638
+JSON                            21              0              0         227664
+JavaScript                      46            248            279           1694
 CSS                              2              1             28            236
 Solidity                         1             43             11            149
 Bourne Shell                    10              6              1             61
-HTML                             3              6             32             47
+HTML                             4              6             32             48
 Markdown                         1             32              0             38
 SVG                              6              0              0              6
 -------------------------------------------------------------------------------
-SUM:                            85            330            324         229820
+SUM:                            91            336            351         229896
 -------------------------------------------------------------------------------

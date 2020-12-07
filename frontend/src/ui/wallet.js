@@ -2,7 +2,7 @@ import React from 'react';
 // eslint-disable-next-line
 import { Box, TextField } from '@material-ui/core';
 // eslint-disable-next-line
-import { dataSummary, testModeComp, wrapEllipsisDiv, applyListHeaders, loadingComponent, OpenDialogButton, DialogWrap, Comp, ValidatableComp, tabulize, form, formTable, TabbedView, TabTimeline, button, List, genHeaders  } from './components'; 
+import { commonDataTypes, dataSummary, testModeComp, wrapEllipsisDiv, applyListHeaders, loadingComponent, OpenDialogButton, DialogWrap, Comp, ValidatableComp, tabulize, form, formTable, TabbedView, TabTimeline, button, List, genHeaders  } from './components'; 
 // eslint-disable-next-line
 import { A, D, E, F, H, I, K, L, P, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools'; 
 import { InvestorDependentView_Btc, InvestorID, EthTxView } from './investor'
@@ -25,10 +25,11 @@ let investorCompIfTestMode = (p) => testModeComp(p.urlParams.testMode, () => <In
 let txTypes = T("Deposits Investments Returns Withdrawals");
 let simpleList = data => <List data={data} headers={V(genHeaders(data))}/>; 
 class History extends InvestorDependentView_Btc { 
-  ren(p, s) { let walletData = this.getInvestorWalletData(), allLoaded = txTypes.reduce((p, c) => p && D(walletData[c]), true); //L(`p.wallet = ${S(p.wallet)}`)
-    let All_transactions = () => loadingComponent(allLoaded, simpleList(L(txTypes).map(type => oA(walletData[type]).map(d => ({...d, type: type.slice(0, type.length - 1) }))).flat()));
-    return <TabbedView parentProps={{ walletData, wallet: oO(p.wallet).lastLogin }} 
-      tabs={{ All_transactions, ...F(txTypes.map(l => [l, () => (d => loadingComponent(d, tabulize(1/2, [[dataSummary(l, d)], [simpleList(oA(d))]])))(walletData[l])])) }} />; 
+  ren(p, s) { let walletData = (this.getInvestorWalletData())//, allLoaded = txTypes.reduce((p, c) => p && D(walletData[c]), true); //L(`p.wallet = ${S(p.wallet)}`)
+//    let All_transactions = () => loadingComponent(allLoaded, simpleList(L(txTypes).map(type => oA(walletData[type]).map(d => ({...d, type: type.slice(0, type.length - 1) }))).flat()));
+L({walletData});
+    return tabulize(1/3, [[tabulize(1/3, [['Final balance', loadingComponent(walletData.finalBalance, commonDataTypes.btcSatoshis.displayFunc(walletData.finalBalance))]])], 
+    [simpleList(oA(walletData.txs).map(tx => P(tx, T("txId fromBTC toBTC type satoshiBN"))))]]); 
   } 
 }
 

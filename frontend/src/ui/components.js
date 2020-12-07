@@ -198,7 +198,7 @@ let commonDataTypes = {
   btcSatoshis: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => satoshiToBTCString(x), compare: compareBNs },
   btc: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => btcToString(x), compare: compareBNs }
 }
-let commonTableHeaders = G({ txId: { type: "btcTx" }, btcAddress: { type: "btcAddress" }, ethAddress: { type: "ethAddress" }, pubKey: { type: "pubKey" }, satoshiBN: { type: "btcSatoshis" }, finalValue: { type: "btcSatoshis" }, value: { type: "btcSatoshis" }, status: { type: "status" }, 
+let commonTableHeaders = G({ txId: { type: "btcTx" }, btcAddress: { type: "btcAddress" }, fromBTC: { caption: "From BTC Address", type: "btcAddress" }, toBTC: { caption: "To BTC Address", type: "btcAddress" }, ethAddress: { type: "ethAddress" }, pubKey: { type: "pubKey" }, satoshiBN: { type: "btcSatoshis" }, finalValue: { type: "btcSatoshis" }, value: { type: "btcSatoshis" }, status: { type: "status" }, 
   fundDepositAddress: { caption: "Fund deposit address", type: "btcAddress"}, 
   fromPubKey: { caption: "From public key", type: "pubKey" }, fromBtcAddress: { caption: "From BTC address", type: "btcAddress" },
   derivedEthAddress: { caption: "Derived ETH Address", type: "ethAddress" }, 
@@ -219,7 +219,7 @@ let applyHeaders = h => applyListHeaders(h, {
 let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{title}</h2><p style={{textAlign: "left"}}>{text}</p><p style={{textAlign: "left", color: "#FF2170"}}>{warning}</p></>;
 let loadingComponent = (data, c) => D(data) ? c  : tabulize(5, [[<CircularProgress/>]]);
 
-let dataSummary = (n, data) => (d => tabulize(1/3, [[`Number of pending ${n}s:`, d.length], [`Total ${n} value:`, satoshiToBTCString(d.reduce((p, c) => p.plus((c.satoshiBN)), BN(0)))],
+let dataSummary = (n, data) => (d => tabulize(1/3, [[`Number of ${n}s:`, d.length], [`Total ${n} value:`, satoshiToBTCString(d.reduce((p, c) => p.plus((c.satoshiBN)), BN(0)))],
   [`Time of first ${n}:`, formatTimestamp(d.reduce((p, c) => D(p) ? Math.min(p, c.timestamp) : c.timestamp, U))],
   [`Time of last ${n}:`, formatTimestamp(d.reduce((p, c) => D(p) ? Math.max(p, c.timestamp) : c.timestamp, U))]
 ]))(oA(data))
