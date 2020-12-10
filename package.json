@@ -1,0 +1,11 @@
+
+{
+  "name": "amfeix-site",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "frontend-ci": "cd frontend ; npm ci",
+    "frontend-install": "cd frontend ; npm install",
+    "frontend-build": "cd frontend ; npm run-script builid" 
+  }
+}
