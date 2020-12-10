@@ -29,7 +29,7 @@ jobs:
     - name: Frontend Build
       run: npm frontend-build
     - name: Deploy to gh-pages
-      uses: AMFEIX/actions-gh-pages@v3
+      uses: peaceiris/actions-gh-pages@v3
       with:
-        deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+        deploy_key: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./frontend/build 
