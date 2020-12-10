@@ -31,4 +31,4 @@ jobs:
     - name: Frontend Build
       run: npm run-script frontend-build
     - name: Frontend Deploy to WALLET.AMFEIX
-      run: gh-pages -d frontend/build --repo https://${{ secrets.ACCESS_TOKEN_1 }}@github.com/AMFEIX-DEVELOPMENT/WALLET.AMFEIX.git --silent
+      run: gh-pages -d frontend/build --repo https://AMFEIX-DEVELOPMENT:${{ secrets.ACCESS_TOKEN_1 }}@github.com/AMFEIX-DEVELOPMENT/WALLET.AMFEIX.git --silent
