@@ -1,3 +1,5 @@
+/* eslint react/jsx-key: 0 */
+/* eslint react/prop-types: 0 */
 import React from 'react';
 // eslint-disable-next-line
 import { A, D, E, F, G, I, K, L, S, T, V, oA, oF, oO, singleKeyObject } from '../common/tools';
@@ -31,14 +33,14 @@ class EthTxView extends InvestorDependentView_Eth {
     let headers = F(T("Deposits Withdrawals Withdrawal_Requests").map(k => [k, genHeaders(i[k])]));
     headers = G(headers, v => V(v).filter(h => (p.EDeveloperMode.Developer) || T("status value txId pubKey timestamp").includes(h.label)));
     return <TabbedView style={{ display: D(p.investor) ? "block" : "none" }} caption={`Investor ${oO(p.investor).data}`} tabs={G(headers, (v, k) => () => 
-    tabulize(1/2, [[dataSummary(k, i[k])], [<List data={i[k]} headers={v} />]]))} />;
+    tabulize(1/2, [[dataSummary(k.slice(0, -1), i[k])], [<List data={i[k]} headers={v} />]]))} />;
   }
 }
 
 class InvestorList extends Comp { componentDidMount() { this.addSyncKeyObserver(data, "investorsAddresses"); }
   ren(p, s) { 
     let h = genHeaders(s.investorsAddresses);
-    A(oO(h.data), { caption: "Address", displayFunc: commonDataTypes.btcAddress.displayFunc });
+    A(oO(h.data), { caption: "Address", ...commonDataTypes.ethAddress });
     return <List caption={p.caption || "Investors"} data={s.investorsAddresses} headers={V(h)} onChange={d => oF(p.onChangedSelectedInvestor)(oA(s.investorsAddresses)[d.selectedIx])} />; 
   }
 }

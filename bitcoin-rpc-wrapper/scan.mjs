@@ -10,7 +10,7 @@ import { select, insertIfNotExists } from './utils.mjs';
 import { pubKeyToBtcAddress } from './pubKeyConvertor.mjs';
 import bs58check from 'bs58check'; 
 import fs from 'fs';
-import blockHeights from 'blockHeights.json';
+//import blockHeights from 'blockHeights.json';
 
 dotenv.config(); const cfg = process.env;  
 
@@ -22,7 +22,7 @@ const headers = { "content-type": "text/plain;" };
  
 let getRPCData = (method, params) => ({ jsonrpc: "1.0", id: 0, method, params })
 let getRPCRequestOptions = (method, params) => ({ headers, url, method: "POST", body: S(getRPCData(method, params)),
-  //    mode: 'cors', // no-cors, *cors, same-origin
+  //    mode: 'cors', // no-cors, *cors, same-origin 
   //    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
   //    credentials: 'same-origin', // include, *same-origin, omit 
   //    redirect: 'follow', // manual, *follow, error
@@ -41,25 +41,27 @@ let getDecodedTx = async txHash => await rpc("decoderawtransaction", [(await rpc
 const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: 7 });
 let objGenesis = [ "USE transfers",
   "CREATE TABLE IF NOT EXISTS block (id INT PRIMARY KEY AUTO_INCREMENT, height INT, time TIMESTAMP, hash BINARY(32), processed BOOL, INDEX height (height), INDEX hash (hash))",
-  "CREATE TABLE IF NOT EXISTS transaction (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(32), INDEX v (v))",
+  "CREATE TABLE IF NOT EXISTS transaction (id INT PRIMARY KEY AUTO_INCREMENT, idBlock INT, v BINARY(32), INDEX idBlock (idBlock), INDEX v (v))",
 //  "CREATE TABLE IF NOT EXISTS investment (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(32), INDEX v (v))",
   "CREATE TABLE IF NOT EXISTS pubKey (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(33), INDEX v (v))",
   "CREATE TABLE IF NOT EXISTS vout (id INT PRIMARY KEY AUTO_INCREMENT, ix INT, idToAddress INT, idBlock INT, idTransaction INT, value VARBINARY(16), INDEX ix (ix), INDEX idToAddress (idToAddress), INDEX idBlock (idBlock), INDEX idTransaction (idTransaction), INDEX value (value))",
   "CREATE TABLE IF NOT EXISTS vin (id INT PRIMARY KEY AUTO_INCREMENT, idSourceTransaction INT, idTransaction INT, voutIx INT, idPubKey INT, INDEX idTransaction (idTransaction), INDEX idSourceTransaction (idSourceTransaction), INDEX voutIx (voutIx), INDEX idPubKey (idPubKey))",
   "CREATE TABLE IF NOT EXISTS address (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(21), INDEX v (v))",
-  "CREATE TABLE IF NOT EXISTS coin (id INT PRIMARY KEY AUTO_INCREMENT, value VARBINARY(16), idSourceTx INT, idDestTx INT, idAddress INT, INDEX idSourceTx (idSourceTx), INDEX idDestTx (idDestTx), INDEX idAddress (idAddress))",
+  "CREATE TABLE IF NOT EXISTS coin (id INT PRIMARY KEY AUTO_INCREMENT, value VARBINARY(16), idSourceTx INT, idDestTx INT, idAddress INT, INDEX idSourceTx (idSourceTx), INDEX idDestTx (idDestTx), INDEX idAddress (idAddress))"
 //  "CREATE TABLE IF NOT EXISTS transfer (id INT PRIMARY KEY AUTO_INCREMENT, idToAddress INT, idBlock INT, idTransaction INT, idPubKey INT, value BINARY(16), INDEX idToAddress (idToAddress), INDEX idBlock (idBlock), INDEX idTransaction (idTransaction), INDEX idPubKey (idPubKey))",
 ];
 let objRename = T("block transaction pubKey vout vin address coin").map(q => `ALTER TABLE ${q} RENAME TO _${q}`); 
+/*
 let objGenesisCoins = [ "USE coins",
 "CREATE TABLE IF NOT EXISTS block (id INT PRIMARY KEY AUTO_INCREMENT, height INT, time TIMESTAMP, hash BINARY(32), processed BOOL, INDEX height (height), INDEX hash (hash))",
 "CREATE TABLE IF NOT EXISTS transaction (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(32), idBlock INT, INDEX v (v), INDEX idBlock (idBlock))",
 "CREATE TABLE IF NOT EXISTS coin (id INT PRIMARY KEY AUTO_INCREMENT, value VARBINARY(16), idSourceTx INT, idDestTx INT, voutIx INT, idFromAddress INT, idToAddress INT, INDEX idSourceTx (idSourceTx), INDEX idDestTx (idDestTx), INDEX idFromAddress (idFromAddress), INDEX idToAddress (idToAddress), INDEX idSourceTxVoutIx (idSourceTx, voutIx))",
 "CREATE TABLE IF NOT EXISTS pubKey (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(33), INDEX v (v))",
 "CREATE TABLE IF NOT EXISTS address (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(21), idPubKey INT, INDEX idPubKey (idPubKey), INDEX v (v))",
-];
+];*/
 
 let initDB = async conn => { for (let x of objGenesis) await conn.query((x)); }
+let initDatabase = async () => { await initDB(await pool.getConnection()); }
 
 let mapPublicKeysToAddresses = async () => { let conn = await pool.getConnection(); if (conn) { try { await initDB(conn);
   try { await conn.query("USE transfers");
@@ -81,13 +83,21 @@ let dbMethod = async f => { L('dbMethod'); let conn = await pool.getConnection()
   } catch(e) { L(`Error in 'USE transfers': ${S(e)}`); }
 } finally { if (conn) conn.release(); } } } 
 
-let getBlockHeights = () => dbMethod(async conn => {
+let getRelevantTransactions = () => dbMethod(async conn => {
   L('Getting block heights...');
-  let r = await conn.query("select height from vout, transaction, block WHERE vout.idTransaction = transaction.id AND vout.idBlock = block.id GROUP BY height ORDER BY height");
+  let r = await conn.query("select height, HEX(transaction.v) AS txId from vout, transaction, block WHERE vout.idTransaction = transaction.id AND vout.idBlock = block.id ORDER BY height");
   L('Saving block heights...');
-  fs.writeFileSync('blockHeights.json', S(r.map(x => x.height)));
+  fs.writeFileSync('relevantTransactions.json', S(r.map(x => [x.height, x.txId])));
   L('Saved block heights.');
 })
+/*
+let updateTransactionBlockIds = () => dbMethod(async conn => {
+  L('Getting block heights...');
+  let r = await conn.query("select height, HEX(transaction.v) AS txId from vout, transaction, block WHERE vout.idTransaction = transaction.id AND vout.idBlock = block.id ORDER BY height");
+  L('Saving block heights...');
+  fs.writeFileSync('relevantTransactions.json', S(r.map(x => [x.height, x.txId])));
+  L('Saved block heights.');
+})*/
 
 let htb = h => Buffer.from(h, "hex");
 
@@ -149,7 +159,7 @@ let objGenesisCoins = [ "USE coins",
 "CREATE TABLE IF NOT EXISTS pubKey (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(33), INDEX v (v))",
 "CREATE TABLE IF NOT EXISTS address (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(21), idPubKey INT, INDEX idPubKey (idPubKey), INDEX v (v))",
 ];
-*/
+*//*
 let _processTransaction = async (tx, idBlock, conn) => {
   let idTransaction;
   let getIdTransaction = async () => (D(idTransaction) ? idTransaction : (idTransaction = (await insertIfNotExists(conn, "transaction", { v:  htb(tx.txid) })).id)); 
@@ -182,7 +192,7 @@ let _processTransaction = async (tx, idBlock, conn) => {
       await insertIfNotExists(conn, "vin", P(srcTx, K(srcTx).filter(k => D(srcTx[k]))));
     }
   }
-}
+}*/
 
 let processBlockAtHeight = async (height, conn) => { process.stdout.write(`[${height}]`);
   let blockHash = await rpc("getblockhash", [height]);
@@ -194,6 +204,17 @@ let processBlockAtHeight = async (height, conn) => { process.stdout.write(`[${he
     await conn.query("UPDATE block SET processed = 1 WHERE id = ?", [idBlock]);
   }
 }
+/*
+let reprocessRelevantTransactions = async (height, conn) => { process.stdout.write(`[${height}]`);
+  let blockHash = await rpc("getblockhash", [height]);
+  let r = (await insertIfNotExists(conn, "block", { height, hash: htb(blockHash) }));
+  let idBlock = r.id;
+  if (D(idBlock) && !(r.processed === 1)) { let block = await rpc("getblock", [blockHash]);
+    await conn.query("UPDATE block SET time = FROM_UNIXTIME(?) WHERE id = ?", [block.time, idBlock]);
+    for (let txHash of block.tx) await processTransaction(await rpc("decoderawtransaction", [(await rpc("getrawtransaction", [txHash]))]), idBlock, conn);
+    await conn.query("UPDATE block SET processed = 1 WHERE id = ?", [idBlock]);
+  }
+}*/
 
 let blockScan = (async (offset, groupSize) => { let conn = await pool.getConnection(); //LOG('DB connection opened.') // Create db
   L({offset, groupSize});
@@ -226,7 +247,7 @@ let blockTimeScan = (async (offset, groupSize) => { let conn = await pool.getCon
 });
 
 let argOffset = 0, args = process.argv.slice(2), command = (args[argOffset++]); L(`args = ${process.argv}`); L({command}); 
-let commands = { mapPublicKeysToAddresses, getBlockHeights,
+let commands = { mapPublicKeysToAddresses, getRelevantTransactions, initDatabase,
   decodeTx: async () => { let txHash = args[argOffset++]; L(await getDecodedTx(txHash)); },
   blockTimeScan: async () => { 
     let offset = parseInt(args[argOffset++]), groupSize = parseInt(args[argOffset++]);

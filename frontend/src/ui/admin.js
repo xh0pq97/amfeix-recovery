@@ -1,8 +1,10 @@
+/* eslint react/jsx-key: 0 */
+/* eslint react/prop-types: 0 */
+/* eslint react/display-name: 0 */
 import React from 'react';
 // eslint-disable-next-line
 import { A, D, E, F, G, I, K, L, S, T, U, V, oA, oO } from '../common/tools';
 import { Transaction, data } from '../core/data';
-
 // eslint-disable-next-line
 import { form, formTable, ProgressDialog, GetPasswordDialog, loadingComponent, applyListHeaders, commonTableHeaders, genHeaders, ValidatableComp, OpenDialogButton, Comp, TabbedView, List, tabulize, TabTimeline, preamble, button } from './components';
 import { InvestorList, EthTxView } from './investor';
@@ -55,7 +57,7 @@ let changeDataForms = {
   Fee_address: generateForm("Please enter the new Fee_address", [[textField("Fee_address")]])
 } 
 
-let wrapFormInTabTimeline = f => p => <TabTimeline tabs={{ "0": f }} onAccept={p.onAccept} onCancel={p.onCancel} />;
+let wrapFormInTabTimeline = f => p => <TabTimeline tabs={{ _0: f }} onAccept={p.onAccept} onCancel={p.onCancel} />;
 let adminSetters = G(changeDataForms, wrapFormInTabTimeline);
 
 class Deposits extends Comp {

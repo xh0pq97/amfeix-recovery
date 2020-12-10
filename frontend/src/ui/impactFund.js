@@ -1,3 +1,5 @@
+/* eslint react/jsx-key: 0 */
+/* eslint react/prop-types: 0 */
 // eslint-disable-next-line
 import React from 'react'; //import ReactDOM from 'react-dom';
 import Highcharts from 'highcharts/highstock'; import HighchartsReact from 'highcharts-react-official';

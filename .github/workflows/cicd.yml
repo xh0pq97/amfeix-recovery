@@ -26,10 +26,5 @@ jobs:
         node-version: ${{ matrix.node-version }}
     - name: Frontend Install
       run: npm run-script frontend-install
-    - name: Frontend Build
-      run: npm run-script frontend-build
-    - name: Deploy to gh-pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        deploy_key: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./frontend/build 
+    - name: Frontend Deploy to gh-pages
+      run: npm run-script frontend-deploy

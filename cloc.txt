@@ -1,20 +1,20 @@
-     100 files     156 text files.
-classified 156 filesDuplicate file check 156 files (117 known unique)Unique:      100 files                                               124 unique files.                              
-Counting:  100      72 files ignored.
+     100 files     153 text files.
+classified 153 filesDuplicate file check 153 files (118 known unique)Unique:      100 files                                               124 unique files.                              
+Counting:  100      70 files ignored.
 
-github.com/AlDanial/cloc v 1.81  T=1.62 s (57.5 files/s, 144471.2 lines/s)
+github.com/AlDanial/cloc v 1.81  T=1.74 s (52.8 files/s, 133982.2 lines/s)
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-JSON                            22              1              0         230728
-JavaScript                      46            250            273           1701
+JSON                            22              1              0         230733
+JavaScript                      45            242            276           1665
 CSS                              2              1             28            236
 Solidity                         1             43             11            149
 Bourne Shell                    10              6              1             61
 HTML                             4              6             32             48
 Markdown                         1             32              0             38
-YAML                             1              5              0             30
+YAML                             1              5              0             25
 SVG                              6              0              0              6
 -------------------------------------------------------------------------------
-SUM:                            93            344            345         232997
+SUM:                            92            336            348         232961
 -------------------------------------------------------------------------------

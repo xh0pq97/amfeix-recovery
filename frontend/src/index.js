@@ -1,3 +1,5 @@
+/* eslint react/jsx-key: 0 */
+/* eslint react/prop-types: 0 */
 import React from 'react'; import ReactDOM from 'react-dom';
 import * as serviceWorker from './serviceWorker';
 // eslint-disable-next-line

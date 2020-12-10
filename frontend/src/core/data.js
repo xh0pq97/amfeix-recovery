@@ -190,7 +190,7 @@ f
 
   async fetchFundDeposits() { this.syncCache.set({ fundDeposits: await Promise.all(this.getFundDepositAddresses().map(a => fetchDeposits(U, a))) }); };
 
-  async retrieveInvestorWalletData(investor) { L({investor}); if (investor.pubKey && investor.btcAddress) {
+  async retrieveInvestorWalletDataFromBlockchainCom(investor) { L({investor}); if (investor.pubKey && investor.btcAddress) {
     let key = getInvestorWalletDataKey(investor);
     let cached = await this.syncCache.getData(key);
     if (D(cached)) return cached;  
@@ -210,15 +210,18 @@ f
       let toBTC = filteredTos.length === 1 ? filteredTos[0] : U;
       return { ins, outs, froms, tos, fromBTC, toBTC, txId: tx.hash, time: tx.time, satoshiBN: toSat(tx.result), type: isInvestment ? ETransactionType.Investment : ((tx.result < 0) ? ETransactionType.Outgoing : ETransactionType.Incoming) }
     });
-    let r = { finalBalance: toSat(bci.final_balance), txs: [trafoTxs(bci.txs)] }
-    //for (let q = 50; q < ntx; q += 50) r.txs.push(await get(q));
-    r.txs = r.txs.flat();
-/*
-    let investorWalletData = G(await W({ Deposits: fetchDeposits(U, investor.btcAddress), Withdrawals: [],//fetchDeposits(investor.pubKey),
-      Investments: Promise.all(this.getFundDepositAddresses().map(async a => (await fetchDeposits(investor.pubKey, a)).map(d => ({...d, fundDepositAddress: a })))),
-      Returns: []//Promise.all(this.getFundDepositPubKeys().map(async a => (await fetchDeposits(a, investor.btcAddress)).map(d => ({...d, fundDepositPubKey: a })))),
-    }), v => v.flat());*/
+    let r = { finalBalance: toSat(bci.final_balance), txs: [trafoTxs(bci.txs)] } 
+    r.txs = r.txs.flat(); 
     return this.syncCache.setData(key, r); 
+  } }
+
+  async retrieveInvestorWalletData(investor) { L({investor}); if (investor.btcAddress) {
+    let key = getInvestorWalletDataKey(investor);
+    let cached = await this.syncCache.getData(key);
+    if (D(cached)) return cached;   
+
+    let txs = async address => L(oO(await btcRpc("GET", L(`gettxs/address/${address}`))).txs);
+    return this.syncCache.setData(key, await txs(investor.btcAddress)); 
   } }
 
   getDecimals() { return this.syncCache.getData('decimals'); } 

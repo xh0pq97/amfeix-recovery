@@ -6,6 +6,6 @@
   "scripts": {
     "frontend-ci": "cd frontend ; npm ci",
     "frontend-install": "cd frontend ; npm install",
-    "frontend-build": "cd frontend ; npm run-script build" 
+    "frontend-deploy": "cd frontend ; npm run-script deploy" 
   }
 }

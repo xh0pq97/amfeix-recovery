@@ -1,3 +1,5 @@
+/* eslint react/jsx-key: 0 */
+/* eslint react/prop-types: 0 */
 import React from 'react';
 // eslint-disable-next-line
 import { Box, TextField } from '@material-ui/core';
