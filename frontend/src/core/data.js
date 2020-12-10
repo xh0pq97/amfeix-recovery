@@ -1,3 +1,5 @@
+/* eslint no-unused-vars: 0 */
+/* eslint no-loop-func: 0 */
 import amfeixCjson from '../amfeixC.json'; 
 // eslint-disable-next-line
 import { A, D, E, F, G, H, I, K, L, S, T, P, U, V, W, oA, oO, oF, oS, isO, isA, isS, singleKeyObject, makeEnum } from '../common/tools'; 
@@ -220,7 +222,10 @@ f
     let cached = await this.syncCache.getData(key);
     if (D(cached)) return cached;   
 
-    let txs = async address => L(oO(await btcRpc("GET", L(`gettxs/address/${address}`))).txs);
+    let txs = async address => oA(oO(await btcRpc("GET", L(`gettxs/address/${address}`))).data).map(tx => {
+      return {...P(tx, T("time txid")) };
+    });
+
     return this.syncCache.setData(key, await txs(investor.btcAddress)); 
   } }
 

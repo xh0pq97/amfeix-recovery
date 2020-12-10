@@ -1,3 +1,4 @@
+/* eslint no-unused-vars: 0 */
 import bip32 from 'bip32';
 import bip38 from 'bip38';
 import bip39 from 'bip39';

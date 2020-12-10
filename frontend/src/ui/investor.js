@@ -1,5 +1,6 @@
 /* eslint react/jsx-key: 0 */
 /* eslint react/prop-types: 0 */
+/* eslint no-unused-vars: 0 */
 import React from 'react';
 // eslint-disable-next-line
 import { A, D, E, F, G, I, K, L, S, T, V, oA, oF, oO, singleKeyObject } from '../common/tools';

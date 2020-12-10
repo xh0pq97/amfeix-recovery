@@ -1,5 +1,6 @@
 /* eslint react/jsx-key: 0 */
 /* eslint react/prop-types: 0 */
+/* eslint no-unused-vars: 0 */
 import React from 'react'; import ReactDOM from 'react-dom';
 import * as serviceWorker from './serviceWorker';
 // eslint-disable-next-line
@@ -67,7 +68,7 @@ class MainView extends Comp { //constructor(p, s) { super(p, s);}
       {D(oO(p.wallet).lastLogin) ? button("Log out", () =>  ({ })) : null}
       {D(oO(p.wallet).lastLogin) ? `You are logged in to wallet '${p.wallet.lastLogin.name}'` : 'You are not logged in'}
     </Toolbar></AppBar> 
-    <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode investor dark urlParams wallet")) }} TabsControl={props => <div>{tabulize(0, [[<Paper><img style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])}</div>} horizontal={true}/> 
+    <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode investor dark urlParams wallet")) }} TabsControl={props => <div>{tabulize(0, [[<Paper><img alt="amfeix-logo" style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])}</div>} horizontal={true}/> 
     <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} /></> 
 } }
 

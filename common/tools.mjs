@@ -3,7 +3,7 @@ let isA = Array.isArray;
 let isF = f => typeof f === "function";
 let isP = o => D(o.then) && isF(o.then);
 let isO = o => typeof o === "object" && o != null && !isA(o);
-let isS = s => typeof s === "srting";
+let isS = s => typeof s === "string";
 
 let A = Object.assign;
 let B = (a, k, t) => { let r = {}; a.forEach(b => { let y = r[b[(t || I)(k)]]; if (y) { y.push(b); } else { r[b[(t || I)(k)]] = [b]; } }); return r; }
