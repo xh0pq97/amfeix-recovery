@@ -84,7 +84,7 @@ class Scheduler {
 let fetchDeposits = async (fromPubKey, toAddr) => oA(oO(await btcRpc("GET", L(`getdeposits/toAddress/${toAddr || '_'}/fromPublicKey/${fromPubKey || '_'}`))).data).map(decodeDeposit);
 
 class Data extends Persistent {
-  constructor() { super("data", ["localData"], { localData: { dbix: 173 } }); L('Creating Data class instance.');
+  constructor() { super("data", ["localData"], { localData: { dbix: 1173 } }); L('Creating Data class instance.');
     //this.localData = (d => d ? L(JSON.parse(d)) : { dbix: 60 })((localStorage.getItem("_")));
     if (newDB) this.localData.dbix++; 
     A(this, { tables, tableStrucMap, investorData: {}, observers: {}, data: {}, loadProgress: { progress: {}, timings: {} }, syncCache: new SyncCache(), idb: new IndexedDB(S(this.localData.dbix)), adminLoadInitiated: false, queuedEthTransactions: [] }); 
@@ -223,16 +223,24 @@ f
     let cached = await this.syncCache.getData(key);
     if (D(cached)) return cached;  
     
-    let txs = async address => oA(oO(await btcRpc("GET", L(`gettxs/address/${address}`))).data).map(tx => {
+    let getTxs = async address => oA(oO(await btcRpc("GET", L(`gettxs/address/${address}`))).data).map(tx => {
       let ins = tx.ins.map(i => ({ satoshiBN: BN(i.value, 16), fromAddress: hexToBtcAddress(i.fromAddress) }));
       let outs = tx.outs.map(i => ({ satoshiBN: BN(i.value, 16), toAddress: hexToBtcAddress(i.toAddress) }));
+      let froms = K(F(ins.map(i => [oS(i.fromAddress), true]))); 
+      let tos = K(F(outs.map(i => [oS(i.toAddress), true])));
+      let isInvestment = tos.includes(this.getFundDepositAddresses());
+      let fromBTC = froms.length === 1 ? froms[0] : U;
+      let filteredTos = tos.filter(s => s !== fromBTC);
+      let toBTC = filteredTos.length === 1 ? filteredTos[0] : U;
       let sum = a => a.reduce((acc, v) => acc.plus(v.satoshiBN), BN(0));
       let result = sum(outs.filter(o => o.toAddress === investor.btcAddress)).minus(sum(ins.filter(i => i.fromAddress === investor.btcAddress)));
       let fee = sum(ins).minus(outs);
-      return {...P(tx, T("time txId")), ins, outs, result, fee };
+      return {...P(tx, T("time txId")), ins, outs, satoshiBN: result, fee, type: isInvestment ? ETransactionType.Investment : ((tx.result < 0) ? ETransactionType.Outgoing : ETransactionType.Incoming) };
     });
+    let txs = await getTxs(investor.btcAddress);
+    let sum = a => a.reduce((acc, v) => acc.plus(v.result), BN(0));
 
-    return this.syncCache.setData(key, await txs(investor.btcAddress)); 
+    return this.syncCache.setData(key, { finalBalance: sum(txs), txs }); 
   } }
 
   getDecimals() { return this.syncCache.getData('decimals'); } 
@@ -290,10 +298,10 @@ f
 
   async updateGenericArray(onLoadProgress, name, { length, startIndex }, countKey, countTable, dataTable, parms, buf, w3Batcher) {
     if (onLoadProgress) this.updateLoadProgress(onLoadProgress, startIndex, length);
-    let index = startIndex;
+    let index = startIndex || 0;
     let localBuf = buf || this.idb.newBuffer();
     let masterKeys = F(oA(tableStrucMap[dataTable].keyPath).map(k => [k, countKey[k]]));
-    let final = async (resolve) => {
+    let final = async (resolve) => { L('final');
       localBuf.write(countTable, ({ ...countKey, startIndex: length, length })); //L('I'); 
       if (!D(buf)) await localBuf.flush();
       if (onLoadProgress) this.updateLoadProgress(onLoadProgress, length, length, true);
@@ -315,9 +323,11 @@ f
       } catch(err) { reject(err) } });
     } else {
       try { while (!D(length) || (index < length)) { //L(`Processing item ${index} for ${name} (${dataTable}) with parms = ${S(parms)}`);
+        L({index, length});
         let data = await (amfx.amfeixM()[name](...oA(parms), index).call()); //L('C');
-        if (isS(data) && data.length === 0) throw new Error(`Empty resposne for ${name}(${parms})`);
+        if (isS(data) && data.length === 0) throw new Error(`Empty response for ${name}(${parms})`);
         localBuf.write(dataTable, ({ ...masterKeys, index: index++, data })); //L('D');
+        localBuf.write(countTable, ({ ...countKey, startIndex: index++ })); //L('D');
         if (onLoadProgress) this.updateLoadProgress(onLoadProgress, index, length); 
       } } catch {} // { L(`Array ${name} stopped at ${index}.`) } 
       await final(I); 
@@ -330,7 +340,9 @@ f
     await this.measureTime(`Update '${arrayName}' array`, async () => { L(`update array ${arrayName}`);
       let countKey = ({ name: lengthName || `${arrayName}.counts` }); 
       let alsi = (await this.getArrayLengthAndStartIndex(tables.eth.constants, countKey, lengthName, parms)); 
+      L({alsi});
       if (D(alsi.value) && !D(alsi.length)) alsi.length = parseInt(alsi.value);
+      L({alsi});
       let p = await this.updateGenericArray(olp, arrayName, alsi, countKey, tables.eth.constants, tables.eth[arrayName], parms);//, U, U, () => dp.resolve());
       await amfx.flushBatch(); await p;
     });
@@ -440,7 +452,7 @@ f
     }
     let invKey = { investorIx: investor.index }; //L(`Retrieving investor ${investor} data`);
 //    L(`invKey = ${S(invKey)}`);
-    let ethDataMap = ([txId, pubKey, signature, action, timestamp]) => ({ timestamp: parseInt(timestamp), txId, pubKey, signature, action });
+    let ethDataMap = ([txId, pubKey, signature, action, timestamp]) => ({ timestamp: parseInt(oS(timestamp)), txId, pubKey, signature, action });
     let dataMaps = { eth: x => ({index: x.index, ...ethDataMap(((x.data)))}), btc: x => ({index: x.index, value: BN(x.value, ALPHABET.length) }) }
     let txs, reqWD;
 //    L(`getting data for investor ${investor.index}`);

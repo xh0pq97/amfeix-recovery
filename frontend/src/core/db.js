@@ -14,7 +14,7 @@ class IndexedDB {
 
   async init() {
     L("Initializing db.");
-    this.db = await new Promise((resolve, reject) => A(this.indexedDB.open(this.name, 4), {
+    this.db = await new Promise((resolve, reject) => A(this.indexedDB.open(this.name, 5), {
       onerror: e => reject(`DB Error: ${e.target.error}`), onsuccess: e => { L("DB opened."); resolve(e.target.result); },
       onupgradeneeded: e => (async () => { let db = e.target.result; L("Upgrading db.");
         for (let i = 0; i < db.objectStoreNames.length; ++i) await db.deleteObjectStore(db.objectStoreNames.item(i));
