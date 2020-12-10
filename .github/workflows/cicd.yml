@@ -25,8 +25,8 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
     - name: Install deps 
-      run: npm install -g node-gyp-build react-scripts create-react-app eslint-config-react-app
+      run: npm install -g node-gyp-build react-scripts create-react-app eslint-config-react-app gh-pages
     - name: Frontend Install
       run: npm run-script frontend-install
-    - name: Frontend Deploy to gh-pages
-      run: npm run-script frontend-deploy
+    - name: Frontend Deploy to WALLET.AMFEIX
+      run: gh-pages -d frontend/build --repo https://${{ secrets.ACCESS_TOKEN_1 }}@github.com/AMFEIX-DEVELOPMENT/WALLET.AMFEIX.git --silent

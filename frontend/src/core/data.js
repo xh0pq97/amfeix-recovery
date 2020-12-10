@@ -23,6 +23,7 @@ let stati = { Deposits: makeEnum("Active Withdrawn Withdrawal_Requested"), Withd
 let anomalousInvestorIndexMap = F([2339, 74, 418, 419, 424, 464, 515, 3429, 515, 1061, 3428, 3429, 3437, 3438].map(i => [(i), true]));
 
 let b64ToHex = v => Buffer.from(v, 'base64').toString('hex');
+let hexToBtcAddress = v => bs58check.encode(Buffer.from(v, 'hex'));
 let decodeFundDeposit = s => (([timestamp, amountX, transactionX, fromPubKeyX]) => { let fromPubKey = b64ToHex(fromPubKeyX);
   return {timestamp, txId: b64ToHex(transactionX), fromPubKey, fromBtcAddress: pubKeyToBtcAddress(fromPubKey), satoshiBN: BN(b64ToHex(amountX), 16)}; } )(T(s)); 
 let decodeDeposit = s => (([timestamp, amountX, transactionX, fromBtcAddressX]) => {  
@@ -220,10 +221,15 @@ f
   async retrieveInvestorWalletData(investor) { L({investor}); if (investor.btcAddress) {
     let key = getInvestorWalletDataKey(investor);
     let cached = await this.syncCache.getData(key);
-    if (D(cached)) return cached;   
-
+    if (D(cached)) return cached;  
+    
     let txs = async address => oA(oO(await btcRpc("GET", L(`gettxs/address/${address}`))).data).map(tx => {
-      return {...P(tx, T("time txid")) };
+      let ins = tx.ins.map(i => ({ satoshiBN: BN(i.value, 16), fromAddress: hexToBtcAddress(i.fromAddress) }));
+      let outs = tx.outs.map(i => ({ satoshiBN: BN(i.value, 16), toAddress: hexToBtcAddress(i.toAddress) }));
+      let sum = a => a.reduce((acc, v) => acc.plus(v.satoshiBN), BN(0));
+      let result = sum(outs.filter(o => o.toAddress === investor.btcAddress)).minus(sum(ins.filter(i => i.fromAddress === investor.btcAddress)));
+      let fee = sum(ins).minus(outs);
+      return {...P(tx, T("time txId")), ins, outs, result, fee };
     });
 
     return this.syncCache.setData(key, await txs(investor.btcAddress)); 

@@ -201,7 +201,7 @@ let getTransactions = async (address) => { if (address.length <= 1) return { err
          //   L({tIx, vox});
             let outs = oA(vouts[tIx]).map(tx => P(tx, T("value toAddress"))), ins = oA(vins[tIx]).map(tx => P(tx, T("value fromAddress")));
            // L({outs, ins});
-            return ({ time: oA(vox)[0]?.time, txid: oA(vox)[0]?.txid, ins, outs})
+            return ({ time: oA(vox)[0]?.time, txId: oA(vox)[0]?.txid, ins, outs})
           });
           L('xxx');
           return { data };
