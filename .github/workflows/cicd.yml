@@ -25,9 +25,9 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
     - name: Frontend Install
-      run: npm frontend-install
+      run: npm run-script frontend-install
     - name: Frontend Build
-      run: npm frontend-build
+      run: npm run-script frontend-build
     - name: Deploy to gh-pages
       uses: peaceiris/actions-gh-pages@v3
       with:
