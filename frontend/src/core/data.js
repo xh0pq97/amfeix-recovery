@@ -16,7 +16,7 @@ import { ETransactionType } from './enums.js';
 import { amfx, amfeixAddress } from './amfeixContract';
 import bs58check from 'bs58check'; 
 
-let newDB = false //|| true;   
+let newDB = false || true;   
  
 let stati = { Deposits: makeEnum("Active Withdrawn Withdrawal_Requested"), Withdrawal_Requests: makeEnum("Pending Processed") }; 
 
@@ -81,7 +81,7 @@ class Scheduler {
   }
 }
 
-let fetchDeposits = async (fromPubKey, toAddr) => oA(oO(await btcRpc("GET", L(`getdeposits/toAddress/${toAddr || '_'}/fromPublicKey/${fromPubKey || '_'}`))).data).map(decodeDeposit);
+let fetchDeposits = async (fromPubKey, toAddr) => [];//oA(oO(await btcRpc("GET", L(`getdeposits/toAddress/${toAddr || '_'}/fromPublicKey/${fromPubKey || '_'}`))).data).map(decodeDeposit);
 
 class Data extends Persistent {
   constructor() { super("data", ["localData"], { localData: { dbix: 1173 } }); L('Creating Data class instance.');
@@ -193,7 +193,7 @@ f
 
   async fetchFundDeposits() { this.syncCache.set({ fundDeposits: await Promise.all(this.getFundDepositAddresses().map(a => fetchDeposits(U, a))) }); };
 
-  async retrieveInvestorWalletDataFromBlockchainCom(investor) { L({investor}); if (investor.pubKey && investor.btcAddress) {
+/*  async retrieveInvestorWalletDataFromBlockchainCom(investor) { L({investor}); if (investor.pubKey && investor.btcAddress) {
     let key = getInvestorWalletDataKey(investor);
     let cached = await this.syncCache.getData(key);
     if (D(cached)) return cached;  
@@ -216,7 +216,7 @@ f
     let r = { finalBalance: toSat(bci.final_balance), txs: [trafoTxs(bci.txs)] } 
     r.txs = r.txs.flat(); 
     return this.syncCache.setData(key, r); 
-  } }
+  } }*/
 
   async retrieveInvestorWalletData(investor) { L({investor}); if (investor.btcAddress) {
     let key = getInvestorWalletDataKey(investor);
@@ -224,10 +224,8 @@ f
     if (D(cached)) return cached;  
     
     let getTxs = async address => oA(oO(await btcRpc("GET", L(`gettxs/address/${address}`))).data).map(tx => {
-      let ins = tx.ins.map(i => ({ satoshiBN: BN(i.value, 16), fromAddress: hexToBtcAddress(i.fromAddress) }));
-      let outs = tx.outs.map(i => ({ satoshiBN: BN(i.value, 16), toAddress: hexToBtcAddress(i.toAddress) }));
-      let froms = K(F(ins.map(i => [oS(i.fromAddress), true]))); 
-      let tos = K(F(outs.map(i => [oS(i.toAddress), true])));
+      let ioMap = a => a.map(x => ({ satoshiBN: BN(x.value, 10), addr: hexToBtcAddress(x.addr) })), uniqueAddrs = a => K(F(a.map(x => [oS(x.addr), true])));
+      let ins = ioMap(tx.ins), outs = ioMap(tx.outs), froms = uniqueAddrs(ins), tos = uniqueAddrs(outs); 
       let isInvestment = tos.includes(this.getFundDepositAddresses());
       let fromBTC = froms.length === 1 ? froms[0] : U;
       let filteredTos = tos.filter(s => s !== fromBTC);
@@ -279,20 +277,7 @@ f
     }) } else { await Promise.all(timeAndAmount.map(l => this.updateArray(l))); }
   }); }
 
-  async updateInvestorsAddresses(onLoadProgress) { await this.measureTime("Investors addresses", async () => {
-    let countKey = name => ({ name: `${name}.counts` });
-    let sIx = async name => oO(await this.getData(tables.eth.constants, countKey(name))).startIndex || 0;
-    if (false && (await sIx("investorsAddresses") === 0)) { await this.measureTime("Investors addresses (single step)", async () => {
-      let buf = this.idb.newBuffer();
-      this.updateLoadProgress(onLoadProgress, 0);
-      let investorsAddresses = await amfx.amfeixM().getAllInvestors().call(); 
-      let length = investorsAddresses.length;
-      investorsAddresses.forEach((data, index) => buf.write(tables.eth.investorsAddresses, { index, data }));
-      buf.write(tables.eth.constants, {...countKey("investorsAddresses"), startIndex: length });
-      await buf.flush(); 
-      this.updateLoadProgress(onLoadProgress, length, length, true);
-    }) } else { await this.updateArray("investorsAddresses"); } 
-  }); }
+  async updateInvestorsAddresses(onLoadProgress) { await this.measureTime("Investors addresses", async () => await this.updateArray("investorsAddresses")); }
 
   updateLoadProgress(onLoadProgress, index, length, done) { onLoadProgress({ index, length: D(length) ? length : (done ? index : "unknown") }); }
 
@@ -301,38 +286,38 @@ f
     let index = startIndex || 0;
     let localBuf = buf || this.idb.newBuffer();
     let masterKeys = F(oA(tableStrucMap[dataTable].keyPath).map(k => [k, countKey[k]]));
-    let final = async (resolve) => { L('final');
+    let final = async (resolve) => { //L('final');
       localBuf.write(countTable, ({ ...countKey, startIndex: length, length })); //L('I'); 
       if (!D(buf)) await localBuf.flush();
       if (onLoadProgress) this.updateLoadProgress(onLoadProgress, length, length, true);
       resolve();
-    }
-    if (D(length)) {
-      return new Promise(async (resolve, reject) => { try {
-        let w3b = w3Batcher || amfx;
-        let completed = 0;
-        if (index === length) await final(resolve);
-        while ((index < length)) { let currentIx = index++; 
-          w3b.queueOp(name, [...oA(parms), currentIx], async data => {
-            localBuf.write(dataTable, ({ ...masterKeys, index: currentIx, data })); //L('D');
-            if (onLoadProgress) this.updateLoadProgress(onLoadProgress, completed, length);
-            if (++completed === length - startIndex) { await final(resolve); }
-          }, err => { L(`Error in '${name}' array update: ${S(err)}`) });  
-        }
-        if (!D(w3Batcher)) { L('flushB'); await amfx.flushBatch(); }
-      } catch(err) { reject(err) } });
-    } else {
-      try { while (!D(length) || (index < length)) { //L(`Processing item ${index} for ${name} (${dataTable}) with parms = ${S(parms)}`);
-        L({index, length});
-        let data = await (amfx.amfeixM()[name](...oA(parms), index).call()); //L('C');
-        if (isS(data) && data.length === 0) throw new Error(`Empty response for ${name}(${parms})`);
-        localBuf.write(dataTable, ({ ...masterKeys, index: index++, data })); //L('D');
-        localBuf.write(countTable, ({ ...countKey, startIndex: index++ })); //L('D');
-        if (onLoadProgress) this.updateLoadProgress(onLoadProgress, index, length); 
-      } } catch {} // { L(`Array ${name} stopped at ${index}.`) } 
-      await final(I); 
-      return Promise.resolve();
-    }
+    } 
+    return new Promise(async (resolve, reject) => { try {
+      let w3b = w3Batcher || amfx;
+      let completed = 0;
+      if (index === length) await final(resolve);
+      while ((index < length)) { let currentIx = index++; 
+        w3b.queueOp(name, [...oA(parms), currentIx], async data => {
+          localBuf.write(dataTable, ({ ...masterKeys, index: currentIx, data })); //L('D');
+          if (onLoadProgress) this.updateLoadProgress(onLoadProgress, completed, length);
+          if (++completed === length - startIndex) { await final(resolve); }
+        }, err => { L(`Error in '${name}' array update: ${S(err)}`) });  
+      }
+      if (!D(w3Batcher)) { await amfx.flushBatch(); }
+    } catch(err) { reject(err) } }); 
+  }
+
+  async findArrayLength(arrayName, parms) {  
+    let exceedsLength = async l => { try {//L(`Processing item ${index} for ${name} (${dataTable}) with parms = ${S(parms)}`);
+      let data = await (amfx.amfeixM()[arrayName](...oA(parms), l).call()); //L('C');
+      if (isS(data) && data.length === 0) throw new Error(`Empty response for ${arrayName}(${parms})`);
+    } catch { return true; } }
+    let l = 1;
+    while ((l < (1 << 52)) && !await exceedsLength(l)) { l <<= 1; }
+    let low = l >> 1, high = l;
+    while (high > low) { let m = low + ((high - low) >> 1); if (await exceedsLength(m)) { high = m; } else if (low < m) { low = m; } else break; }
+    L(`Found length ${high} for array ${arrayName}`);
+    return high;
   }
 
   async updateArray(arrayName, lengthName, parms) { 
@@ -340,9 +325,8 @@ f
     await this.measureTime(`Update '${arrayName}' array`, async () => { L(`update array ${arrayName}`);
       let countKey = ({ name: lengthName || `${arrayName}.counts` }); 
       let alsi = (await this.getArrayLengthAndStartIndex(tables.eth.constants, countKey, lengthName, parms)); 
-      L({alsi});
       if (D(alsi.value) && !D(alsi.length)) alsi.length = parseInt(alsi.value);
-      L({alsi});
+      if (!D(alsi.length)) alsi.length = await this.findArrayLength(arrayName, parms);
       let p = await this.updateGenericArray(olp, arrayName, alsi, countKey, tables.eth.constants, tables.eth[arrayName], parms);//, U, U, () => dp.resolve());
       await amfx.flushBatch(); await p;
     });

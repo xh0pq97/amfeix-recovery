@@ -128,9 +128,9 @@ let getDeposits = async (toAddress, fromPublicKey) => { if (toAddress.length <= 
 
         let data = [];
         try { 
-          let txs = B(await conn.query(L(`SELECT UNIX_TIMESTAMP(block.time) as time, transaction.v as txid, HEX(vout.value) as value, transaction.id as tIx FROM transaction, block, vout WHERE vout.idToAddress = ? AND transaction.id = vout.idTransaction AND block.id = vout.idBlock`), L([idToAddress])), "tIx"); 
+          let txs = B(await conn.query(L(`SELECT UNIX_TIMESTAMP(block.time) as time, transaction.v as txid, value, transaction.id as tIx FROM transaction, block, vout WHERE vout.idToAddress = ? AND transaction.id = vout.idTransaction AND block.id = vout.idBlock`), L([idToAddress])), "tIx"); 
           for (let [tIx, tx] of E(txs)) {
-            let sumValueBN = tx.reduce((p, c) => BN(c.value, 16).plus(p), BN(0));
+            let sumValueBN = tx.reduce((p, c) => BN(c.value, 10).plus(p), BN(0));
             let vins = B(await conn.query((`SELECT HEX(pubKey.v) as fromPubKey FROM vin, pubKey WHERE vin.idTransaction = ? AND vin.idPubKey = pubKey.id ${fromPublicKey ? 'AND pubKey.v = ?' : ''}`), ([tIx, binFromPublicKey].filter(D))), "fromPubKey");
             if (K(vins).length === 1) { let vinFromBtcAddress = fromBtcAddress || pubKeyToBtcAddress(K(vins)[0]);
               if (vinFromBtcAddress !== toAddress) {
@@ -186,20 +186,19 @@ let getTransactions = async (address) => { if (address.length <= 1) return { err
           let voutMatchesVin = 'vin.idSourceTransaction = vout.idTransaction AND vin.voutIx = vout.ix';
           let vinTxs = await conn.query((`SELECT t.v as txid, t.id as tIx FROM transaction AS t, vout, vin WHERE vout.idToAddress = ? AND ${voutMatchesVin} AND vin.idTransaction = t.id GROUP BY tIx`),  ([idToAddress]));
   //        L(`${vinTxs.length} vinTxs --> ${K(B(vinTxs, "tIx")).length} txs`);
-          let allTxs = K(B(voutTxs.concat(vinTxs), "tIx")), txList = `(${allTxs.join(", ")})`;
-    //      L(`${allTxs.length} txs`);
-//          let vouts = B(L(await conn.query(L(`SELECT HEX(vout.value) AS value, address.v AS toAddress, vout.idTransaction AS tIx FROM address, vout, (SELECT t.v as txid, t.id as tIx FROM transaction AS t, vout WHERE vout.idToAddress = ? AND t.id = vout.idTransaction GROUP BY tIx) as t WHERE vout.idTransaction = t.id AND vout.idToAddress = address.id`), [idToAddress])), "tIx");
-          let vouts = B((await conn.query((`SELECT HEX(vout.value) AS value, HEX(address.v) AS toAddress, vout.idTransaction AS tIx FROM address, vout  WHERE vout.idTransaction IN ${txList} AND vout.idToAddress = address.id`), [])), "tIx");
+          let allTxs = K(B(voutTxs.concat(vinTxs), "tIx")), txList = `(${allTxs.join(", ")})`; 
+          let vouts = B((await conn.query((`SELECT value, HEX(address.v) AS addr, vout.idTransaction AS tIx FROM address, vout  WHERE vout.idTransaction IN ${txList} AND vout.idToAddress = address.id`), [])), "tIx");
    //       L(`${K(vouts).length} vouts-txs`);
-          let vins = B(await conn.query((`SELECT HEX(vout.value) AS value, HEX(address.v) AS fromAddress, vin.idTransaction AS tIx FROM address, vout, vin WHERE vin.idTransaction IN ${txList} AND vout.idToAddress = address.id AND ${voutMatchesVin}`), []), "tIx");
+          let vins = B(await conn.query((`SELECT value, HEX(address.v) AS addr, vin.idTransaction AS tIx FROM address, vout, vin WHERE vin.idTransaction IN ${txList} AND vout.idToAddress = address.id AND ${voutMatchesVin}`), []), "tIx");
      //     L(`${K(vins).length} vins-txs`);
 
-          let sumValueBN = txs => txs.reduce((p, c) => BN(c.value, 16).plus(p), BN(0));
+          let sumValueBN = txs => txs.reduce((p, c) => BN(c.value, 10).plus(p), BN(0));
        //   L({allTxs});
           let data = allTxs.map(tIx => { 
             let vox = B(voutTxs, "tIx")[tIx];
          //   L({tIx, vox});
-            let outs = oA(vouts[tIx]).map(tx => P(tx, T("value toAddress"))), ins = oA(vins[tIx]).map(tx => P(tx, T("value fromAddress")));
+          let mapTx = tx => P(tx, T("value addr"));
+            let outs = oA(vouts[tIx]).map(mapTx), ins = oA(vins[tIx]).map(mapTx);
            // L({outs, ins});
             return ({ time: oA(vox)[0]?.time, txId: oA(vox)[0]?.txid, ins, outs})
           });

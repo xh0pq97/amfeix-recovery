@@ -10,7 +10,7 @@ import { select, insertIfNotExists } from './utils.mjs';
 import { pubKeyToBtcAddress } from './pubKeyConvertor.mjs';
 import bs58check from 'bs58check'; 
 import fs from 'fs';
-//import blockHeights from 'blockHeights.json';
+import blockHeights from './blockHeights.json';
 
 dotenv.config(); const cfg = process.env;  
 
@@ -38,13 +38,13 @@ let getDecodedTx = async txHash => await rpc("decoderawtransaction", [(await rpc
 
 //if (offset < 0) { L(S(memcached.settings((e, d) => L(`Memcache stats = ${S(e)} ${S(d)}`)))); process.exit(0); }
 // DB Init 
-const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: 7 });
+const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: 3 });
 let objGenesis = [ "USE transfers",
   "CREATE TABLE IF NOT EXISTS block (id INT PRIMARY KEY AUTO_INCREMENT, height INT, time TIMESTAMP, hash BINARY(32), processed BOOL, INDEX height (height), INDEX hash (hash))",
   "CREATE TABLE IF NOT EXISTS transaction (id INT PRIMARY KEY AUTO_INCREMENT, idBlock INT, v BINARY(32), INDEX idBlock (idBlock), INDEX v (v))",
 //  "CREATE TABLE IF NOT EXISTS investment (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(32), INDEX v (v))",
   "CREATE TABLE IF NOT EXISTS pubKey (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(33), INDEX v (v))",
-  "CREATE TABLE IF NOT EXISTS vout (id INT PRIMARY KEY AUTO_INCREMENT, ix INT, idToAddress INT, idBlock INT, idTransaction INT, value VARBINARY(16), INDEX ix (ix), INDEX idToAddress (idToAddress), INDEX idBlock (idBlock), INDEX idTransaction (idTransaction), INDEX value (value))",
+  "CREATE TABLE IF NOT EXISTS vout (id INT PRIMARY KEY AUTO_INCREMENT, ix INT, idToAddress INT, idTransaction INT, value BIGINT, INDEX ix (ix), INDEX idToAddress (idToAddress), INDEX idTransaction (idTransaction), INDEX value (value))",
   "CREATE TABLE IF NOT EXISTS vin (id INT PRIMARY KEY AUTO_INCREMENT, idSourceTransaction INT, idTransaction INT, voutIx INT, idPubKey INT, INDEX idTransaction (idTransaction), INDEX idSourceTransaction (idSourceTransaction), INDEX voutIx (voutIx), INDEX idPubKey (idPubKey))",
   "CREATE TABLE IF NOT EXISTS address (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(21), INDEX v (v))",
   "CREATE TABLE IF NOT EXISTS coin (id INT PRIMARY KEY AUTO_INCREMENT, value VARBINARY(16), idSourceTx INT, idDestTx INT, idAddress INT, INDEX idSourceTx (idSourceTx), INDEX idDestTx (idDestTx), INDEX idAddress (idAddress))"
@@ -79,15 +79,17 @@ let mapPublicKeysToAddresses = async () => { let conn = await pool.getConnection
 } finally { if (conn) conn.release(); } } } 
 
 let dbMethod = async f => { L('dbMethod'); let conn = await pool.getConnection(); if (conn) { try { await initDB(conn); L('DB inited.');
-  try { await conn.query("USE transfers"); L('Starting func'); return await f(conn);
-  } catch(e) { L(`Error in 'USE transfers': ${S(e)}`); }
+  try { await conn.query("USE transfers"); L('Starting func'); return await f(conn); } catch(e) { L(`Error: ${S(e)}`); }
 } finally { if (conn) conn.release(); } } } 
 
 let getRelevantTransactions = () => dbMethod(async conn => {
+  L({investors});
   L('Getting block heights...');
-  let r = await conn.query("select height, HEX(transaction.v) AS txId from vout, transaction, block WHERE vout.idTransaction = transaction.id AND vout.idBlock = block.id ORDER BY height");
+//  let r = await conn.query("select height, HEX(transaction.v) AS txId from vout, transaction, block WHERE vout.idTransaction = transaction.id AND vout.idBlock = block.id ORDER BY height LIMIT 1");
+  let r = await conn.query("select HEX(transaction.v) AS txId from transaction LIMIT 1");
+  L({r});
   L('Saving block heights...');
-  fs.writeFileSync('relevantTransactions.json', S(r.map(x => [x.height, x.txId])));
+//  fs.writeFileSync('relevantTransactions.json', S(r.map(x => [x.height, x.txId])));
   L('Saved block heights.');
 })
 /*
@@ -101,7 +103,7 @@ let updateTransactionBlockIds = () => dbMethod(async conn => {
 
 let htb = h => Buffer.from(h, "hex");
 
-let coin = (new BigNumber(10)).pow(18);
+let coin = (new BigNumber(10)).pow(8);
 
 let pubKeyFromScriptSig = ss => { let asm = oS(oO(ss).asm), k = "[ALL] "; let p = asm.indexOf(k); return p >= 0 ? asm.substr(p + k.length) : U; }
 
@@ -120,7 +122,7 @@ let watchedToAddressesMap = F(watchedToAddresses.map(k => [k, true]));
 let watchedFromPubKeysMap = F(watchedFromPubKeys.map(k => [k, true]));
 
 let processTransaction = async (tx, idBlock, conn) => {
-  let idTransaction, getIdTransaction = async () => (D(idTransaction) ? idTransaction : (idTransaction = (await insertIfNotExists(conn, "transaction", { v:  htb(tx.txid) })).id)); 
+  let idTransaction, getIdTransaction = async () => (D(idTransaction) ? idTransaction : (idTransaction = (await insertIfNotExists(conn, "transaction", { v:  htb(tx.txid), idBlock })).id)); 
 
   let foundWatchedToAddress = false;
   for (let ix = 0; ix < tx.vout.length; ++ix) { let vout = tx.vout[ix];  
@@ -128,16 +130,15 @@ let processTransaction = async (tx, idBlock, conn) => {
       if (watchedToAddressesMap[toAddress]) { foundWatchedToAddress = true;
         let idToAddress = (await insertIfNotExists(conn, "address", { v: bs58check.decode((toAddress)) })).id;
         if (D(idToAddress)) {
-          let value = (new BigNumber(new BigNumber(vout.value).multipliedBy(coin).toFixed())).toString(16);
-          if (value.length % 2 === 1) value = '0' + value; 
-          await insertIfNotExists(conn, "vout", ({ idToAddress, idBlock, idTransaction: await getIdTransaction(), ix, value: htb(value) }), T("idToAddress idBlock idTransaction ix")); 
+          let value = (new BigNumber(new BigNumber(vout.value).multipliedBy(coin).toFixed())).toString(); 
+          await insertIfNotExists(conn, "vout", ({ idToAddress, idTransaction: await getIdTransaction(), ix, value }), T("idToAddress idTransaction ix")); 
         }
       }
     }
   } 
 
   let foundWatchedFromPubKey = false;
-  if (foundWatchedToAddress) L({foundWatchedToAddress});
+//  if (foundWatchedToAddress) L({foundWatchedToAddress});
   for (let ix = 0; ix < tx.vin.length; ++ix) { let vin = tx.vin[ix];
     let pubKey = pubKeyFromScriptSig(vin.scriptSig);
     vin.pubKey = pubKey && pubKey.length === 66 ? pubKey : U; 
@@ -150,49 +151,7 @@ let processTransaction = async (tx, idBlock, conn) => {
       await insertIfNotExists(conn, "vin", P(srcTx, K(srcTx).filter(k => D(srcTx[k]))));
     }
   }
-}
-/*
-let objGenesisCoins = [ "USE coins",
-"CREATE TABLE IF NOT EXISTS block (id INT PRIMARY KEY AUTO_INCREMENT, height INT, time TIMESTAMP, hash BINARY(32), processed BOOL, INDEX height (height), INDEX hash (hash))",
-"CREATE TABLE IF NOT EXISTS transaction (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(32), idBlock INT, INDEX v (v), INDEX idBlock (idBlock))",
-"CREATE TABLE IF NOT EXISTS coin (id INT PRIMARY KEY AUTO_INCREMENT, value VARBINARY(16), idSourceTx INT, idDestTx INT, voutIx INT, idFromAddress INT, idToAddress INT, INDEX idSourceTx (idSourceTx), INDEX idDestTx (idDestTx), INDEX idFromAddress (idFromAddress), INDEX idToAddress (idToAddress), INDEX idSourceTxVoutIx (idSourceTx, voutIx))",
-"CREATE TABLE IF NOT EXISTS pubKey (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(33), INDEX v (v))",
-"CREATE TABLE IF NOT EXISTS address (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(21), idPubKey INT, INDEX idPubKey (idPubKey), INDEX v (v))",
-];
-*//*
-let _processTransaction = async (tx, idBlock, conn) => {
-  let idTransaction;
-  let getIdTransaction = async () => (D(idTransaction) ? idTransaction : (idTransaction = (await insertIfNotExists(conn, "transaction", { v:  htb(tx.txid) })).id)); 
-
-  let foundWatchedToAddress = false;
-  for (let ix = 0; ix < tx.vout.length; ++ix) { let vout = tx.vout[ix];  
-    if (D(vout.scriptPubKey)) for (let toAddress of oA(vout.scriptPubKey.addresses)) {
-      if (watchedToAddressesMap[toAddress]) { foundWatchedToAddress = true;
-        let idToAddress = (await insertIfNotExists(conn, "address", { v: bs58check.decode((toAddress)) })).id;
-        if (D(idToAddress)) {
-          let value = (new BigNumber(new BigNumber(vout.value).multipliedBy(coin).toFixed())).toString(16);
-          if (value.length % 2 === 1) value = '0' + value; 
-          await insertIfNotExists(conn, "vout", ({ idToAddress, idBlock, idTransaction: await getIdTransaction(), ix, value: htb(value) }), T("idToAddress idBlock idTransaction ix")); 
-        }
-      }
-    }
-  } 
-
-  let foundWatchedFromPubKey = false;
-  if (foundWatchedToAddress) L({foundWatchedToAddress});
-  for (let ix = 0; ix < tx.vin.length; ++ix) { let vin = tx.vin[ix];
-    let pubKey = pubKeyFromScriptSig(vin.scriptSig);
-    vin.pubKey = pubKey && pubKey.length === 66 ? pubKey : U; 
-    if (watchedFromPubKeysMap[vin.pubKey]) foundWatchedFromPubKey = true;
-  }
-  if (foundWatchedFromPubKey || foundWatchedToAddress) for (let ix = 0; ix < tx.vin.length; ++ix) { let vin = tx.vin[ix];
-    let idSourceTransaction = D(vin.txid) ? (await insertIfNotExists(conn, "transaction", { v : htb(vin.txid) })).id : U;
-    let idPubKey = vin.pubKey ? (await insertIfNotExists(conn, "pubKey", { v: htb(vin.pubKey) })).id : U;
-    if (idSourceTransaction) { let srcTx = { voutIx: vin.vout, idPubKey, idTransaction: await getIdTransaction(), idSourceTransaction };
-      await insertIfNotExists(conn, "vin", P(srcTx, K(srcTx).filter(k => D(srcTx[k]))));
-    }
-  }
-}*/
+} 
 
 let processBlockAtHeight = async (height, conn) => { process.stdout.write(`[${height}]`);
   let blockHash = await rpc("getblockhash", [height]);
@@ -200,21 +159,12 @@ let processBlockAtHeight = async (height, conn) => { process.stdout.write(`[${he
   let idBlock = r.id;
   if (D(idBlock) && !(r.processed === 1)) { let block = await rpc("getblock", [blockHash]);
     await conn.query("UPDATE block SET time = FROM_UNIXTIME(?) WHERE id = ?", [block.time, idBlock]);
-    for (let txHash of block.tx) await processTransaction(await rpc("decoderawtransaction", [(await rpc("getrawtransaction", [txHash]))]), idBlock, conn);
+    for (let txHash of block.tx) await processTransaction(await getDecodedTx(txHash), idBlock, conn);
     await conn.query("UPDATE block SET processed = 1 WHERE id = ?", [idBlock]);
   }
-}
-/*
-let reprocessRelevantTransactions = async (height, conn) => { process.stdout.write(`[${height}]`);
-  let blockHash = await rpc("getblockhash", [height]);
-  let r = (await insertIfNotExists(conn, "block", { height, hash: htb(blockHash) }));
-  let idBlock = r.id;
-  if (D(idBlock) && !(r.processed === 1)) { let block = await rpc("getblock", [blockHash]);
-    await conn.query("UPDATE block SET time = FROM_UNIXTIME(?) WHERE id = ?", [block.time, idBlock]);
-    for (let txHash of block.tx) await processTransaction(await rpc("decoderawtransaction", [(await rpc("getrawtransaction", [txHash]))]), idBlock, conn);
-    await conn.query("UPDATE block SET processed = 1 WHERE id = ?", [idBlock]);
-  }
-}*/
+} 
+
+let blockRescan = async (offset, groupSize) => dbMethod(async conn => { for (let h = offset; h < blockHeights.length; h += groupSize) await processBlockAtHeight(blockHeights[h], conn); });
 
 let blockScan = (async (offset, groupSize) => { let conn = await pool.getConnection(); //LOG('DB connection opened.') // Create db
   L({offset, groupSize});
@@ -247,8 +197,10 @@ let blockTimeScan = (async (offset, groupSize) => { let conn = await pool.getCon
 });
 
 let argOffset = 0, args = process.argv.slice(2), command = (args[argOffset++]); L(`args = ${process.argv}`); L({command}); 
-let commands = { mapPublicKeysToAddresses, getRelevantTransactions, initDatabase,
-  decodeTx: async () => { let txHash = args[argOffset++]; L(await getDecodedTx(txHash)); },
+let commands = { mapPublicKeysToAddresses, getRelevantTransactions, initDatabase, 
+  decodeTx: async () => L(await getDecodedTx(args[argOffset++])),
+  getTransaction: async () => L(await rpc("gettransaction", [args[argOffset++]])), 
+  showBlockHeights: () => { L({blockHeights}); L(blockHeights.length); },
   blockTimeScan: async () => { 
     let offset = parseInt(args[argOffset++]), groupSize = parseInt(args[argOffset++]);
     blockTimeScan(offset, groupSize);
@@ -259,10 +211,8 @@ let commands = { mapPublicKeysToAddresses, getRelevantTransactions, initDatabase
     await conn.query("USE transfers");
     await processBlockAtHeight(height, conn);
   },
-  scanBlocks: async () => {
-    let offset = parseInt(args[argOffset++]), groupSize = parseInt(args[argOffset++]);
-    blockScan(offset, groupSize); 
-  }
+  rescanBlocks: async () => blockRescan(parseInt(args[argOffset++]), parseInt(args[argOffset++])),
+  scanBlocks: async () => blockScan(parseInt(args[argOffset++]), parseInt(args[argOffset++]))
 }
 
 let c = commands[command];
