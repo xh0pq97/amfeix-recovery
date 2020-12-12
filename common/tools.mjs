@@ -15,10 +15,8 @@ let GA = async (o, f) => F(await E(oO(o)).map(async ([k, v], i) => [k, await f(v
 let H = (f, o) => G(o, (v, k, i, o) => isO(v) ? H(f, v) : f(v, k, i, o));
 let I = x => x;
 let K = Object.keys;
-let L = x => { 
-  if (process.env.NODE_ENV === "development") console.log(S(x)); 
-  return x; 
-}
+let LL = x => { console.log(S(x)); return x; }
+let L = x => {  if (process.env.NODE_ENV === "development") LL(x); return x; }
 let P = (o, keys) => F(keys.map(k => [k, o[k]]));
 let R = (msg, data) => A(new Error(msg), oO(data));
 let S = JSON.stringify;
@@ -39,4 +37,4 @@ let asA = a => (b => isA(b) ? b : [b])(oA(a))
 let singleKeyObject = (k, v) => { let o = {}; o[k] = v; return o; }
 let makeEnum = soo => Object.freeze(F(T(soo).map(k => [k, k]))); 
 
-export { A, B, D, E, F, G, GA, H, I, K, L, P, R, S, T, U, V, W, oA, oB, oO, oS, oF, isA, isO, isF, isS, isP, asA, singleKeyObject, makeEnum }
+export { A, B, D, E, F, G, GA, H, I, K, L, LL, P, R, S, T, U, V, W, oA, oB, oO, oS, oF, isA, isO, isF, isS, isP, asA, singleKeyObject, makeEnum }

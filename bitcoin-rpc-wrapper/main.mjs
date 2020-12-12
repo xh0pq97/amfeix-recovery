@@ -5,7 +5,7 @@ import { pubKeyToBtcAddress } from './pubKeyConvertor.mjs';
 import bs58check from 'bs58check'; 
 import JSONBig from 'json-bigint';
 import BigNumber from 'bignumber.js';
-import { A, B, D, E, F, I, K, L, P, S, T, U, V, oA, oO, oS, oF, singleKeyObject } from './tools.mjs'; 
+import { A, B, D, E, F, I, K, L, LL, P, S, T, U, V, oA, oO, oS, oF, singleKeyObject } from './tools.mjs'; 
 import mariadb from  'mariadb';
 import { select, insertIfNotExists } from './utils.mjs';
 
@@ -17,7 +17,7 @@ let LOG = d => verbose ? L(d) : d;
 
 L(`args = ${process.argv}`);
  
-const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: 7 }); 
+const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: 8 }); 
  
 const url = `http://${cfg.rpcuser}:${cfg.rpcpassword}@127.0.0.1:8332/`; LOG({url});
 const headers = { "content-type": "text/plain;" };
@@ -111,13 +111,15 @@ let getTransfers = async (toAddress, fromPublicKey) => {
 } catch(e) { return { err: `Invalid address: ${S(e)}` } } 
 finally { conn.close(); } } else { return { err: `No db connection` }; } } else { return { err: 'Specify toAddress or fromPublicKey or both.' } } }
 
+let Q = async (conn, sql, parms) => { try { return await conn.query((sql), (oA(parms))); } catch(e) { throw new Error(LL(`Error in '${sql}': ${S(e)}`)); } }
+
 let formatDeposit = v => [ (v).time, compressValue(v.value), v.txid.toString('base64'), v.fromBtcAddress ? bs58check.decode(v.fromBtcAddress).toString('base64') : U ].join(" ");
 let getDeposits = async (toAddress, fromPublicKey) => { if (toAddress.length <= 1) return { err: `To address required.` };
   let conn = await pool.getConnection(); if (conn) { try { 
     let binToAddress = bs58check.decode(toAddress);
     L({toAddress, fromPublicKey});
     try { await conn.query("USE transfers");
-      let idToAddress = oO(oA(await conn.query('SELECT id FROM address WHERE address.v = ?', [binToAddress]))[0]).id;
+      let idToAddress = oO(oA(await Q(conn, 'SELECT id FROM address WHERE address.v = ?', [binToAddress]))[0]).id;
       L({idToAddress});
       if (!D(idToAddress)) return { err: `To address '${toAddress}' not found.`}
 
@@ -128,14 +130,14 @@ let getDeposits = async (toAddress, fromPublicKey) => { if (toAddress.length <= 
 
         let data = [];
         try { 
-          let txs = B(await conn.query(L(`SELECT UNIX_TIMESTAMP(block.time) as time, transaction.v as txid, value, transaction.id as tIx FROM transaction, block, vout WHERE vout.idToAddress = ? AND transaction.id = vout.idTransaction AND block.id = vout.idBlock`), L([idToAddress])), "tIx"); 
+          let txs = B(await Q(conn, L(`SELECT UNIX_TIMESTAMP(block.time) as time, transaction.v as txid, value, transaction.id as tIx FROM transaction, block, vout WHERE vout.idToAddress = ? AND transaction.id = vout.idTransaction AND block.id = transaction.idBlock`), L([idToAddress])), "tIx"); 
           for (let [tIx, tx] of E(txs)) {
             let sumValueBN = tx.reduce((p, c) => BN(c.value, 10).plus(p), BN(0));
-            let vins = B(await conn.query((`SELECT HEX(pubKey.v) as fromPubKey FROM vin, pubKey WHERE vin.idTransaction = ? AND vin.idPubKey = pubKey.id ${fromPublicKey ? 'AND pubKey.v = ?' : ''}`), ([tIx, binFromPublicKey].filter(D))), "fromPubKey");
+            let vins = B(await Q(conn, (`SELECT HEX(pubKey.v) as fromPubKey FROM vin, pubKey WHERE vin.idTransaction = ? AND vin.idPubKey = pubKey.id ${fromPublicKey ? 'AND pubKey.v = ?' : ''}`), ([tIx, binFromPublicKey].filter(D))), "fromPubKey");
             if (K(vins).length === 1) { let vinFromBtcAddress = fromBtcAddress || pubKeyToBtcAddress(K(vins)[0]);
               if (vinFromBtcAddress !== toAddress) {
                 let hexToBs58 = h => bs58check.encode(Buffer.from(h, 'hex'));
-                let vouts = B(await conn.query((`SELECT HEX(address.v) as toAddress FROM vout, address WHERE vout.idTransaction = ? AND vout.idToAddress = address.id`), ([tIx])), "toAddress");
+                let vouts = B(await Q(conn, (`SELECT HEX(address.v) as toAddress FROM vout, address WHERE vout.idTransaction = ? AND vout.idToAddress = address.id`), ([tIx])), "toAddress");
                 let otherToAddresses = K(vouts).filter(a => hexToBs58(a) !== toAddress);
                 if ((otherToAddresses.length <= 1) && ((otherToAddresses.length === 0) || (hexToBs58(otherToAddresses[0]) === vinFromBtcAddress))) { //L('x')
                   data.push(formatDeposit(({ time: tx[0].time, value: sumValueBN.toString(16), txid: tx[0].txid, fromBtcAddress: D(fromPublicKey) ? U : vinFromBtcAddress })));
@@ -150,20 +152,7 @@ let getDeposits = async (toAddress, fromPublicKey) => { if (toAddress.length <= 
     } catch(e) { return { err: `DB error: ${S(e)}` } }
   } catch(e) { return { err: `Invalid address '${toAddress}': ${S(e)}` } } 
 finally { conn.close(); } } else { return { err: `No db connection` }; } }
-
-/*
-let objGenesis = [ "USE transfers",
-  "CREATE TABLE IF NOT EXISTS block (id INT PRIMARY KEY AUTO_INCREMENT, height INT, time TIMESTAMP, hash BINARY(32), processed BOOL, INDEX height (height), INDEX hash (hash))",
-  "CREATE TABLE IF NOT EXISTS transaction (id INT PRIMARY KEY AUTO_INCREMENT, idBlock INT, v BINARY(32), INDEX idBlock (idBlock), INDEX v (v))",
-//  "CREATE TABLE IF NOT EXISTS investment (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(32), INDEX v (v))",
-  "CREATE TABLE IF NOT EXISTS pubKey (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(33), INDEX v (v))",
-  "CREATE TABLE IF NOT EXISTS vout (id INT PRIMARY KEY AUTO_INCREMENT, ix INT, idToAddress INT, idBlock INT, idTransaction INT, value VARBINARY(16), INDEX ix (ix), INDEX idToAddress (idToAddress), INDEX idBlock (idBlock), INDEX idTransaction (idTransaction), INDEX value (value))",
-  "CREATE TABLE IF NOT EXISTS vin (id INT PRIMARY KEY AUTO_INCREMENT, idSourceTransaction INT, idTransaction INT, voutIx INT, idPubKey INT, INDEX idTransaction (idTransaction), INDEX idSourceTransaction (idSourceTransaction), INDEX voutIx (voutIx), INDEX idPubKey (idPubKey))",
-  "CREATE TABLE IF NOT EXISTS address (id INT PRIMARY KEY AUTO_INCREMENT, v BINARY(21), INDEX v (v))",
-  "CREATE TABLE IF NOT EXISTS coin (id INT PRIMARY KEY AUTO_INCREMENT, value VARBINARY(16), idSourceTx INT, idDestTx INT, idAddress INT, INDEX idSourceTx (idSourceTx), INDEX idDestTx (idDestTx), INDEX idAddress (idAddress))"
-//  "CREATE TABLE IF NOT EXISTS transfer (id INT PRIMARY KEY AUTO_INCREMENT, idToAddress INT, idBlock INT, idTransaction INT, idPubKey INT, value BINARY(16), INDEX idToAddress (idToAddress), INDEX idBlock (idBlock), INDEX idTransaction (idTransaction), INDEX idPubKey (idPubKey))",
-];
-*/
+ 
 
 let getTransactions = async (address) => { if (address.length <= 1) return { err: `Address required.` };
   L('gettxs');
@@ -171,7 +160,7 @@ let getTransactions = async (address) => { if (address.length <= 1) return { err
     let binToAddress = bs58check.decode(address);
 //    L({toAddress, publicKey});
     try { await conn.query("USE transfers");
-      let idToAddress = oO(oA(await conn.query('SELECT id FROM address WHERE address.v = ?', [binToAddress]))[0]).id;
+      let idToAddress = oO(oA(await Q(conn, 'SELECT id FROM address WHERE address.v = ?', [binToAddress]))[0]).id;
       L({idToAddress});
       if (!D(idToAddress)) return { err: `Address '${address}' not found.`}
 
@@ -180,17 +169,13 @@ let getTransactions = async (address) => { if (address.length <= 1) return { err
     ///    let fromBtcAddress = publicKey && pubKeyToBtcAddress(publicKey);
        // let binFromPublicKey = publicKey && htb(publicKey);
 
-        try { 
-          let voutTxs = await conn.query((`(SELECT UNIX_TIMESTAMP(block.time) as time, HEX(t.v) as txid, t.id as tIx FROM block, transaction AS t, vout WHERE block.id = vout.idBlock AND vout.idToAddress = ? AND t.id = vout.idTransaction GROUP BY tIx)`),  ([idToAddress]));
-//          L(`${voutTxs.length} voutTxs --> ${K(B(voutTxs, "tIx")).length} txs`);
+        try {  
+          let voutTxs = await Q(conn, (`(SELECT UNIX_TIMESTAMP(block.time) as time, HEX(t.v) as txid, t.id as tIx FROM block, transaction AS t, vout WHERE block.id = t.idBlock AND vout.idToAddress = ? AND t.id = vout.idTransaction GROUP BY tIx)`),  ([idToAddress])); 
           let voutMatchesVin = 'vin.idSourceTransaction = vout.idTransaction AND vin.voutIx = vout.ix';
-          let vinTxs = await conn.query((`SELECT t.v as txid, t.id as tIx FROM transaction AS t, vout, vin WHERE vout.idToAddress = ? AND ${voutMatchesVin} AND vin.idTransaction = t.id GROUP BY tIx`),  ([idToAddress]));
-  //        L(`${vinTxs.length} vinTxs --> ${K(B(vinTxs, "tIx")).length} txs`);
+          let vinTxs = await Q(conn, (`SELECT t.v as txid, t.id as tIx FROM transaction AS t, vout, vin WHERE vout.idToAddress = ? AND ${voutMatchesVin} AND vin.idTransaction = t.id GROUP BY tIx`),  ([idToAddress]));
           let allTxs = K(B(voutTxs.concat(vinTxs), "tIx")), txList = `(${allTxs.join(", ")})`; 
-          let vouts = B((await conn.query((`SELECT value, HEX(address.v) AS addr, vout.idTransaction AS tIx FROM address, vout  WHERE vout.idTransaction IN ${txList} AND vout.idToAddress = address.id`), [])), "tIx");
-   //       L(`${K(vouts).length} vouts-txs`);
-          let vins = B(await conn.query((`SELECT value, HEX(address.v) AS addr, vin.idTransaction AS tIx FROM address, vout, vin WHERE vin.idTransaction IN ${txList} AND vout.idToAddress = address.id AND ${voutMatchesVin}`), []), "tIx");
-     //     L(`${K(vins).length} vins-txs`);
+          let vouts = B((await Q(conn, (`SELECT value, HEX(address.v) AS addr, vout.idTransaction AS tIx FROM address, vout  WHERE vout.idTransaction IN ${txList} AND vout.idToAddress = address.id`), [])), "tIx");
+          let vins = B(await Q(conn, (`SELECT value, HEX(address.v) AS addr, vin.idTransaction AS tIx FROM address, vout, vin WHERE vin.idTransaction IN ${txList} AND vout.idToAddress = address.id AND ${voutMatchesVin}`), []), "tIx");
 
           let sumValueBN = txs => txs.reduce((p, c) => BN(c.value, 10).plus(p), BN(0));
        //   L({allTxs});

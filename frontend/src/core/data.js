@@ -16,7 +16,7 @@ import { ETransactionType } from './enums.js';
 import { amfx, amfeixAddress } from './amfeixContract';
 import bs58check from 'bs58check'; 
 
-let newDB = false || true;   
+let newDB = false; // || true;   
  
 let stati = { Deposits: makeEnum("Active Withdrawn Withdrawal_Requested"), Withdrawal_Requests: makeEnum("Pending Processed") }; 
 
@@ -81,7 +81,7 @@ class Scheduler {
   }
 }
 
-let fetchDeposits = async (fromPubKey, toAddr) => [];//oA(oO(await btcRpc("GET", L(`getdeposits/toAddress/${toAddr || '_'}/fromPublicKey/${fromPubKey || '_'}`))).data).map(decodeDeposit);
+let fetchDeposits = async (fromPubKey, toAddr) => L(oA(oO(await btcRpc("GET", L(`getdeposits/toAddress/${toAddr || '_'}/fromPublicKey/${fromPubKey || '_'}`))).data).map(decodeDeposit));
 
 class Data extends Persistent {
   constructor() { super("data", ["localData"], { localData: { dbix: 1173 } }); L('Creating Data class instance.');
@@ -192,31 +192,6 @@ f
   getFundDepositPubKeys() { return ["03f1da9523bf0936bfe1fed5cd34921e94a78cac1ea4cfd36b716e440fb8de90aa"]; }
 
   async fetchFundDeposits() { this.syncCache.set({ fundDeposits: await Promise.all(this.getFundDepositAddresses().map(a => fetchDeposits(U, a))) }); };
-
-/*  async retrieveInvestorWalletDataFromBlockchainCom(investor) { L({investor}); if (investor.pubKey && investor.btcAddress) {
-    let key = getInvestorWalletDataKey(investor);
-    let cached = await this.syncCache.getData(key);
-    if (D(cached)) return cached;  
-
-    let toSat = x => BN(x).times(BN(10).pow(10));
-    let get = async offset => JSONBig.parse(await (await fetch(`https://blockchain.info/rawaddr/${investor.btcAddress}?cors=true&offset=${offset}`)).text());
-    let bci = await get(0);
-    let ntx = bci.n_tx;
-    let trafoTxs = txs => txs.map(tx => { 
-      let ins = tx.inputs.map(i => P(i.prev_out, T("addr value")));
-      let outs = tx.out.map(o => P(o, T("addr value")));
-      let froms = K(F(ins.map(i => [oS(i.addr), true]))); 
-      let tos = K(F(outs.map(i => [oS(i.addr), true])));
-      let isInvestment = tos.includes(this.getFundDepositAddresses());
-      let fromBTC = froms.length === 1 ? froms[0] : U;
-      let filteredTos = tos.filter(s => s !== fromBTC);
-      let toBTC = filteredTos.length === 1 ? filteredTos[0] : U;
-      return { ins, outs, froms, tos, fromBTC, toBTC, txId: tx.hash, time: tx.time, satoshiBN: toSat(tx.result), type: isInvestment ? ETransactionType.Investment : ((tx.result < 0) ? ETransactionType.Outgoing : ETransactionType.Incoming) }
-    });
-    let r = { finalBalance: toSat(bci.final_balance), txs: [trafoTxs(bci.txs)] } 
-    r.txs = r.txs.flat(); 
-    return this.syncCache.setData(key, r); 
-  } }*/
 
   async retrieveInvestorWalletData(investor) { L({investor}); if (investor.btcAddress) {
     let key = getInvestorWalletDataKey(investor);
