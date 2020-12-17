@@ -7,7 +7,7 @@ import JSONBig from 'json-bigint';
 import BigNumber from 'bignumber.js';
 import { A, B, D, E, F, I, K, L, LL, P, S, T, U, V, oA, oO, oS, oF, singleKeyObject } from './tools.mjs'; 
 import mariadb from  'mariadb';
-import { select, insertIfNotExists } from './utils.mjs';
+import { Q, select, insertIfNotExists } from './utils.mjs';
 
 dotenv.config(); const cfg = process.env;  
 let BN = (v, b) => new BigNumber(v, b); 
@@ -110,8 +110,6 @@ let getTransfers = async (toAddress, fromPublicKey) => {
   } catch(e) { return { err: `DB error: ${S(e)}` } }
 } catch(e) { return { err: `Invalid address: ${S(e)}` } } 
 finally { conn.close(); } } else { return { err: `No db connection` }; } } else { return { err: 'Specify toAddress or fromPublicKey or both.' } } }
-
-let Q = async (conn, sql, parms) => { try { return await conn.query((sql), (oA(parms))); } catch(e) { throw new Error(LL(`Error in '${sql}': ${S(e)}`)); } }
 
 let formatDeposit = v => [ (v).time, compressValue(v.value), v.txid.toString('base64'), v.fromBtcAddress ? bs58check.decode(v.fromBtcAddress).toString('base64') : U ].join(" ");
 let getDeposits = async (toAddress, fromPublicKey) => { if (toAddress.length <= 1) return { err: `To address required.` };

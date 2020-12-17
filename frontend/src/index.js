@@ -13,7 +13,7 @@ import { Sidebar, ProgressDialog, OpenDialogButton, DialogWrap, cleanText, Selec
 import { Admin } from './ui/admin';
 import { Log_in } from './ui/login';
 import { Network } from './ui/network';
-import { Progress } from './ui/loadProgressView'
+import { Progress, SimpleProgress, ProgressDependentView } from './ui/loadProgressView'
 import { Impact_Fund } from './ui/impactFund';
 import { Bitcoin_Wallet } from './ui/wallet'; 
 // eslint-disable-next-line
@@ -55,16 +55,17 @@ class Cache extends Comp {
 }
  
 // wc52mNR2qTpFfNP 
-class MainView extends Comp { //constructor(p, s) { super(p, s);} 
+class MainView extends ProgressDependentView { //constructor(p, s) { super(p, s);} 
   startWalletOp(walletOperation, f) { this.setState({ walletOperation, progressDialogOpen: true }, () => setTimeout(async () => { await f(); this.setState({ progressDialogOpen: false }) }, 500));  }
   acceptLogIn(d) { 
     if (d.seedWords) { this.startWalletOp("Encrypting", () => wallet.add(d.creds, d.seedWords, status => { this.setState({ walletCodecProgress: L(status.percent) }); })); }
     else { this.startWalletOp("Decrypting", () => wallet.open(d.creds, status => this.setState({ walletCodecProgress: status.percent }))); }
     return true;
   }
-  ren(p, s) { let tabs = A({ Progress, Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Admin, Network, Settings, Cache }) : ({}));
+  ren(p, s) { let tabs = A({ Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Progress, Admin, Network, Settings, Cache }) : ({}));
 //    {p.EUserMode.Admin ? <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/> : null}
-    return <><AppBar position="static"><Toolbar><p>{`Version >= ${version}`}</p><OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/>
+    return !(p.EUserMode.Admin || this.isLoaded()) ? <SimpleProgress/> : <><SimpleProgress/>
+    <AppBar position="static"><Toolbar><p>{`Version >= ${version}`}</p><OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/>
       {D(oO(p.wallet).lastLogin) ? button("Log out", () =>  ({ })) : null}
       {D(oO(p.wallet).lastLogin) ? `You are logged in to wallet '${p.wallet.lastLogin.name}'` : 'You are not logged in'}
     </Toolbar></AppBar> 
@@ -80,8 +81,6 @@ L(`Initializing with investor ${S(investor)}`);
 
 if (D(investor)) data.runWhenDBInitialized(() => data.registerInvestorAddress(investor.data)); 
 
-//let g = "024fbc46924b16f5ec5cc562ac0097094b6269f746bd0a5ce1dc9654a604abbedc"; L(`g: eth = ${pubKeyToEthAddress(g)} btc = ${pubKeyToBtcAddress(g)}`)
-//wsqC3ZB9Ue2pAJ6
 class App extends Comp { constructor(p) { super(p, { wallet, investor, ...G({EDeveloperMode, EUserMode, EPallette}, enumDefObj)}); this.state.theme = this.createTheme(); } 
   isDark() { let s = this.state; return !D(s.EPallette) || s.EPallette.Default ? darkMode : D(s.EPallette.Dark) }
   createTheme() { let s = this.state; let dark = this.isDark();

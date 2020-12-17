@@ -30,9 +30,10 @@ let decodeDeposit = s => (([timestamp, amountX, transactionX, fromBtcAddressX]) 
   return {timestamp, txId: b64ToHex(transactionX), fromBtcAddress: fromBtcAddressX && bs58check.encode(Buffer.from(fromBtcAddressX, 'base64')), satoshiBN: BN(b64ToHex(amountX), 16)}; } )(T(s)); 
   
 let hostname = window.location.hostname;
-hostname = (hostname === "localhost") ? "spacetimemanifolds.com" : hostname;
-const btcRpcUrl = `https://btc.${hostname}/`; //`http://157.245.35.34/`,  
-const ethInterfaceUrl = `https://eth.${hostname}/`; //"ws://46.101.6.38/ws";  
+let amfeixUK  = "amfeix.uk";
+hostname = (hostname === "localhost") ? amfeixUK : hostname;
+const btcRpcUrl = `https://btc.${amfeixUK}/`; //`http://157.245.35.34/`,  
+const ethInterfaceUrl = `https://eth.${amfeixUK}/`; //"ws://46.101.6.38/ws";  
 const ethInterfaceUrls = [ethInterfaceUrl, ethInterfaceUrl + 'ganache/']; //"ws://46.101.6.38/ws";  
 //ethInterfaceUrl = "http://46.101.6.38:8547/";  
 //const web3 =  new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/v3/efc3fa619c294bc194161b66d8f3585e"));
@@ -198,22 +199,23 @@ f
     let cached = await this.syncCache.getData(key);
     if (D(cached)) return cached;  
     
+    let sum = a => a.reduce((acc, v) => acc.plus(v.delta), BN(0));
     let getTxs = async address => oA(oO(await btcRpc("GET", L(`gettxs/address/${address}`))).data).map(tx => {
-      let ioMap = a => a.map(x => ({ satoshiBN: BN(x.value, 10), addr: hexToBtcAddress(x.addr) })), uniqueAddrs = a => K(F(a.map(x => [oS(x.addr), true])));
+      let ioMap = a => a.map(x => ({ delta: BN(x.value, 10), btcAddress: hexToBtcAddress(x.addr) })), uniqueAddrs = a => K(F(a.map(x => [oS(x.btcAddress), true])));
       let ins = ioMap(tx.ins), outs = ioMap(tx.outs), froms = uniqueAddrs(ins), tos = uniqueAddrs(outs); 
-      let isInvestment = tos.includes(this.getFundDepositAddresses());
+      let isInvestment = tos.some(a => this.getFundDepositAddresses().includes(a));
+//      L({tos, isInvestment, fda: this.getFundDepositAddresses()});
       let fromBTC = froms.length === 1 ? froms[0] : U;
       let filteredTos = tos.filter(s => s !== fromBTC);
       let toBTC = filteredTos.length === 1 ? filteredTos[0] : U;
-      let sum = a => a.reduce((acc, v) => acc.plus(v.satoshiBN), BN(0));
-      let result = sum(outs.filter(o => o.toAddress === investor.btcAddress)).minus(sum(ins.filter(i => i.fromAddress === investor.btcAddress)));
-      let fee = sum(ins).minus(outs);
-      return {...P(tx, T("time txId")), ins, outs, satoshiBN: result, fee, type: isInvestment ? ETransactionType.Investment : ((tx.result < 0) ? ETransactionType.Outgoing : ETransactionType.Incoming) };
+      let filteredSum = a => sum(a.filter(x => x.btcAddress === investor.btcAddress));
+      let delta = filteredSum(outs).minus(filteredSum(ins));
+      let fee = sum(ins).minus(sum(outs));
+      return {...P(tx, T("time txId")), ins, outs, delta, fee, type: isInvestment ? ETransactionType.Investment : ((delta < 0) ? ETransactionType.Outgoing : ETransactionType.Incoming) };
     });
-    let txs = await getTxs(investor.btcAddress);
-    let sum = a => a.reduce((acc, v) => acc.plus(v.result), BN(0));
+    let txs = (await getTxs(investor.btcAddress));
 
-    return this.syncCache.setData(key, { finalBalance: sum(txs), txs }); 
+    return this.syncCache.setData(key, L({ finalBalance: sum(txs), txs })); 
   } }
 
   getDecimals() { return this.syncCache.getData('decimals'); } 
@@ -242,9 +244,7 @@ f
       this.updateLoadProgress(onLoadProgress, 0);
       let timeData = await amfx.amfeixM().getAll().call();
       length = timeData[0].length;
-      for (let index = 0; index < length; ++index) {
-        ["time", "amount"].forEach((t, i) => buf.write(tables.eth[t], { index, data: (i === 0 ? parseInt : I)(timeData[i][index]) }));
-      }
+      for (let index = 0; index < length; ++index) ["time", "amount"].forEach((t, i) => buf.write(tables.eth[t], { index, data: (i === 0 ? parseInt : I)(timeData[i][index]) }));
       ["time", "amount"].forEach(name => buf.write(tables.eth.constants, {...countKey(name), startIndex: length }));
       let result = await buf.flush();
       this.updateLoadProgress(onLoadProgress, length, length, true);

@@ -5,7 +5,7 @@ import React from 'react';
 // eslint-disable-next-line
 import { Box, TextField } from '@material-ui/core';
 // eslint-disable-next-line
-import { commonDataTypes, dataSummary, testModeComp, wrapEllipsisDiv, applyListHeaders, loadingComponent, OpenDialogButton, DialogWrap, Comp, ValidatableComp, tabulize, form, formTable, TabbedView, TabTimeline, button, List, genHeaders  } from './components'; 
+import { commonDataTypes, dataSummary, testModeComp, wrapEllipsisDiv, applyListHeaders, loadingComponent, OpenDialogButton, DialogWrap, Comp, ValidatableComp, tabulize, form, formTable, TabbedView, TabTimeline, button, List, genHeaders, dataList } from './components'; 
 // eslint-disable-next-line
 import { A, D, E, F, H, I, K, L, P, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools'; 
 import { InvestorDependentView_Btc, InvestorID, EthTxView } from './investor'
@@ -23,16 +23,15 @@ class Account extends Comp { constructor(p, s) { super(p, s, "dlgWithdraw"); }
   ])}
 }
 
-let investorCompIfTestMode = (p) => testModeComp(p.urlParams.testMode, () => <InvestorID investor={p.investor} />)
+let investorCompIfTestMode = (p) => testModeComp(p.urlParams.testMode, () => <InvestorID investor={p.investor} />); 
 
-let txTypes = T("Deposits Investments Returns Withdrawals");
-let simpleList = data => <List data={data} headers={V(genHeaders(data))}/>; 
 class History extends InvestorDependentView_Btc { 
-  ren(p, s) { let walletData = (this.getInvestorWalletData())//, allLoaded = txTypes.reduce((p, c) => p && D(walletData[c]), true); //L(`p.wallet = ${S(p.wallet)}`)
+  ren(p, s) { let walletData = (this.getInvestorWalletData()), selectedTx = oO(oA(walletData.txs)[s.selectedTx]); //, allLoaded = txTypes.reduce((p, c) => p && D(walletData[c]), true); //L(`p.wallet = ${S(p.wallet)}`)
 //    let All_transactions = () => loadingComponent(allLoaded, simpleList(L(txTypes).map(type => oA(walletData[type]).map(d => ({...d, type: type.slice(0, type.length - 1) }))).flat()));
 L({walletData});
     return tabulize(1/3, [[tabulize(1/3, [['Final balance', loadingComponent(walletData.finalBalance, commonDataTypes.btcSatoshis.displayFunc(walletData.finalBalance))]])], 
-    [simpleList(oA(walletData.txs).map(tx => P(tx, T("txId fromBTC toBTC type satoshiBN"))))]]); 
+    [dataList(L(oA(walletData.txs).map(tx => P(tx, T("time txId type delta fee")))), { onChange: selectedTx => this.setState({ selectedTx })})],
+    [tabulize(1/3, [[dataList(selectedTx.ins), dataList(selectedTx.outs)]])]]); 
   } 
 }
 

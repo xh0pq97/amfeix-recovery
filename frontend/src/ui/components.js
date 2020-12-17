@@ -82,7 +82,7 @@ class ListView extends Comp {
           {p.checkable ? <TableCell padding="checkbox"><Checkbox checked={isChecked(d)} inputProps={{ 'aria-labelledby': i }} /></TableCell> : null}
           {headers.map((h, j) => <TableCell key={j} align={h.align || "center"}>{(h.displayFunc || I)(d[h.label], d)}</TableCell>)}
         </TableRow>)}</TableBody>
-        <TableFooter><TableRow><TablePagination component={TableCell} colSpan={(columnCount - 1)} rowsPerPageOptions={[5, 10, 25, 50, 100, 250, 500, 1000]} count={rows.length} rowsPerPage={s.rowsPerPage} page={s.page} onChangePage={(e, page) => X({ page })} onChangeRowsPerPage={e => X({ rowsPerPage: parseInt(e.target.value, 10) }, d => X({ page: Math.min(Math.round(s.page*(prevRowsPerPage/d.rowsPerPage)), Math.floor((rows.length - 1)/d.rowsPerPage) )}))} /></TableRow></TableFooter>
+        {rows.length > s.rowsPerPage ? <TableFooter><TableRow><TablePagination component={TableCell} colSpan={(columnCount - 1)} rowsPerPageOptions={[5, 10, 25, 50, 100, 250, 500, 1000]} count={rows.length} rowsPerPage={s.rowsPerPage} page={s.page} onChangePage={(e, page) => X({ page })} onChangeRowsPerPage={e => X({ rowsPerPage: parseInt(e.target.value, 10) }, d => X({ page: Math.min(Math.round(s.page*(prevRowsPerPage/d.rowsPerPage)), Math.floor((rows.length - 1)/d.rowsPerPage) )}))} /></TableRow></TableFooter> : null}
       </Table></TableContainer>   
   }
 }
@@ -186,13 +186,14 @@ let wrapEllipsisDiv = v => <div style={{ textOverflow: "ellipsis", overflow: "hi
 let newTabRef = (link, caption) => <a target="_blank" rel="noopener noreferrer" href={link}>{caption}</a>;
 let aLink = (src, caption) => wrapEllipsisDiv(newTabRef(src, caption)); 
 let extractHeaders = d => F(K(oO(oA(d)[0])).map(h => [h, { label: h, caption: h }]));
-let genHeaders = d => applyListHeaders(extractHeaders(d), commonTableHeaders);
 
-let applyListHeaders = (h, mods)  => { E(mods).forEach(([k, v]) => A(oO(h[k]), v)); return h; };
+
+let dataList = (d, options) => <ListView data={d} headers={V(genHeaders(d))} {...options}/>; 
 
 let compareStrings = (a, b) => a.localeCompare(b);
 let compareBNs = (a, b) => a.isLessThan(b); 
 let commonDataTypes = {
+  vinout: { caption: "Entry", displayFunc: dataList },
   btcAddress: { caption: "BTC address", displayFunc: v => aLink(`https://www.blockchain.com/en/btc/address/${v}`, v), compare: compareStrings },
   ethAddress: { caption: "ETH address", displayFunc: v => aLink(`https://etherscan.io/address/${v}`, v), compare: compareStrings },
   btcTx: { caption: "Bitcoin transaction", displayFunc: v => aLink(`https://www.blockchain.com/en/btc/tx/${v}`, v), compare: compareStrings },
@@ -201,13 +202,17 @@ let commonDataTypes = {
   btcSatoshis: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => satoshiToBTCString(x), compare: compareBNs },
   btc: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => btcToString(x), compare: compareBNs }
 }
-let commonTableHeaders = G({ txId: { type: "btcTx" }, btcAddress: { type: "btcAddress" }, fromBTC: { caption: "From BTC Address", type: "btcAddress" }, toBTC: { caption: "To BTC Address", type: "btcAddress" }, ethAddress: { type: "ethAddress" }, pubKey: { type: "pubKey" }, satoshiBN: { type: "btcSatoshis" }, finalValue: { type: "btcSatoshis" }, value: { type: "btcSatoshis" }, status: { type: "status" }, 
+let commonTableHeaders = G({ txId: { type: "btcTx" }, btcAddress: { type: "btcAddress" }, fromBTC: { caption: "From BTC Address", type: "btcAddress" }, toBTC: { caption: "To BTC Address", type: "btcAddress" }, ethAddress: { type: "ethAddress" }, pubKey: { type: "pubKey" }, satoshiBN: { type: "btcSatoshis" }, finalValue: { type: "btcSatoshis" }, fee: { caption: "Fee", type: "btcSatoshis" }, delta: { caption: "Delta", type: "btcSatoshis" }, value: { type: "btcSatoshis" }, status: { type: "status" }, ins: { caption: "Inputs", type: "vinout" }, outs: { caption: "Outputs", type: "vinout" },
   fundDepositAddress: { caption: "Fund deposit address", type: "btcAddress"}, 
   fromPubKey: { caption: "From public key", type: "pubKey" }, fromBtcAddress: { caption: "From BTC address", type: "btcAddress" },
   derivedEthAddress: { caption: "Derived ETH Address", type: "ethAddress" }, 
-  timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp },
+  timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp }, 
+  time: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp },
 }, v => ({...(D(v.type) ? commonDataTypes[v.type] : {}), ...v}));
  
+let applyListHeaders = (h, mods)  => { E(mods).forEach(([k, v]) => A(oO(h[k]), v)); return h; };
+let genHeaders = d => applyListHeaders(extractHeaders(d), commonTableHeaders);
+
 let applyHeaders = h => applyListHeaders(h, {
   //  txId: { caption: "BTC Transaction", displayFunc: displayBtcTransaction },
     name: { caption: "Wallet name" },
@@ -227,4 +232,4 @@ let dataSummary = (n, data) => (d => tabulize(1/3, [[`Number of ${n}s:`, d.lengt
   [`Time of last ${n}:`, formatTimestamp(d.reduce((p, c) => D(p) ? Math.max(p, c.timestamp) : c.timestamp, U))]
 ]))(oA(data))
 
-export { dataSummary, testModeComp, GetPasswordDialog, preamble, loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, ListView as List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form, commonDataTypes }
+export { dataList, dataSummary, testModeComp, GetPasswordDialog, preamble, loadingComponent, commonTableHeaders, applyListHeaders, extractHeaders, genHeaders, wrapEllipsisDiv, Sidebar, Comp, ValidatableComp, DialogWrap, ProgressDialog, ListView as List, TabbedView, Selector, captionMap, OpenDialogButton, cleanText, TabTimeline, button, tabulize, formTable, form, commonDataTypes }

@@ -1,6 +1,6 @@
 import { L, V, makeEnum, singleKeyObject } from '../common/tools'
 
-let EUserMode = makeEnum("Admin User");
+let EUserMode = makeEnum("User Admin");
 let EDeveloperMode = makeEnum("Production Developer");
 let EPallette = makeEnum("Default Dark Light");
 let ETransactionType = makeEnum("Outgoing Incoming Investment");
