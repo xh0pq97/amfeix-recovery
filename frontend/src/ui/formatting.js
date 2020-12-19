@@ -1,4 +1,4 @@
-import { G, singleKeyObject } from '../common/tools';
+import { G, singleKeyObject } from '../common/tools.mjs';
 
 let formatDate = date => {
   let make2Digit = s => (s.length === 1) ? '0' + s : s;

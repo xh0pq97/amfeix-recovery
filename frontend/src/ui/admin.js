@@ -3,7 +3,7 @@
 /* eslint react/display-name: 0 */
 import React from 'react';
 // eslint-disable-next-line
-import { A, D, E, F, G, I, K, L, S, T, U, V, oA, oO } from '../common/tools';
+import { A, D, E, F, G, I, K, L, S, T, U, V, oA, oO } from '../common/tools.mjs';
 import { Transaction, data } from '../core/data';
 // eslint-disable-next-line
 import { form, formTable, ProgressDialog, GetPasswordDialog, loadingComponent, applyListHeaders, commonTableHeaders, genHeaders, ValidatableComp, OpenDialogButton, Comp, TabbedView, List, tabulize, TabTimeline, preamble, button } from './components';

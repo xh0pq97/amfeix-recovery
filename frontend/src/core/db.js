@@ -1,4 +1,4 @@
-import { A, D, I, K, L, S, U, V, oA, oF, isA } from '../common/tools';
+import { A, D, I, K, L, S, U, V, oA, oF, isA } from '../common/tools.mjs';
 import { tableStrucMap } from './data';
 
 let computeKey = (table, data, keyPath) => (z => keyPath && keyPath.length === 1 ? z.join("") : z)(data && ((keyPath || tableStrucMap[table].keyPath).map(k => data[k]))); 

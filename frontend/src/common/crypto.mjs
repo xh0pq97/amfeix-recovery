@@ -2,13 +2,13 @@
 import bip32 from 'bip32';
 import bip38 from 'bip38';
 import bip39 from 'bip39';
-import bitcoin from 'bitcoinjs-lib';
+import bitcoinJS_Lib from 'bitcoinjs-lib/src/index';
 import keccak256 from 'keccak256';
 import secp256k1 from 'secp256k1';
-import { D, F, G, T, oO } from './tools.mjs';
+import { D, F, G, T, oO } from './tools.mjs'; 
 import buffer from 'buffer';
 
-//let g = {}; g.Buffer = Buffer || buffer.Buffer;
+//let g = {}; g.Buffer  = Buffer || buffer.Buffer;
 
 let defaultDerivationPaths = { bitcoin: "m/44'/0'/0'", ethereum: "m/44'/60'/0'" };
 //02f1b2a982dbe744305a37f9dfd69d7d7c6eeaa5c34c1aba3bd277567df5b972fb
@@ -20,9 +20,9 @@ let xpubsFromCoinNodes = coinNodes => G(coinNodes, v => bip32.fromPublicKey(v.pu
 let toBuffer = v => { var b = buffer.Buffer.alloc(v.length); for (var i = 0; i < b.length; ++i) b[i] = v[i]; return b; };
 let getEthAddress = pubKey => keccak256(pubKey).toString('hex').slice(-40);
 let ethAddressFromPubKey = pubKey => getEthAddress(toBuffer(secp256k1.publicKeyConvert(pubKey, false).slice(1)));
-let btcAddressFromPubKey = (pubkey, network) => bitcoin.payments.p2pkh({ pubkey, network }).address;
-let pubKeyBufferToPoint = pubKeyBuffer => bitcoin.ECPair.fromPublicKey(pubKeyBuffer).publicKey;
-let privKeyBufferToPoint = privKeyBuffer => bitcoin.ECPair.fromPrivateKey(privKeyBuffer).privateKey;
+let btcAddressFromPubKey = (pubkey, network) => bitcoinJS_Lib.payments.p2pkh({ pubkey, network }).address;
+let pubKeyBufferToPoint = pubKeyBuffer => bitcoinJS_Lib.ECPair.fromPublicKey(pubKeyBuffer).publicKey;
+let privKeyBufferToPoint = privKeyBuffer => bitcoinJS_Lib.ECPair.fromPrivateKey(privKeyBuffer).privateKey;
 let encryptKey = (key, password, onProgress) => bip38.encrypt(key, true, password, onProgress);
 let encryptSeedWords = (seedWords, password, onProgress) => {
   let root = rootFromSeed(seedWords);

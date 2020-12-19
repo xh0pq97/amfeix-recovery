@@ -4,7 +4,7 @@
 import React from 'react'; import ReactDOM from 'react-dom';
 import * as serviceWorker from './serviceWorker';
 // eslint-disable-next-line
-import { A, D, E, F, G, H, I, K, L, P, S, T, U, V, oA, oO, oS, asA, makeEnum, singleKeyObject } from './common/tools';  
+import { A, D, E, F, G, H, I, K, L, P, S, T, U, V, oA, oO, oS, asA, makeEnum, singleKeyObject } from './common/tools.mjs';  
 // eslint-disable-next-line
 import { FormControlLabel, Switch, List, ListItem, ListItemText, ListItemIcon, AppBar, Toolbar, Typography, Button, Box, TextField, Paper, Accordion, AccordionSummary, AccordionDetails } from '@material-ui/core';
 import { createMuiTheme, ThemeProvider}  from '@material-ui/core/styles';
@@ -69,7 +69,8 @@ class MainView extends ProgressDependentView { //constructor(p, s) { super(p, s)
       {D(oO(p.wallet).lastLogin) ? button("Log out", () =>  ({ })) : null}
       {D(oO(p.wallet).lastLogin) ? `You are logged in to wallet '${p.wallet.lastLogin.name}'` : 'You are not logged in'}
     </Toolbar></AppBar> 
-    <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode investor dark urlParams wallet")) }} TabsControl={props => <div>{tabulize(0, [[<Paper><img alt="amfeix-logo" style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])}</div>} horizontal={true}/> 
+    <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode EUserMode investor dark urlParams wallet")) }} TabsControl={props => 
+    tabulize(0, [[<Paper><img alt="amfeix-logo" style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])} horizontal={true}/> 
     <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} /></> 
 } }
 
@@ -99,4 +100,4 @@ class App extends Comp { constructor(p) { super(p, { wallet, investor, ...G({EDe
   } 
 } 
 
-ReactDOM.render(<React.StrictMode><App/></React.StrictMode>, document.getElementById('root')); serviceWorker.unregister();
+ReactDOM.render(<React.StrictMode><App alt="App"/></React.StrictMode>, document.getElementById('root')); serviceWorker.unregister();

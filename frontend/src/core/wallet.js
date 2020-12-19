@@ -1,5 +1,5 @@
 // eslint-disable-next-line
-import { A, D, E, H, I, K, L, P, R, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools'; 
+import { A, D, E, H, I, K, L, P, R, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools.mjs'; 
 import { decryptWallet, getWalletRoot, getAmfeixPublicKey, btcAddressFromPubKey, pubKeyBufferToPoint, ethAddressFromPubKey, encryptSeedWords, rootFromSeed, getAmfeixPrivateKey } from '../common/crypto';
 import { Persistent } from './persistent'
 

@@ -3,7 +3,7 @@
 /* eslint no-unused-vars: 0 */
 import React from 'react';
 // eslint-disable-next-line
-import { A, D, E, F, G, I, K, L, U, V, S, oA, oB, oF, oO, oS, isO, singleKeyObject } from '../common/tools';
+import { A, D, E, F, G, I, K, L, U, V, S, oA, oB, oF, oO, oS, isO, singleKeyObject } from '../common/tools.mjs';
 // eslint-disable-next-line
 import { List, ListItem, ListItemText, ListItemIcon, Hidden, Drawer, Stepper, Step, StepLabel, CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, Typography, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 // eslint-disable-next-line
@@ -16,7 +16,7 @@ import { BN } from '../core/bignumber'
 
 let captionMap = {
   timestamp: "Time", value: "Value", txId: "Transaction ID", deposits: "Deposits", withdrawals: "Withdrawals", withdrawalRequests: "Withdrawal Requests", fundDepositAddresses: "Fund deposit addresses", feeAddresses: "Fee addresses", _: ""
-};
+}; 
 //let displayFunctions = { timestamp: formatTimestamp };
 
 let cleanText = s => oS(s).replace(/_/g, " ").trim();

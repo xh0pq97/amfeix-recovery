@@ -11,7 +11,7 @@ import { ProgressDialog, OpenDialogButton, DialogWrap, Selector, ValidatableComp
 // eslint-disable-next-line
 import { AppBar, Toolbar, Button, Box, TextField, Paper } from '@material-ui/core';
 // eslint-disable-next-line
-import { A, D, H, I, L, S, T, U, oA, oF, oS, asA } from '../common/tools'; 
+import { A, D, H, I, L, S, T, U, oA, oF, oS, asA } from '../common/tools.mjs'; 
 // eslint-disable-next-line
 import { InvestorID, InvestorList, EthTxView, InvestorDependentView_Eth } from './investor';
 // eslint-disable-next-line
@@ -19,7 +19,10 @@ import { satoshiToBTCFloat } from '../core/satoshi';
 
 let chart = (title, valueSuffix, datas, dark) => <HighchartsReact constructorType={"stockChart"} highcharts={Highcharts} options={{ 
   rangeSelector: {selected: 1}, title: { text: title }, navigator: {enabled: true}, credits: {enabled: false}, 
-  chart: { zoomType: "x", ...basePallette(dark), events: { load: function() { let n = Date.now(); this.xAxis[0].setExtremes((n - 30*24*60*60*1000), n); this.showResetZoom(); } } }, 
+  chart: { zoomType: "x", ...basePallette(dark),
+   events: { load: function() { //let n = Date.now(); let x =  this.xAxis[0]; if (D(x)) { x.setExtremes((n - 30*24*60*60*1000), n); this.showResetZoom(); } 
+  } } 
+}, 
   plotOptions: { areaspline: { fillColor: `hsla(240, 75%, ${100*getMainLightness(true, dark)}%, 20%)` } }, 
   yAxis: [{ labels: { formatter: function () { return this.axis.defaultLabelFormatter.call(this) + valueSuffix; } } }],  
   xAxis: { events: { aferSetExtremes: function(e) {  } }}, 

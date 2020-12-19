@@ -6,7 +6,7 @@ import { Box, TextField } from '@material-ui/core';
 // eslint-disable-next-line
 import { Comp, ValidatableComp, TabbedView, TabTimeline, button, formTable, form, preamble } from './components'; 
 // eslint-disable-next-line
-import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools'; 
+import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools.mjs'; 
 import * as bip39 from 'bip39';
 import LockIcon from '@material-ui/icons/Lock';
 import { generateSeedWords } from "../common/crypto";

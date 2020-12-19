@@ -7,7 +7,7 @@ import { Box, TextField } from '@material-ui/core';
 // eslint-disable-next-line
 import { commonDataTypes, dataSummary, testModeComp, wrapEllipsisDiv, applyListHeaders, loadingComponent, OpenDialogButton, DialogWrap, Comp, ValidatableComp, tabulize, form, formTable, TabbedView, TabTimeline, button, List, genHeaders, dataList } from './components'; 
 // eslint-disable-next-line
-import { A, D, E, F, H, I, K, L, P, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools'; 
+import { A, D, E, F, H, I, K, L, P, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools.mjs'; 
 import { InvestorDependentView_Btc, InvestorID, EthTxView } from './investor'
 // eslint-disable-next-line
 import QRCode from 'qrcode-svg';

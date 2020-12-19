@@ -2,7 +2,7 @@
 /* eslint no-loop-func: 0 */
 import amfeixCjson from '../amfeixC.json'; 
 // eslint-disable-next-line
-import { A, D, E, F, G, H, I, K, L, S, T, P, U, V, W, oA, oO, oF, oS, isO, isA, isS, singleKeyObject, makeEnum } from '../common/tools'; 
+import { A, D, E, F, G, H, I, K, L, S, T, P, U, V, W, oA, oO, oF, oS, isO, isA, isS, singleKeyObject, makeEnum } from '../common/tools.mjs'; 
 import { IndexedDB } from './db'; 
 import { Persistent } from './persistent';
 import { BN, ALPHABET }  from './bignumber';
@@ -10,8 +10,8 @@ import JSONBig from 'json-bigint';
 //import Accounts from 'web3-eth-accounts';
 //import aggregate from './aggregate.js';
 import { satoshiToBTCString } from './satoshi';
-import { pubKeyToEthAddress, pubKeyToBtcAddress } from "../common/pubKeyConvertor";
-import { SyncCache } from '../common/syncCache';
+import { pubKeyToEthAddress, pubKeyToBtcAddress } from "../common/pubKeyConvertor.mjs";
+import { SyncCache } from '../common/syncCache.mjs';
 import { ETransactionType } from './enums.js';
 import { amfx, amfeixAddress } from './amfeixContract';
 import bs58check from 'bs58check'; 

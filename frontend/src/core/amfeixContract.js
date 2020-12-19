@@ -1,8 +1,8 @@
 import Web3 from 'web3';
 import amfeixCjson from '../amfeixC.json';
-import { A, F, I, L, S, oA, oO } from '../common/tools';
+import { A, F, I, L, S, oA, oO } from '../common/tools.mjs';
 import { BN } from './bignumber';
-import aggregate from '@makerdao/multicall/src/aggregate';
+import aggregate from '../lib/multicall/src/aggregate';
 
 export let amfeixAddress = "0xb0963da9baef08711583252f5000Df44D4F56925";
  
