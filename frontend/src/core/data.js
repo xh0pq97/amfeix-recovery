@@ -18,7 +18,7 @@ import bs58check from 'bs58check';
 
 let newDB = false; // || true;   
  
-let stati = { Deposits: makeEnum("Active Withdrawn Withdrawal_Requested"), Withdrawal_Requests: makeEnum("Pending Processed") }; 
+let stati = { Deposits: makeEnum("Active Withdrawn Pending_Withdrawal"), Pending_Withdrawals: makeEnum("Pending Processed") }; 
 
 let anomalousInvestorIndexMap = F([2339, 74, 418, 419, 424, 464, 515, 3429, 515, 1061, 3428, 3429, 3437, 3438].map(i => [(i), true]));
 
@@ -390,13 +390,13 @@ f
     d.forEach((im, a) => im.forEach((x, b) => x.forEach(z => { e[a][b][z.investorIx].push(z); } ))); 
     for (let ix = 0; ix < investorsAddresses.length; ++ix) { this.updateLoadProgress(olp, ix, investorsAddresses.length);
       let investor = await this.retrieveInvestorData(investorsAddresses[ix], U, e); 
-      let i = { index: investorsAddresses[ix].index, address: investorsAddresses[ix].data, investmentValue: investor.investmentValue, Withdrawal_Requests: investor.Withdrawal_Requests };
+      let i = { index: investorsAddresses[ix].index, address: investorsAddresses[ix].data, investmentValue: investor.investmentValue, Pending_Withdrawals: investor.Pending_Withdrawals };
       investors.push(i);
       investor.Deposits.forEach(d => { approvedDeposits[d.txId] = true; });
     }   
 //    this.syncCache.set({ investorsAddresses }); 
 //    L({ investors: investorsAddresses.map(i => P(i, T("pubKey btcAddress"))) });
-    this.syncCache.set({ investors, withdrawalRequests: investors.map(i => i.Withdrawal_Requests).flat(), pendingDeposits: G(fundDeposits, v => v.filter(d => !approvedDeposits[d.txId])) });  
+    this.syncCache.set({ investors, withdrawalRequests: investors.map(i => i.Pending_Withdrawals).flat(), pendingDeposits: G(fundDeposits, v => v.filter(d => !approvedDeposits[d.txId])) });  
     this.updateLoadProgress(olp, investorsAddresses.length, investorsAddresses.length);
   }); };
 
@@ -445,42 +445,37 @@ f
     investor.pubKey = oO(oA(txs)[0]).pubKey;
     
     let data = F(["Deposits", "Withdrawals"].map((k, i) => [k, dedup(txs.filter(x => x.action === S(i)))]));
-    data.Withdrawal_Requests = dedup(reqWD);
+    data.Pending_Withdrawals = dedup(reqWD);
     let objs = G(data, toObj);
-    let has = G(objs, v => x => D(v[x.txId]));  
+    let txIdMap = G(objs, v => x => (v[x.txId]));  
+    let has = G(txIdMap, v => x => D(x));  
     let g = ({ 
-      Deposits: data.Deposits,// hasWithdrawalRequest: has.withdrawalRequest(d) })), 
-      Withdrawal_Requests: data.Withdrawal_Requests.filter(x => has.Deposits(x) && !has.Withdrawals(x)), 
-      Withdrawals: data.Withdrawals.filter(x => has.Deposits(x) && has.Withdrawal_Requests(x)) 
+      Deposits: data.Deposits, 
+      Pending_Withdrawals: data.Pending_Withdrawals.filter(x => has.Deposits(x) && !has.Withdrawals(x)), 
+      Withdrawals: data.Withdrawals.filter(x => has.Deposits(x) && has.Pending_Withdrawals(x)) 
     });
 
-    let investment = g.Deposits.concat(g.Withdrawals).sort((a, b) => a.timestamp - b.timestamp); 
+    g.investment = g.Deposits.concat(g.Withdrawals).sort((a, b) => a.timestamp - b.timestamp); 
     let currentValueAcc = BN(0); 
-    for (let d of g.Deposits) { d.status = ((has.Withdrawals(d)) ? stati.Deposits.Withdrawn : (has.Withdrawal_Requests(d) ? stati.Deposits.Withdrawal_Requested : stati.Deposits.Active));
-      let endTimestamp = (oO(objs.Withdrawal_Requests[d.txId]) || oO(objs.Withdrawals[d.txId])).timestamp || 0;
+    let isDeposit = i => i.action === "0";
+    for (let d of g.Deposits) { d.status = ((has.Withdrawals(d)) ? stati.Deposits.Withdrawn : (has.Pending_Withdrawals(d) ? stati.Deposits.Pending_Withdrawal : stati.Deposits.Active));
+      let endTimestamp = (oO(objs.Pending_Withdrawals[d.txId]) || oO(objs.Withdrawals[d.txId])).timestamp || 0;
       let endIx = (d.status === stati.Deposits.Active) ? this.performance.length - 1 : this.getPerformanceIndex(endTimestamp);
       let startIx = this.getPerformanceIndex(d.timestamp), startPerf = this.performance[startIx];
       let endPerf = this.performance[endIx][1];
-      let appliedPerf = (startPerf[0] >= d.timestamp) ? startPerf[1] : endPerf;
-//      L(`num = ${appliedPerf.toString()}`); 
-      //d.performance  = perf.toString();
-      //L({appliedPerf});      L({d});
-      d.finalValue = (appliedPerf.isZero() || !D(d.value)) ? U : d.value.times(endPerf.div(appliedPerf));
-      d.hasWithdrawalRequest = has.Withdrawal_Requests(d) ? "Yes" : "No";
-      d.hasWithdrawal = has.Withdrawals(d) ? "Yes" : "No";
-    }
-    for (let wr of g.Withdrawal_Requests) wr.status = has.Withdrawals(wr) ? stati.Withdrawal_Requests.Processed : stati.Withdrawal_Requests.Pending;
-    for (let i of investment) { let v = i.value; 
-//      i.accValue = (acc = (i.action === "0" ? acc.plus(v) : acc.minus(v)));  
-      i.accCurrentValue = currentValueAcc && ((currentValueAcc = (i.action === "0" ? (D(i.finalValue) ? currentValueAcc.plus(i.finalValue) : U) : currentValueAcc.minus(v)))); 
-    }
-  //  g.investment = investment.map(x => [1000*x.timestamp, parseFloat(x.accValue.toString())]);
-    g.investmentValue = currentValueAcc && parseFloat(satoshiToBTCString(currentValueAcc));
-    g.valueSeries = () => g.computedValues ? g.computedValues : (g.computedValues = investment.map(x => [1000*x.timestamp, parseFloat(x.accCurrentValue && satoshiToBTCString(x.accCurrentValue))]));
-//    for (let d of g.Deposits) { T("finalValue value").forEach(v => { if (D(d[v])) d[v] = d[v].toString(); }); }
-  //  for (let d of g.Withdrawal_Requests) { T("value").forEach(v => { if (D(d[v])) d[v] = d[v].toString(); }); }
-    //for (let d of g.Withdrawals) { T("value").forEach(v => { if (D(d[v])) d[v] = d[v].toString(); }); }
-      //L(g);
+      let appliedPerf = (startPerf[0] >= d.timestamp) ? startPerf[1] : endPerf; 
+      d.depositedValue = d.value;
+      d.currentValue = (appliedPerf.isZero() || !D(d.value)) ? U : d.value.times(endPerf.div(appliedPerf));
+      d.satoshiBN = d.value = d.currentValue;
+      d.hasWithdrawalRequest = has.Pending_Withdrawals(d);
+      d.hasWithdrawal = has.Withdrawals(d);
+    } 
+    for (let w of g.Withdrawals) A(w, P(txIdMap.Deposits(w), T("depositedValue currentValue"))); 
+    for (let wr of g.Pending_Withdrawals) wr.status = has.Withdrawals(wr) ? stati.Pending_Withdrawals.Processed : stati.Pending_Withdrawals.Pending;
+    for (let i of g.investment) i.accCurrentValue = (currentValueAcc = D(currentValueAcc) && D(i.currentValue) ? currentValueAcc[isDeposit(i) ? "plus" : "minus"](i.currentValue) : U); 
+    g.investmentValue = currentValueAcc;
+    g.valueSeries = () => g.computedValues = g.computedValues || g.investment.map(x => [1000*x.timestamp, parseFloat(x.accCurrentValue && satoshiToBTCString(x.accCurrentValue))]); 
+    L(P(g, T("investmentValue")));
     return this.syncCache.setData(getInvestorDataKey(investor), g);
   }
 

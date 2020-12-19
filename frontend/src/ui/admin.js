@@ -95,7 +95,7 @@ class Pending_Deposits extends Comp { componentDidMount() { this.addSyncKeyObser
   }
 }
 
-class Withdrawal_Requests extends Comp { componentDidMount() { this.addSyncKeyObserver(data, "withdrawalRequests"); }
+class Pending_Withdrawals extends Comp { componentDidMount() { this.addSyncKeyObserver(data, "withdrawalRequests"); }
   approveAll(withs) { data.queuedEthTransactions.push(...withs.map(d => new Transaction("returnInvestment", [pubKeyToEthAddress(d.pubKey, true), d.txId, d.pubKey, ""]))) }
   ren(p, s) {  let pendingWithdrawals = oA(s.withdrawalRequests);
     return loadingComponent(s.withdrawalRequests, tabulize(5/3, [
@@ -128,5 +128,5 @@ class Queued_Eth_Transactions extends Comp {
 
 export class Admin extends Comp {
   ren(p, s) { //L(`admin wallet: ${S(p.wallet)}`);
-    return <TabbedView tabs={{ Investors, Withdrawal_Requests, Deposits, Pending_Deposits, Change_data, Queued_Eth_Transactions }} parentProps={{ wallet: p.wallet, EDeveloperMode: p.EDeveloperMode }}/>; }
+    return <TabbedView tabs={{ Investors, Pending_Withdrawals, Deposits, Pending_Deposits, Change_data, Queued_Eth_Transactions }} parentProps={{ wallet: p.wallet, EDeveloperMode: p.EDeveloperMode }}/>; }
 }
