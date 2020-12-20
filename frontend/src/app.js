@@ -10,7 +10,7 @@ import { createMuiTheme, ThemeProvider}  from '@material-ui/core/styles';
 // eslint-disable-next-line
 import { Sidebar, ProgressDialog, OpenDialogButton, DialogWrap, cleanText, Selector, ValidatableComp, Comp, TabbedView, button, tabulize, formTable } from './ui/components'; 
 import { Admin } from './ui/admin';
-import { Log_in } from './ui/login';
+import { LogIn } from './ui/login';
 import { Network } from './ui/network';
 import { Progress, SimpleProgress, ProgressDependentView } from './ui/loadProgressView'
 import { Impact_Fund } from './ui/impactFund';
@@ -65,8 +65,8 @@ class MainView extends ProgressDependentView { //constructor(p, s) { super(p, s)
     let activeWallet = oO(p.wallet).lastLogin; 
     let tabs = A({ Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Progress, Admin, Network, Settings, Cache }) : ({}));
 //    {p.EUserMode.Admin ? <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/> : null}
-    return !(p.EUserMode.Admin || this.isLoaded()) ? <SimpleProgress/> : <><SimpleProgress/>{p.EUserMode.User && !D(activeWallet) ? <Log_in onAccept={d => this.acceptLogIn(d)}/> :
-    <div title="Main" style={{width: "100%", height: "100%"}}><><AppBar position="static"><Toolbar>{p.EDeveloperMode.Developer ? <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/> : null}
+    return !(p.EUserMode.Admin || this.isLoaded()) ? <SimpleProgress/> : <><SimpleProgress/>{p.EUserMode.User && !D(activeWallet) ? <LogIn onAccept={d => this.acceptLogIn(d)}/> :
+    <div title="Main" style={{width: "100%", height: "100%"}}><><AppBar position="static"><Toolbar>{p.EDeveloperMode.Developer ? <OpenDialogButton id="LogIn" comp={LogIn} onAccept={d => this.acceptLogIn(d)}/> : null}
       {D(activeWallet) ? <>{`You are logged in to wallet '${activeWallet.name}'`}{button("Log out", () =>  ({ }))}</> : 'You are not logged in'}
     </Toolbar></AppBar> 
     <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode EUserMode investor dark urlParams wallet")) }} TabsControl={props => 

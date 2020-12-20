@@ -89,4 +89,4 @@ class Unlock_wallet extends Comp { ren(p, s) { return <TabTimeline tabs={{ Enter
 class Create_wallet extends Comp { ren(p, s) { return <TabTimeline tabs={{ Setup_password, Backup_seed, Verify_seed }} onAccept={p.onAccept} onCancel={p.onCancel}/>; } }
 class Seed_Login extends Comp { ren(p, s) { return <TabTimeline tabs={{ Setup_password, Input_seed }} onAccept={p.onAccept} onCancel={p.onCancel}/>; } }
 
-export class Log_in extends Comp { ren(p, s) { return <TabbedView tabs={{ Unlock_wallet, Create_wallet, Seed_Login }} parentProps={{ onAccept: p.onAccept, onCancel: p.onCancel }}/>; } }
+export class LogIn extends Comp { ren(p, s) { return <TabbedView tabs={{ Unlock_wallet, Create_wallet, Seed_Login }} parentProps={{ onAccept: p.onAccept, onCancel: p.onCancel }}/>; } }

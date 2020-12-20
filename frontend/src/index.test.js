@@ -28,21 +28,20 @@ describe('After y secs', () => {
  
   it('data syncCache has "time"', () => assert(D(data.time))); 
   it('data syncCache has "amount"', () => assert(D(data.amount)));
-  it('data syncCache has "time" and "amount" with equal length', () => { assert(data.time.length === data.amount.length); });
+  it('data syncCache has "time" and "amount" with equal length', () => assert(data.time.length === data.amount.length));
   it('data syncCache has "time" with length >= 472 ', () => assert(data.time.length >= 472));
   it('data syncCache has "fundDepositAddresses"', () => assert(D(data.fundDepositAddresses))); 
   it('data syncCache has "fundDepositAddresses" with length >= 1 ', () => assert(data.fundDepositAddresses.length >= 1));
   it('data syncCache has "feeAddresses"', () => assert(D(data.feeAddresses))); 
   it('data syncCache has "feeAddresses" with length >= 2 ', () => assert(data.feeAddresses.length >= 1));
   it('data syncCache has "investorsAddresses"', () => assert(D(data.investorsAddresses))); 
-  it('data syncCache has "investorsAddresses" with length >= 4855', () => { assert((data.investorsAddresses.length >= 4855)); }); 
+  it('data syncCache has "investorsAddresses" with length >= 4855', () => assert((data.investorsAddresses.length >= 4855))); 
+  it('data syncCache has "performance"', () => assert(D(data.performance))); 
+  it('data syncCache has "performance" with length 472', () => assert(D(data.performance.length === 472))); 
 
 
-  it('data syncCache has "time" with length == 472 ', () => { assert(data.time.length == 472); });
-  it('data syncCache has "investorsAddresses" with length = 4855', () => { assert((data.investorsAddresses.length === 4855)); }); 
-  it('data syncCache has "investorsAddresses" with length != 0', () => { assert((data.investorsAddresses.length != 0)); }); 
-  it('data syncCache has "investorsAddresses" with length >= 1', () => { assert((data.investorsAddresses.length >= 1)); }); 
-  it('data syncCache has "investorsAddresses" with length >= 4000', () => { assert((data.investorsAddresses.length >= 4000)); }); 
+  it('data syncCache has "time" with length == 472 ', () => assert(data.time.length == 472));
+  it('data syncCache has "investorsAddresses" with length = 4855', () => assert((data.investorsAddresses.length === 4855)));  
 });
 
 /*
