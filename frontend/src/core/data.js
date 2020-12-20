@@ -54,7 +54,7 @@ let hierName = (o, p) => F(E(o).map(([k, v]) => { let q = p ? [p, k].join("-") :
 let struc = (keyPath, indices) => [{ keyPath, indices }];
 let tables = hierName({ 
   eth: { constants: struc(["name"], [["name", "name", true]]),  ...invMapDBStruc(investorMaps[0]), ...invMapDBStruc(investorMaps[1]), 
-  ...F(T("time amount").concat(indexMaps).map(k => [k, struc(["index"])])), investorsAddresses: struc(["index"], [["data", "data", true]])  }, 
+  ...F(timeAndAmount.concat(indexMaps).map(k => [k, struc(["index"])])), investorsAddresses: struc(["index"], [["data", "data", true]])  }, 
   btc: { constants: struc(["name"], [["name", "name", true]]), ...invMapDBStruc(investorMaps[0]), ...invMapDBStruc(investorMaps[1]) },
   queue: { ethTransactions: struc(["index"]) }
 }); 
@@ -97,19 +97,19 @@ class Data extends Persistent {
     this.onGlobalLoad = (step, length, done) => this.updateLoadProgress(this.onLoadProgress("Loading..."), step, length || 7, done);
     this.updateConstants = F(E(constantFields).map(([t, f]) => [t, () => this.measureTime(`Constants (${t})`, async () => await Promise.all(f.map(async name => { 
       let result = await constantRetrievers[t](name)();
-      this.syncCache.setData(name, result.value); 
+      this.setSync(name, result.value); 
       await this.setData(tables[t].constants, (result));
     })))]));
     this.updateConstants.eth = () => this.measureTime(`Constants (eth)`, async () => { 
       let buf = this.idb.newBuffer();
-      constantFields.eth.forEach(name => amfx.queueOp(name, [], value => { this.syncCache.setData(name, value); buf.write(tables.eth.constants, { name, value }); }, err => L(`Eth constant retrieval error ${S(err)}`))); 
+      constantFields.eth.forEach(name => amfx.queueOp(name, [], value => { this.setSync(name, value); buf.write(tables.eth.constants, { name, value }); }, err => L(`Eth constant retrieval error ${S(err)}`))); 
       await amfx.flushBatch(); await buf.flush();
     });
     
     this.functionsToPerformAfterBasicLoad = [];
     this.functionsToPerformAfterGenericLoad = [];
 
-    (async () => { await this.idb.init(); this.syncCache.setData("dbInitialized", true); await this.genericLoad(); })(); 
+    (async () => { await this.idb.init(); this.setSync("dbInitialized", true); await this.genericLoad(); })(); 
     this.constructorCompleted = true;
   }
 
@@ -124,6 +124,12 @@ class Data extends Persistent {
 
   set amount(a) { this.setSync("amount", a); }
   get amount() { return this.getSync("amount"); }
+
+  set fundDepositAddresses(a) { this.setSync("fundDepositAddresses", a); }
+  get fundDepositAddresses() { return this.getSync("fundDepositAddresses"); }
+
+  set feeAddresses(a) { this.setSync("feeAddresses", a); }
+  get feeAddresses() { return this.getSync("feeAddresses"); }
 
   set investorsAddresses(a) { this.setSync("investorsAddresses", a); }
   get investorsAddresses() { return this.getSync("investorsAddresses"); } 
