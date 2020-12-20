@@ -1,5 +1,6 @@
-import { A, D, I, K, L, S, U, V, oA, oF, isA } from '../common/tools.mjs';
+import { A, D, I, K, L, S, U, V, oA, oF, isA } from '../common/tools';
 import { tableStrucMap } from './data';
+import fakeIndexedDB from 'fake-indexeddb';
 
 let computeKey = (table, data, keyPath) => (z => keyPath && keyPath.length === 1 ? z.join("") : z)(data && ((keyPath || tableStrucMap[table].keyPath).map(k => data[k]))); 
 
@@ -7,7 +8,7 @@ let computeKey = (table, data, keyPath) => (z => keyPath && keyPath.length === 1
 class IndexedDB {
   constructor(name) {
     this.name = name;
-    this.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+    this.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB || fakeIndexedDB;
     this.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction;
     this.IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange;
   }
@@ -29,7 +30,7 @@ class IndexedDB {
     })); 
   }
  
-  deleteDB(name) { return this.indexedDB.deleteDatabase(name); }
+  deleteDB(name) { return this.indexedDB ? this.indexedDB.deleteDatabase(name) : U; }
 
   getTx(table, label, reject) { let tx = this.db.transaction(isA(table) ? table: [table], "readwrite"); 
     return A(tx, { onerror: () => (tx.error !== null) && reject(`Error on ${label} for ${table}: ${tx.error}`) }); 

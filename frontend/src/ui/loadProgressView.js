@@ -2,7 +2,7 @@
 /* eslint react/prop-types: 0 */
 import React from 'react';
 // eslint-disable-next-line
-import { D, E, L, S, U, oO } from '../common/tools.mjs';
+import { D, E, L, S, U, oO } from '../common/tools';
 import { data } from '../core/data';
 import { tabulize, Comp, List } from './components'; 
 import { LinearProgress } from '@material-ui/core' 

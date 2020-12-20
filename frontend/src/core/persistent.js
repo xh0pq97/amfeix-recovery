@@ -1,5 +1,5 @@
 // eslint-disable-next-line
-import { A, L, P, S, oO } from '../common/tools.mjs'
+import { A, L, P, S, oO } from '../common/tools'
 
 export class Persistent {
   constructor(persistanceKey, storedFieldNames, defaults) {

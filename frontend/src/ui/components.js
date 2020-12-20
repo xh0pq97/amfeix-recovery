@@ -3,7 +3,7 @@
 /* eslint no-unused-vars: 0 */
 import React from 'react';
 // eslint-disable-next-line
-import { A, D, E, F, G, I, K, L, U, V, S, oA, oB, oF, oO, oS, isO, singleKeyObject } from '../common/tools.mjs';
+import { A, D, E, F, G, I, K, L, U, V, S, oA, oB, oF, oO, oS, isO, singleKeyObject } from '../common/tools.js';
 // eslint-disable-next-line
 import { List, ListItem, ListItemText, ListItemIcon, Hidden, Drawer, Stepper, Step, StepLabel, CircularProgress, TextField, Dialog, Box, Button, RadioGroup, Radio, FormControl, FormControlLabel, Tab, Tabs, Paper, Table, Typography, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Checkbox, TableFooter } from '@material-ui/core';
 // eslint-disable-next-line
@@ -151,14 +151,11 @@ let tabulize = (borderSpacing, cells, cellStyles) => <table style={{borderSpacin
 let formTable = cells => tabulize(1.5, cells)
 let form = (preamble, cells) => <form noValidate autoComplete="off">{preamble}{formTable(cells)}</form>
 
-class DialogWrap extends Comp { //constructor(p, s) { super(p, {...s, open: false}); }
-//  show() { this.setState({ open: true }); }
-  ren(p, s) { 
-    //L(`DialogWrap parentProps = ${S(p.parentProps)}`)
-    let C = p.comp; let id = cleanText(p.id);
-    return <Dialog aria-labelledby={id} open={p.open} onClose={() => { oF(p.onClose)(); this.setState({ open: false }); }}><h2>{id}</h2>
-      <C {...p.parentProps} onCancel={p.onCancel} onAccept={p.onAccept}/></Dialog> }
-} 
+class DialogWrap extends Comp { ren(p, s) { 
+  //L(`DialogWrap parentProps = ${S(p.parentProps)}`)
+  let C = p.comp; let id = cleanText(p.id);
+  return <Dialog aria-labelledby={id} open={p.open} onClose={() => { oF(p.onClose)(); this.setState({ open: false }); }}><h2>{id}</h2><C {...p.parentProps} onCancel={p.onCancel} onAccept={p.onAccept}/></Dialog> 
+} } 
 
 class OpenDialogButton extends Comp { constructor(p, s) { super(p, { ...s, open: false }); }
   ren(p, s) { return <>{button(cleanText(p.id), () => this.setState({ open: true }))}
@@ -202,13 +199,7 @@ let commonDataTypes = {
   btcSatoshis: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => satoshiToBTCString(x), compare: compareBNs },
   btc: { caption: "Amount (BTC)", align: "right", alignCaption: "right", displayFunc: x => btcToString(x), compare: compareBNs }
 }
-let commonTableHeaders = G({ txId: { type: "btcTx" }, btcAddress: { type: "btcAddress" }, fromBTC: { caption: "From BTC Address", type: "btcAddress" }, toBTC: { caption: "To BTC Address", type: "btcAddress" }, ethAddress: { type: "ethAddress" }, pubKey: { type: "pubKey" }, satoshiBN: { type: "btcSatoshis" }, depositedValue: { caption: "Deposited value (BTC)", type: "btcSatoshis" },  currentValue: { caption: "Current value (BTC)", type: "btcSatoshis" }, fee: { caption: "Fee", type: "btcSatoshis" }, delta: { caption: "Delta", type: "btcSatoshis" }, value: { type: "btcSatoshis" }, status: { type: "status" }, ins: { caption: "Inputs", type: "vinout" }, outs: { caption: "Outputs", type: "vinout" },
-  fundDepositAddress: { caption: "Fund deposit address", type: "btcAddress"}, 
-  fromPubKey: { caption: "From public key", type: "pubKey" }, fromBtcAddress: { caption: "From BTC address", type: "btcAddress" },
-  derivedEthAddress: { caption: "Derived ETH Address", type: "ethAddress" }, 
-  timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp }, 
-  time: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp },
-}, v => ({...(D(v.type) ? commonDataTypes[v.type] : {}), ...v}));
+let commonTableHeaders = G({ txId: { type: "btcTx" }, btcAddress: { type: "btcAddress" }, fromBTC: { caption: "From BTC Address", type: "btcAddress" }, toBTC: { caption: "To BTC Address", type: "btcAddress" }, ethAddress: { type: "ethAddress" }, pubKey: { type: "pubKey" }, satoshiBN: { type: "btcSatoshis" }, depositedValue: { caption: "Deposited value (BTC)", type: "btcSatoshis" },  currentValue: { caption: "Current value (BTC)", type: "btcSatoshis" }, fee: { caption: "Fee", type: "btcSatoshis" }, delta: { caption: "Delta", type: "btcSatoshis" }, value: { type: "btcSatoshis" }, status: { type: "status" }, ins: { caption: "Inputs", type: "vinout" }, outs: { caption: "Outputs", type: "vinout" }, fundDepositAddress: { caption: "Fund deposit address", type: "btcAddress"}, fromPubKey: { caption: "From public key", type: "pubKey" }, fromBtcAddress: { caption: "From BTC address", type: "btcAddress" }, derivedEthAddress: { caption: "Derived ETH Address", type: "ethAddress" }, timestamp: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp }, time: { caption: "Time", align: "left", alignCaption: "left", displayFunc: formatTimestamp } }, v => ({...(D(v.type) ? commonDataTypes[v.type] : {}), ...v}));
  
 let applyListHeaders = (h, mods)  => { E(mods).forEach(([k, v]) => A(oO(h[k]), v)); return h; };
 let genHeaders = d => applyListHeaders(extractHeaders(d), commonTableHeaders);
@@ -227,7 +218,7 @@ let applyHeaders = h => applyListHeaders(h, {
 let preamble = (title, text, warning) => <><h2 style={{textAlign: "left"}}>{title}</h2><p style={{textAlign: "left"}}>{text}</p><p style={{textAlign: "left", color: "#FF2170"}}>{warning}</p></>;
 let loadingComponent = (data, c) => D(data) ? c  : tabulize(5, [[<CircularProgress/>]]);
 
-let dataSummary = (n, data) => (d => tabulize(1/3, [[`Number of ${n}s:`, d.length], [`Total ${n} value:`, satoshiToBTCString(d.reduce((p, c) => p.plus((c.satoshiBN)), BN(0)))],
+let dataSummary = (n, data, valueKey) => (d => tabulize(1/3, [[`Number of ${n}s:`, d.length], [`Total ${n} value:`, satoshiToBTCString(d.reduce((p, c) => p.plus((c[valueKey || "satoshiBN"])), BN(0)))],
   [`Time of first ${n}:`, formatTimestamp(d.reduce((p, c) => D(p) ? Math.min(p, c.timestamp) : c.timestamp, U))],
   [`Time of last ${n}:`, formatTimestamp(d.reduce((p, c) => D(p) ? Math.max(p, c.timestamp) : c.timestamp, U))]
 ]))(oA(data))

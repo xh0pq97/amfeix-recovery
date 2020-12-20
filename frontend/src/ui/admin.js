@@ -3,7 +3,7 @@
 /* eslint react/display-name: 0 */
 import React from 'react';
 // eslint-disable-next-line
-import { A, D, E, F, G, I, K, L, S, T, U, V, oA, oO } from '../common/tools.mjs';
+import { A, D, E, F, G, I, K, L, S, T, U, V, oA, oO } from '../common/tools';
 import { Transaction, data } from '../core/data';
 // eslint-disable-next-line
 import { form, formTable, ProgressDialog, GetPasswordDialog, loadingComponent, applyListHeaders, commonTableHeaders, genHeaders, ValidatableComp, OpenDialogButton, Comp, TabbedView, List, tabulize, TabTimeline, preamble, button } from './components';
@@ -13,7 +13,7 @@ import { BN }  from '../core/bignumber';
 import { satoshiToBTCString } from '../core/satoshi';
 import { formatTimestamp } from './formatting';
 import { wallet } from '../core/wallet';
-import { pubKeyToEthAddress } from "../common/crypto";
+import { pubKeyToEthAddress } from "../common/crypto.mjs";
 
 class Approve_actions_Form extends ValidatableComp { constructor(p, s, actionName, propertyLabel) { super(p, s); A(this, { actionName, propertyLabel });  }
   validate() { return this.props[this.propertyLabel]; }

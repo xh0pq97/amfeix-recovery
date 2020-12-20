@@ -2,7 +2,7 @@
 import bip32 from 'bip32';
 import bip38 from 'bip38';
 import bip39 from 'bip39';
-import bitcoinJS_Lib from 'bitcoinjs-lib/src/index';
+import bitcoinJS_Lib from 'bitcoinjs-lib';
 import keccak256 from 'keccak256';
 import secp256k1 from 'secp256k1';
 import { D, F, G, T, oO } from './tools.mjs'; 
@@ -39,4 +39,4 @@ let pubKeyToBtcAddress = pubKeyHex => btcAddressFromPubKey(pubKeyBufferToPoint(b
 let getWalletRoot = w => (bip32.fromPrivateKey(privKeyBufferToPoint(w.privateKey.privateKey), w.chainCode.privateKey));
 let generateSeedWords = () => T(bip39.generateMnemonic());
 
-export { generateSeedWords, pubKeyToEthAddress, pubKeyToBtcAddress, rootFromSeed, ethAddressFromPubKey, btcAddressFromPubKey, pubKeyBufferToPoint, encryptSeedWords, decryptWallet, getAmfeixPublicKey, getAmfeixPrivateKey, getWalletRoot };
+export { generateSeedWords, pubKeyToEthAddress, pubKeyToBtcAddress, rootFromSeed, ethAddressFromPubKey, btcAddressFromPubKey, pubKeyBufferToPoint, encryptSeedWords, decryptWallet, getAmfeixPublicKey, getAmfeixPrivateKey, getWalletRoot }; 

@@ -7,11 +7,12 @@ import { Box, TextField } from '@material-ui/core';
 // eslint-disable-next-line
 import { commonDataTypes, dataSummary, testModeComp, wrapEllipsisDiv, applyListHeaders, loadingComponent, OpenDialogButton, DialogWrap, Comp, ValidatableComp, tabulize, form, formTable, TabbedView, TabTimeline, button, List, genHeaders, dataList } from './components'; 
 // eslint-disable-next-line
-import { A, D, E, F, H, I, K, L, P, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools.mjs'; 
+import { A, D, E, F, H, I, K, L, P, S, T, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools'; 
 import { InvestorDependentView_Btc, InvestorID, EthTxView } from './investor'
 // eslint-disable-next-line
 import QRCode from 'qrcode-svg';
-import { pubKeyToBtcAddress } from '../common/pubKeyConvertor';
+import { pubKeyToBtcAddress } from '../common/pubKeyConvertor.mjs';
+import { satoshiToBTCString } from '../core/satoshi';
 // wc52mNR2qTpFfNP
 // eslint-disable-next-line
 class _Withdraw_ extends Comp { ren(p, s) { return <TabTimeline tabs={{ Withdraw, Review, Done }} onCancel={p.onCancel} onAccept={p.onAccept}/>; } }
@@ -35,7 +36,7 @@ L({walletData});
   } 
 }
 
-class Invest extends ValidatableComp { ren(p, s) { L(`investor = ${S(p.investor)}`); let btcAddress = oS(oO(p.investor).btcAddress); let dim = 256;
+class Invest extends ValidatableComp { ren(p, s) { L(`investor = ${S(p.investor)}`); let btcAddress = oS(oO(p.investor).btcAddress); let dim = 256; 
   let qrCode = btcAddress.length > 0 ? (new QRCode({ content: btcAddress, ecl: "H", width: dim, height: dim, join: true, container: "svg-viewbox", xmlDeclaration: false })).svg() : U;
   return tabulize(1/3, [[qrCode ? <div style={{width: "30em", height: "30em"}} dangerouslySetInnerHTML={{ __html: qrCode }} /> : null], [this.genTextField("Bitcoin personal Investment address", { value: btcAddress, disabled: true })]]); 
 } } 

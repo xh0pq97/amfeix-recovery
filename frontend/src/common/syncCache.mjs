@@ -1,4 +1,4 @@
-import { A, D, E, oA } from './tools.mjs';
+import { A, D, E, oA } from './tools';
 
 class Observer {
   constructor(observable, onChange, context, index) { A(this, { observable, onChange, context, index }); }
@@ -26,4 +26,4 @@ class SyncCache extends Observable {
   set(obj) { E(obj).forEach(([k, v]) => this.setData(k, v)); }
 }
 
-export { SyncCache }
+export { SyncCache } 

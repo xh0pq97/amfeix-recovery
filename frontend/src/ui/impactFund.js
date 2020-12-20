@@ -11,7 +11,7 @@ import { ProgressDialog, OpenDialogButton, DialogWrap, Selector, ValidatableComp
 // eslint-disable-next-line
 import { AppBar, Toolbar, Button, Box, TextField, Paper } from '@material-ui/core';
 // eslint-disable-next-line
-import { A, D, H, I, L, S, T, U, oA, oF, oS, asA } from '../common/tools.mjs'; 
+import { A, D, H, I, L, S, T, U, oA, oF, oS, asA } from '../common/tools'; 
 // eslint-disable-next-line
 import { InvestorID, InvestorList, EthTxView, InvestorDependentView_Eth } from './investor';
 // eslint-disable-next-line
@@ -45,7 +45,7 @@ export class Impact_Fund extends InvestorDependentView_Eth {
     return tabulize(1/3, [p.urlParams.testMode ? [<InvestorID investor={p.investor}/>] : U,
       [tabulize(1/3, [[tabulize(1/3, [[parfs(D(iData.investmentValue)  ? [`${satoshiToBTCString(iData.investmentValue)} BTC`, `Investment Value`] : [])], [parfs([changePerc(s.roi), `ROI`])]]), <FundIndexChart dark={p.dark}/>]])],
       [tabulize(1/3, [T("dailyChange aum btcPrice").map((v, i) => `${v}: ${(displayTrafo[v] || I)(s[v])}`)])],
-      [iData.valueSeries && chart('Investment Performance', " BTC", [timeDataTrafo("Value", oF(iData.valueSeries)())], p.dark)],
+      [iData.valueSeries && chart('Investment Performance', " BTC", T("deposits interests withdrawals total").map(k => timeDataTrafo(k, oF(iData.valueSeries)()[k])), p.dark)],
       [<EthTxView investor={p.investor} EDeveloperMode={p.EDeveloperMode}/>]
     ].filter(D)) 
   }

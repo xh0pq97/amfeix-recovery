@@ -1,6 +1,6 @@
 import ganache from 'ganache-core';
 import Web3 from 'web3';
-import { K, L, S } from './tools.mjs';
+import { K, L, S } from './tools';
 import BN from 'bn.js';
 //import amfeixCjson from './amfeixC.json';  
 
@@ -38,7 +38,7 @@ L({owner});
 L('b');
 
 let web3 = new Web3(provider);
-(async () => { L({blockNumber: await web3.eth.getBlockNumber()}); })();
+(async () => { L({ blockNumber: await web3.eth.getBlockNumber() }); })();
 //web3.eth.sendTransaction(L({ from: K(provider.manager.state.accounts)[0], to: amfeixOwner, value: balance.divn(2) }));
 
 server.listen(9656, function(err, blockchain) {

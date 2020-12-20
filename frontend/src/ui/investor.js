@@ -3,7 +3,7 @@
 /* eslint no-unused-vars: 0 */
 import React from 'react';
 // eslint-disable-next-line
-import { A, D, E, F, G, I, K, L, S, T, V, oA, oF, oO, singleKeyObject } from '../common/tools.mjs';
+import { A, D, E, F, G, I, K, L, S, T, V, oA, oF, oO, singleKeyObject } from '../common/tools';
 import { data, getInvestorWalletDataKey, getInvestorDataKey, stati } from '../core/data';
 // eslint-disable-next-line
 import { dataSummary, tabulize, commonDataTypes, genHeaders, ValidatableComp, Comp, TabbedView, List, cleanText, button, TabTimeline } from './components'; 
@@ -13,9 +13,9 @@ class DataDependentView extends Comp {
   componentDidUpdate(prevP) { if (prevP.investor !== this.props.investor) this.updateInvestor(this.props.investor); } 
 } 
 class InvestorDependentView_Eth extends DataDependentView { 
-  updateInvestor(investor) { if (investor) { this.addSyncKeyObserver(data, getInvestorDataKey(investor)); data.retrieveInvestorData(investor); } }
+  updateInvestor(investor) { if (investor) { this.addSyncKeyObserver(data, getInvestorDataKey(investor)); data.computeInvestorData(investor); } }
   getInvestorData() { return oO(this.props.investor && this.state[getInvestorDataKey(this.props.investor)]); }
-} 
+}  
 
 class InvestorDependentView_Btc extends DataDependentView { 
   updateInvestor(investor) { if (investor) { this.addSyncKeyObserver(data, getInvestorWalletDataKey(investor)); data.retrieveInvestorWalletData(investor); } }
@@ -32,7 +32,7 @@ class EthTxView extends InvestorDependentView_Eth { ren(p, s) { let i = this.get
   let headers = F(T("Deposits Pending_Withdrawals Withdrawals").map(k => [k, genHeaders(i[k])]));
   headers = G(headers, v => V(v).filter(h => (p.EDeveloperMode.Developer) || T("status depositedValue currentValue txId pubKey timestamp").includes(h.label)));
   return <TabbedView style={{ display: D(p.investor) ? "block" : "none" }} caption={`Investor ${oO(p.investor).data}`} tabs={G(headers, (v, k) => () => 
-  tabulize(1/2, [[dataSummary(k.slice(0, -1), i[k])], [<List data={i[k]} headers={v} />]]))} />;
+  tabulize(1/2, [[dataSummary(k.slice(0, -1), i[k], "currentValue")], [<List data={i[k]} headers={v} />]]))} />;
 } }
 
 class InvestorList extends Comp { componentDidMount() { this.addSyncKeyObserver(data, "investorsAddresses"); }

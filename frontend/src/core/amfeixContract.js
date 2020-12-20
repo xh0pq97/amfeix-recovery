@@ -1,6 +1,6 @@
 import Web3 from 'web3';
 import amfeixCjson from '../amfeixC.json';
-import { A, F, I, L, S, oA, oO } from '../common/tools.mjs';
+import { A, F, I, L, S, oA, oO } from '../common/tools';
 import { BN } from './bignumber';
 import aggregate from '../lib/multicall/src/aggregate';
 

@@ -1,4 +1,4 @@
-import { L, V, makeEnum, singleKeyObject } from '../common/tools.mjs'
+import { L, V, makeEnum, singleKeyObject } from '../common/tools'
 
 let EUserMode = makeEnum("User Admin");
 let EDeveloperMode = makeEnum("Production Developer");

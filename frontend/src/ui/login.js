@@ -6,7 +6,7 @@ import { Box, TextField } from '@material-ui/core';
 // eslint-disable-next-line
 import { Comp, ValidatableComp, TabbedView, TabTimeline, button, formTable, form, preamble } from './components'; 
 // eslint-disable-next-line
-import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools.mjs'; 
+import { A, D, E, F, H, I, K, L, S, U, V, oA, oF, oO, oS, asA, singleKeyObject } from '../common/tools'; 
 import * as bip39 from 'bip39';
 import LockIcon from '@material-ui/icons/Lock';
 import { generateSeedWords } from "../common/crypto";
@@ -17,7 +17,7 @@ class SeedView extends ValidatableComp {
   constructor(p, s) { super(p, s);  
     this.setNewInitialWords();
     this.initRefs(K(this.state).join(" "));
-    this.constructed = true;
+    this.constructed = true; 
   }
   setNewInitialWords() {  
      let values = {};
@@ -89,6 +89,4 @@ class Unlock_wallet extends Comp { ren(p, s) { return <TabTimeline tabs={{ Enter
 class Create_wallet extends Comp { ren(p, s) { return <TabTimeline tabs={{ Setup_password, Backup_seed, Verify_seed }} onAccept={p.onAccept} onCancel={p.onCancel}/>; } }
 class Seed_Login extends Comp { ren(p, s) { return <TabTimeline tabs={{ Setup_password, Input_seed }} onAccept={p.onAccept} onCancel={p.onCancel}/>; } }
 
-export class Log_in extends Comp { 
-  ren(p, s) { return <TabbedView tabs={{ Unlock_wallet, Create_wallet, Seed_Login }} parentProps={{ onAccept: p.onAccept, onCancel: p.onCancel }}/>; } 
-}
+export class Log_in extends Comp { ren(p, s) { return <TabbedView tabs={{ Unlock_wallet, Create_wallet, Seed_Login }} parentProps={{ onAccept: p.onAccept, onCancel: p.onCancel }}/>; } }
