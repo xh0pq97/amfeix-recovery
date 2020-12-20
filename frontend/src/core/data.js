@@ -109,7 +109,7 @@ class Data extends Persistent {
     this.functionsToPerformAfterBasicLoad = [];
     this.functionsToPerformAfterGenericLoad = [];
 
-    (async () => { await this.idb.init(); this.setSync("dbInitialized", true); await this.genericLoad(); })(); 
+    (async () => { await (this.dbInit_Promise = this.idb.init()); this.setSync("dbInitialized", true); await this.genericLoad(); })(); 
     this.constructorCompleted = true;
   }
 
@@ -182,7 +182,7 @@ class Data extends Persistent {
 
   async genericLoad() { await this.measureTime("Generic Load", async () => {
     await this.basicLoad(); 
-    await this.updateInvestorsAddresses(this.onLoadProgress(`Update investors addresses`)); this.onGlobalLoad(4);
+    await (this.updateInvestorsAddresses_Promise = this.updateInvestorsAddresses(this.onLoadProgress(`Update investors addresses`))); this.onGlobalLoad(4);
     await Promise.all([this.updateRegisteredEthTransactions(), this.fetchFundDeposits()]); this.onGlobalLoad(5);
     await this.updateRegisteredBtcTransactions(); this.onGlobalLoad(6);
     await this.computeAllInvestorData(); this.onGlobalLoad(7, 7, true);
@@ -384,10 +384,10 @@ f
   getFactor() { return BN(10).pow(this.getDecimals()); } 
 
   async computeTimeDataFromTimeAndAmount() { await this.measureTime("Fund Index chart computation", () => {  
-    let f = this.getFactor(), ff = f.times(100), performance = [], [time, amount] = T("time amount").map(t => (this.syncCache.getData(t))).map(y => (y).map(x => x.data));  
+    let f = this.getFactor(), ff = f.times(100), performance = [], [time, amount] = T("time amount").map(t => (this.getSync(t))).map(y => (y).map(x => x.data));  
     for (let x = 0, acc = BN(1.0); x < amount.length; ++x) { let deltaFactor = ff.plus(BN(amount[x])).div(ff); performance.push([time[x], acc = acc.times(deltaFactor), deltaFactor]); }
     let timeData = performance.map(([t, d]) => [1000*t, parseFloat(d.toString())]);
-    E(({ timeData, roi: (100*timeData[timeData.length - 1][1] - 100), dailyChange: parseFloat((BN(amount[amount.length - 1]).div(f)).toString()) })).forEach(([k, v]) => this.syncCache.setData(k, v));
+    E(({ timeData, roi: (100*timeData[timeData.length - 1][1] - 100), dailyChange: parseFloat((BN(amount[amount.length - 1]).div(f)).toString()) })).forEach(([k, v]) => this.setSync(k, v));
     this.performance = performance;
   }); }
 
@@ -407,7 +407,7 @@ f
       investors.push({ index: investorsAddresses[ix].index, address: investorsAddresses[ix].data, investmentValue: investor.investmentValue, Pending_Withdrawals: investor.Pending_Withdrawals });
       investor.Deposits.forEach(d => { approvedDeposits[d.txId] = true; });
     }   
-    this.syncCache.set({ investors, withdrawalRequests: investors.map(i => i.Pending_Withdrawals).flat(), pendingDeposits: G(fundDeposits, v => v.filter(d => !approvedDeposits[d.txId])) });  
+    this.setSync({ investors, withdrawalRequests: investors.map(i => i.Pending_Withdrawals).flat(), pendingDeposits: G(fundDeposits, v => v.filter(d => !approvedDeposits[d.txId])) });  
     this.updateLoadProgress(olp, investorsAddresses.length, investorsAddresses.length);
   }); };
 

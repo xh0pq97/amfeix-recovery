@@ -41,7 +41,7 @@ class MultiCallBatch {
 
 class AmfeixContract {
   setWeb3Url(url) {
-    A(this, { url, queuedOps: [], batchIx: 0, queuedOpCount: 0, processedOpCount: 0, queuedBatches: [], processing: false, inFlight: [], maxInFlight: 16, nextIx: 0, batchSize: 64, activeBatch: Promise.resolve() });
+    A(this, { url, queuedOps: [], batchIx: 0, queuedOpCount: 0, processedOpCount: 0, queuedBatches: [], processing: false, inFlight: [], maxInFlight: 4, nextIx: 0, batchSize: 32, activeBatch: Promise.resolve() });
     this.web3 = new Web3(new (this.url.indexOf("ws://") === 0 ? Web3.providers.WebsocketProvider : Web3.providers.HttpProvider)(this.url, { timeout: 60000 }));
     this.amfeixM = () => (new this.web3.eth.Contract(amfeixCjson.abi, amfeixAddress, { from: this.from })).methods;
   }
