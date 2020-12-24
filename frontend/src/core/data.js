@@ -2,7 +2,7 @@
 /* eslint no-loop-func: 0 */
 import amfeixCjson from '../amfeixC.json'; 
 // eslint-disable-next-line
-import { A, D, E, F, G, H, I, K, L, S, T, P, U, V, W, oA, oO, oF, oS, isO, isA, isS, singleKeyObject, makeEnum } from '../common/tools'; 
+import { A, D, E, F, G, H, I, K, L, S, T, P, U, V, W, oA, oO, oF, oS, isO, isA, isS, future, singleKeyObject, makeEnum } from '../common/tools'; 
 import { IndexedDB } from './db'; 
 import { Persistent } from './persistent';
 import { BN, ALPHABET }  from './bignumber';
@@ -11,10 +11,17 @@ import JSONBig from 'json-bigint';
 //import aggregate from './aggregate.js';
 import { satoshiToBTCFloat } from './satoshi';
 import { pubKeyToEthAddress, pubKeyToBtcAddress } from "../common/pubKeyConvertor";
-import { SyncCache } from '../common/syncCache';
+import { SyncCache } from '../common/syncCache'; 
 import { ETransactionType } from './enums.js';
 import { amfx, amfeixAddress } from './amfeixContract';
 import bs58check from 'bs58check';  
+import nodeFetch from 'node-fetch';
+import crossFetch from 'cross-fetch';
+
+global.fetch = nodeFetch;
+
+//global.document = {}
+//global.window = { document: {}, location: "localhost" }
 
 let newDB = false; // || true;   
  
@@ -29,20 +36,16 @@ let decodeFundDeposit = s => (([timestamp, amountX, transactionX, fromPubKeyX]) 
 let decodeDeposit = s => (([timestamp, amountX, transactionX, fromBtcAddressX]) => {  
   return {timestamp, txId: b64ToHex(transactionX), fromBtcAddress: fromBtcAddressX && bs58check.encode(Buffer.from(fromBtcAddressX, 'base64')), satoshiBN: BN(b64ToHex(amountX), 16)}; } )(T(s)); 
   
-let hostname = window.location.hostname;
-let amfeixUK  = "amfeix.uk";
-hostname = (hostname === "localhost") ? amfeixUK : hostname;
-const btcRpcUrl = `https://btc.${amfeixUK}/`; //`http://157.245.35.34/`,  
-const ethInterfaceUrl = `https://eth.${amfeixUK}/`; //"ws://46.101.6.38/ws";  
+let hostname = window.location.hostname, amfeixUK  = "amfeix.uk";
+if (hostname === "localhost") hostname = amfeixUK;
+const btcRpcUrl = `https://btc.${amfeixUK}/`, ethInterfaceUrl = `https://eth.${amfeixUK}/`; //"ws://46.101.6.38/ws";  
 const ethInterfaceUrls = [ethInterfaceUrl, ethInterfaceUrl + 'ganache/']; //"ws://46.101.6.38/ws";  
 //ethInterfaceUrl = "http://46.101.6.38:8547/";  
 //const web3 =  new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/v3/efc3fa619c294bc194161b66d8f3585e"));
-let amfeixFeeFields = T("fee1 fee2 fee3");
 let invMap = (countTable, dataTable) => ({countTable, dataTable}); 
-let amfeixAddressLists = ["fundDepositAddresses", "feeAddresses"];
-let timeAndAmount = T("time amount"), indexMaps = amfeixAddressLists, investorMaps = [invMap("ntx", "fundTx"), invMap("rtx", "reqWD")]; 
+let timeAndAmount = T("time amount"), amfeixFeeFields = T("fee1 fee2 fee3"), amfeixAddressLists = T("fundDepositAddresses feeAddresses"), btcFields = T("blockcount connectioncount difficulty blockchaininfo");
+let indexMaps = amfeixAddressLists, investorMaps = [invMap("ntx", "fundTx"), invMap("rtx", "reqWD")]; 
 let ethBasicFields = T("owner aum decimals btcPrice").concat(amfeixFeeFields).concat(amfeixAddressLists.map(k => `${k}Length`));
-const btcFields = T("blockcount connectioncount difficulty blockchaininfo");
 
 let btcRpc = async (method, func, params) => JSONBig.parse((await ((await fetch(`${btcRpcUrl}${func}/${method === "GET" && params ? `?${E(oO(params)).map(x => x.map(encodeURIComponent).join("=")).join("&")}` : ''}`, 
  { method, mode: 'cors', headers: { "content-type": "application/json" }, ...(method === "POST" ? { body: S({params}) }: {}) })).text())));
@@ -88,51 +91,49 @@ class Data extends Persistent {
   constructor() { super("data", ["localData"], { localData: { dbix: 1173 } }); L('Creating Data class instance.');
     //this.localData = (d => d ? L(JSON.parse(d)) : { dbix: 60 })((localStorage.getItem("_")));
     if (newDB) this.localData.dbix++; 
+    let f = T("dbInit basicLoad loadBasicFields loadTimeData investorsAddressesLoad computePerformance computeAllInvestorData loadTransactionsForMonitoredInvestors updateRegisteredEthTransactions updateRegisteredBtcTransactions fetchFundDeposits");
+    this.futStack = []; 
+    this.computeFuture = k => async () => await this.futs[k].resolveWithPromise((async () => { this.futStack.push(k); L(`${this.futStack.join("\\")} >`); await this[k](); this.futStack.pop(); L(`${this.futStack.join("\\")} #`); })());
+    f.forEach(k => this["_" + k] = async () => await this.computeFuture(k)());
+    L('futs:');
+    this.futs = F(f.concat(T("mode modeSet")).map(k => [k, future()]));
+    this.dataProperties = T("time amount queuedEthTransactions feeAddresses fundDepositAddresses investorsAddresses performance");
     A(this, { tables, tableStrucMap, investorData: {}, observers: {}, data: {}, loadProgress: { progress: {}, timings: {} }, syncCache: new SyncCache(), idb: new IndexedDB(S(this.localData.dbix)), adminLoadInitiated: false, queuedEthTransactions: [] }); 
-    for (let q = 0; q < this.localData.dbix; ++q) this.idb.deleteDB(S(q));
+    //for (let q = 0; q < this.localData.dbix; ++q) this.idb.deleteDB(S(q));
     this.persist(); 
      
     this.setEthRPCUrl(ethInterfaceUrl); 
     this.onLoadProgress = name => d => { this.loadProgress.progress[name] = d; this.syncCache.setData("loadProgress", this.loadProgress); };
-    this.onGlobalLoad = (step, length, done) => this.updateLoadProgress(this.onLoadProgress("Loading..."), step, length || 7, done);
-    this.updateConstants = F(E(constantFields).map(([t, f]) => [t, () => this.measureTime(`Constants (${t})`, async () => await Promise.all(f.map(async name => { 
-      let result = await constantRetrievers[t](name)();
+    this.onGlobalLoad = (step, length, done) => this.updateLoadProgress(this.onLoadProgress("Loading..."), step, length || 3, done);
+    this.updateConstants = G(constantFields, (f, t) => () => this.measureTime(`Constants (${t})`, async () => await Promise.all(f.map(async name => { 
+      let result = (await constantRetrievers[t](name)());
       this.setSync(name, result.value); 
       await this.setData(tables[t].constants, (result));
-    })))]));
+    }))));
     this.updateConstants.eth = () => this.measureTime(`Constants (eth)`, async () => { 
       let buf = this.idb.newBuffer();
       constantFields.eth.forEach(name => amfx.queueOp(name, [], value => { this.setSync(name, value); buf.write(tables.eth.constants, { name, value }); }, err => L(`Eth constant retrieval error ${S(err)}`))); 
       await amfx.flushBatch(); await buf.flush();
-    });
-    
-    this.functionsToPerformAfterBasicLoad = [];
-    this.functionsToPerformAfterGenericLoad = [];
+    }); 
 
-    (async () => { await (this.dbInit_Promise = this.idb.init()); this.setSync("dbInitialized", true); await this.genericLoad(); })(); 
+    this.dataProperties.forEach(k => Object.defineProperty(this, k, { get: () => this.getSync(k), set: v => this.setSync(k, v) }));
+
+    (async () => { await this._dbInit(); this.setSync(L("dbInitialized"), true); return await this._basicLoad(); })(); 
     this.constructorCompleted = true;
+    L('Constructor completed.')
   }
 
-  setSync(k, v) { this.syncCache.setData(k, v); }
-  getSync(k) { return this.syncCache.getData(k); }
+  async dbInit() { L("dbInit"); await this.idb.init(); }
 
-  set queuedEthTransactions(a) { this.setSync("queuedEthTransactions", a); }
-  get queuedEthTransactions() { return this.getSync("queuedEthTransactions"); }
+  async setMode(mode) { 
+    this.mode = mode; 
+    this.futs.modeSet.resolve(this.mode);
+    if (mode.Admin) { await this.futs.basicLoad.promise; await this._investorsAddressesLoad(); await this._loadTransactionsForMonitoredInvestors(); } 
+    this.futs.mode.resolve(this.mode);
+  }
 
-  set time(a) { this.setSync("time", a); }
-  get time() { return this.getSync("time"); }
-
-  set amount(a) { this.setSync("amount", a); }
-  get amount() { return this.getSync("amount"); }
-
-  set fundDepositAddresses(a) { this.setSync("fundDepositAddresses", a); }
-  get fundDepositAddresses() { return this.getSync("fundDepositAddresses"); }
-
-  set feeAddresses(a) { this.setSync("feeAddresses", a); }
-  get feeAddresses() { return this.getSync("feeAddresses"); }
-
-  set investorsAddresses(a) { this.setSync("investorsAddresses", a); }
-  get investorsAddresses() { return this.getSync("investorsAddresses"); } 
+  setSync(k, v) { return this.syncCache.setData(k, v); }
+  getSync(k) { return this.syncCache.getData(k); } 
 
   async signAndSubmitQueuedEthTransactions(privateKey, testMode) { await this.measureTime("Basic Load", async () => {
     let from = "0xADBfBEd800B49f84732F6D95fF5C924173C2C06A";
@@ -153,62 +154,41 @@ class Data extends Persistent {
     })); 
   })}
 
-  runWhenDBInitialized(f) { let obs = this.syncCache.watch("dbInitialized", () => { f(); obs.detach(); }) }
+  runWhenDBInitialized(f) { (async () => { await this.futs.dbInit.promise; f(); })(); }
 
   async updateFixedLengthArray(name) { await this.measureTime(`Update '${name}' array`, () => this.updateArray(name, `${name}Length`)) }
 
-  async basicLoad() { await (this.basicLoad_Promise = this.measureTime("Basic Load", async () => { this.onGlobalLoad(0); 
-    await (Promise.all([this.loadTimeData(), ...V(this.updateConstants).map(x => x()), ...indexMaps.map(l => this.updateFixedLengthArray(l))])); this.onGlobalLoad(1); L('L1');
-    await (this.updateSyncCache()); this.onGlobalLoad(2); L('L2');
-    await (this.computeTimeDataFromTimeAndAmount()); this.onGlobalLoad(3); L('L3');
- //   for (let q of oA(this.functionsToPerformAfterBasicLoad)) await q();
-  })); }
-
-//  performAfterBasicLoad(f) { this.functionsToPerformAfterBasicLoad.push(f); }
-//  performAfterGenericLoad(f) { this.functionsToPerformAfterGenericLoad.push(f); }
-
-  async updateSyncCache() { await this.measureTime("updateSyncCache", () => Promise.all(T("investorsAddresses").map(async t => this.setSync(t, (await this.idb.getAll(tables.eth[t])))))); } 
- 
-  async updateRegisteredEthTransactions() { await this.measureTime("Update Registered Eth Transactions", async () => {
-    await Promise.all(investorMaps.map(m => this.updateInvestorMappedArray(this.onLoadProgress(`Smart contract registered transactions: ${m.dataTable}`), m))); 
-  }); }
-  async updateRegisteredBtcTransactions() { await this.measureTime("Update Registered Btc Transactions", async () => {
-    let fundDeposits = this.syncCache.getData("fundDeposits");
-    let fundDepositObj = F(fundDeposits.flat().map(x => [x.txId, x]));
+  async updateSyncCache() { await Promise.all(T("investorsAddresses").map(async t => this.setSync(t, (await this.idb.getAll(tables.eth[t]))))); } 
+  async basicLoad() { this.onGlobalLoad(0); await this._loadBasicFields(); await this._computePerformance(); this.onGlobalLoad(3); } 
+  async loadBasicFields() { await (Promise.all([this._loadTimeData(), ...V(this.updateConstants).map(x => x()), ...indexMaps.map(l => this.updateFixedLengthArray(l))])); L('L1a');  this.onGlobalLoad(1); L('L1');  }
+  async updateRegisteredEthTransactions() { await Promise.all(investorMaps.map(m => this.updateInvestorMappedArray(this.onLoadProgress(`Smart contract registered transactions: ${m.dataTable}`), m)));  }
+  async updateRegisteredBtcTransactions() { let fundDepositObj = F(this.getSync("fundDeposits").flat().map(x => [x.txId, x]));
     await Promise.all(investorMaps.map(m => this.updateBitcoinTxs(this.onLoadProgress(`Bitcoin transactions: ${m.dataTable}`), m, fundDepositObj))); 
-  }); }
+  }
+  async investorsAddressesLoad() { await (this.updateArray("investorsAddresses")); this.onGlobalLoad(4, 7, false); }
 
-//  async updateInvestorAddresses() { await this.measureTime("Update Investor Addresses", async () => { await this.updateArray("investorsAddresses"); }); }
-
-  async genericLoad() { await this.measureTime("Generic Load", async () => {
-    await this.basicLoad(); 
-    await (this.updateInvestorsAddresses_Promise = this.updateInvestorsAddresses(this.onLoadProgress(`Update investors addresses`))); this.onGlobalLoad(4);
-    await Promise.all([this.updateRegisteredEthTransactions(), this.fetchFundDeposits()]); this.onGlobalLoad(5);
-    await this.updateRegisteredBtcTransactions(); this.onGlobalLoad(6);
-    await this.computeAllInvestorData(); this.onGlobalLoad(7, 7, true);
+  async loadTransactionsForMonitoredInvestors() { await this.measureTime("loadTransactionsForMonitoredInvestors", async () => {
+    await Promise.all([this._updateRegisteredEthTransactions(), this._fetchFundDeposits()]); this.onGlobalLoad(5);
+    await this._updateRegisteredBtcTransactions(); this.onGlobalLoad(6);
+    await this._computeAllInvestorData(); this.onGlobalLoad(7, 7, true);
  //   for (let q of oA(this.functionsToPerformAfterGenericLoad)) await q();
   }); } 
 
-  async registerInvestorAddress(address) {  
-    let investorsAddresses = await amfx.amfeixM().getAllInvestors().call();
-    let index = investorsAddresses.map(x => x.toLowerCase()).indexOf(address.toLowerCase());
-    if (index >= 0) { let investor = { index, data: address }; L(`inv = ${S(investor)}`)
-      await this.setData(tables.eth.investorsAddresses, investor);
-      await Promise.all(investorMaps.map(m => this.updateInvestorArray(investor, m))); 
-      await this.updateSyncCache();
-      await this.updateRegisteredTransactions();
-      await this.computeAllInvestorData();
+  async registerInvestorAddress(address) { await this.updateSyncCache(); L("registerInvestorAddress");
+    let index = this.investorsAddresses.map(x => x?.data?.toLowerCase()).indexOf(address.toLowerCase());
+    if (index >= 0) { let investor = await this.setData(tables.eth.investorsAddresses, L({ index, data: address }));
+      await Promise.all(investorMaps.map(m => this.updateInvestorTxs(investor, m))); 
       return investor;
     } 
   }
 f
   setEthRPCUrl(newRPCUrl) { //L(`nweRPCURL: ${newRPCUrl}`)
     amfx.setWeb3Url(newRPCUrl);
-    this.syncCache.setData("ethRPCUrl", newRPCUrl);
+    this.setSync("ethRPCUrl", newRPCUrl);
 //    (async() => L(`Personal accounts: ${S(await oF(oO(w3.web3.eth.personal).getAccounts)())}`))();
   }
 
-  getFundDepositAddresses() { return L(this.syncCache.getData("fundDepositAddresses")).map(x => x.data).filter(z => z.length > 0); }
+  getFundDepositAddresses() { return L(oA(this.syncCache.getData("fundDepositAddresses"))).map(x => x.data).filter(z => z.length > 0); }
   getFundDepositPubKeys() { return ["03f1da9523bf0936bfe1fed5cd34921e94a78cac1ea4cfd36b716e440fb8de90aa"]; }
 
   async fetchFundDeposits() { this.syncCache.set({ fundDeposits: await Promise.all(this.getFundDepositAddresses().map(a => fetchDeposits(U, a))) }); };
@@ -237,25 +217,17 @@ f
     return this.syncCache.setData(key, L({ finalBalance: sum(txs), txs })); 
   } }
 
-  async loadTimeData() { await this.measureTime("Fund Index chart data", async () => {
-    let onLoadProgress = this.onLoadProgress("Fund Index chart data");
+  async loadTimeData() {  
     let countKey = name => ({ name: `${name}.counts` });
     let sIx = async name => oO(await this.getData(tables.eth.constants, countKey(name))).startIndex || 0;
-    let length;
     if ((await sIx("time") === 0) && (await sIx("amount") === 0)) { await this.measureTime("Fund Index chart data (single step)", async () => {
-      let buf = this.idb.newBuffer();
-      this.updateLoadProgress(onLoadProgress, 0);
-      let timeData = await amfx.amfeixM().getAll().call();
-      length = timeData[0].length;
+      let buf = this.idb.newBuffer(), timeData = await amfx.amfeixM().getAll().call(), length = timeData[0].length;
       for (let index = 0; index < length; ++index) timeAndAmount.forEach((t, i) => buf.write(tables.eth[t], { index, data: (i === 0 ? parseInt : I)(timeData[i][index]) }));
       timeAndAmount.forEach(name => buf.write(tables.eth.constants, {...countKey(name), startIndex: length }));
-      let result = await buf.flush();
-      this.updateLoadProgress(onLoadProgress, length, length, true);
+      await buf.flush();
       timeAndAmount.forEach((t, i) => this.setSync(t, timeData[i].map((data, index) => ({ index, data }))));
     }) } else { await Promise.all(timeAndAmount.map(l => this.updateArray(l))); }
-  }); }
-
-  async updateInvestorsAddresses(onLoadProgress) { await this.measureTime("Investors addresses", async () => await this.updateArray("investorsAddresses")); }
+  }
 
   updateLoadProgress(onLoadProgress, index, length, done) { onLoadProgress({ index, length: D(length) ? length : (done ? index : "unknown") }); }
 
@@ -311,14 +283,11 @@ f
     await this.measureTime(`Cache '${arrayName}' array`, async () => this.setSync(arrayName, (await this.idb.getAll(tables.eth[arrayName]))));  
   } 
 
-  async getArrayLengthAndStartIndex(countTable, countKey, lengthName, parms) { //L(`galsi(${countTable}, ${S(countKey)}, ${lengthName}, ${parms})`)
-    let alsi = oO(await this.getData(countTable, countKey, lengthName && (async () => ({ ...countKey, length: parseInt(await amfx.amfeixM()[lengthName](...oA(parms)).call()) }))));
-//    this.updateLoadProgress(onLoadProgress, alsi.startIndex, alsi.length);
-    //L(`galsi(${countTable}, ${S(countKey)}, ${lengthName}, ${parms}) ==> ${S({ alsi })}`) 
-    return ({ startIndex: 0, ...alsi });
+  async getArrayLengthAndStartIndex(countTable, countKey, lengthName, parms) { 
+    return ({ startIndex: 0, ...oO(await this.getData(countTable, countKey, lengthName && (async () => ({ ...countKey, length: parseInt(await amfx.execute(lengthName, parms)) })))) });
   } 
 
-  updateInvestorArray(investor, { countTable, dataTable }, buf, w3Batcher) { 
+  updateInvestorTxs(investor, { countTable, dataTable }, buf, w3Batcher) { 
     let countKey = { investorIx: investor.index }, parms = [investor.data]; 
     return new Promise(async (resolve, reject) => { try {
       w3Batcher.queueOp(countTable, parms, async length => {
@@ -333,7 +302,7 @@ f
     let ix = startIndex, investors = this.syncCache.getData("investorsAddresses"), localBuf = this.idb.newBuffer(), completed = 0, p = Promise.resolve(), olp = onLoadProgress;
     length = investors.length;
     while (ix < length) { let q = p;
-      let r = this.updateInvestorArray(investors[ix++], { countTable, dataTable }, localBuf, amfx);
+      let r = this.updateInvestorTxs(investors[ix++], { countTable, dataTable }, localBuf, amfx);
       p = (async () => { await q; await await r; this.updateLoadProgress(olp, ++completed, length); })();
     };
     await amfx.flushBatch(); await p;
@@ -358,7 +327,7 @@ f
       let fd = fundDepositObj[d.data[0]];
 //      L({fd})
       if (D(fd)) { buf.write(tables.btc[dataTable], {...key, value: fd.satoshiBN.toString(ALPHABET.length) }); }
-      else { L(`Bitcin fund deposit not found for ${d.data[0]}`); }
+      else { L(`Bitcoin fund deposit not found for ${d.data[0]}`); }
       buf.write(tables.btc.constants, { ...investorMapCountKey, startIndex: ++index });
       this.updateLoadProgress(onLoadProgress, index, length); 
     } 
@@ -383,20 +352,19 @@ f
   getDecimals() { return this.syncCache.getData('decimals'); } 
   getFactor() { return BN(10).pow(this.getDecimals()); } 
 
-  async computeTimeDataFromTimeAndAmount() { await this.measureTime("Fund Index chart computation", () => {  
+  computePerformance() { 
     let f = this.getFactor(), ff = f.times(100), performance = [], [time, amount] = T("time amount").map(t => (this.getSync(t))).map(y => (y).map(x => x.data));  
     for (let x = 0, acc = BN(1.0); x < amount.length; ++x) { let deltaFactor = ff.plus(BN(amount[x])).div(ff); performance.push([time[x], acc = acc.times(deltaFactor), deltaFactor]); }
     let timeData = performance.map(([t, d]) => [1000*t, parseFloat(d.toString())]);
-    E(({ timeData, roi: (100*timeData[timeData.length - 1][1] - 100), dailyChange: parseFloat((BN(amount[amount.length - 1]).div(f)).toString()) })).forEach(([k, v]) => this.setSync(k, v));
-    this.performance = performance;
-  }); }
+    E(({ performance, timeData, roi: (100*timeData[timeData.length - 1][1] - 100), dailyChange: parseFloat((BN(amount[amount.length - 1]).div(f)).toString()) })).forEach(([k, v]) => this.setSync(k, v));
+  }
 
   getPerformanceIndex(time, lowIndex, highIndex) { let p = this.performance, low = lowIndex || 0, high = highIndex || (p.length - 1); // L(`gpi(${time}, ${low}, ${high})`)
     while (high > low) { let m = low + ((high - low) >> 1); if (p[m][0] > time) { high = m; } else if (low < m) { low = m; } else break; }
     return high;
   }
 
-  async computeAllInvestorData() { await this.measureTime("computeData", async () => {
+  async computeAllInvestorData() { 
     let investors = [], approvedDeposits = {}, fundDeposits = this.syncCache.getData("fundDeposits"); 
     let investorsAddresses = this.syncCache.getData("investorsAddresses"); let olp = this.onLoadProgress("Computing data structures");  
     let d = await Promise.all(investorMaps.map(async im => await Promise.all(['eth', 'btc'].map(t => this.idb.getAll(tables[t][im.dataTable])))));
@@ -409,14 +377,15 @@ f
     }   
     this.setSync({ investors, withdrawalRequests: investors.map(i => i.Pending_Withdrawals).flat(), pendingDeposits: G(fundDeposits, v => v.filter(d => !approvedDeposits[d.txId])) });  
     this.updateLoadProgress(olp, investorsAddresses.length, investorsAddresses.length);
-  }); };
+  };
 
-  async computeInvestorData(investor, lengths, allData) { //L(`retrieveInvestorData = ${S(investor)}`);
+  async getInvestorIndexFromInvestorsAddressesTable(ethAddress) { return (L(await this.idb.get(tables.eth.investorsAddresses, { data: ethAddress }, "data", ["data"])))?.index; }
+
+  async computeInvestorData(investor, lengths, allData) { L(`retrieveInvestorData = ${S(investor)}`);
+    if (!(D(investor.data))) return U;
     let cached = this.getSync(getInvestorDataKey(investor));
     if (cached) { L('cached'); return cached; }
-    if (!D(investor.index)) { L({investor}); L(`finding index for investor.data = ${investor.data}`);
-      investor.index = oO(L(await this.idb.get(tables.eth.investorsAddresses, { data: investor.data }, "data", ["data"]))).index; 
-    }
+    if (!D(investor.index)) { investor.index = await this.getInvestorIndexFromInvestorsAddressesTable(L(investor.data)); }
     let invKey = { investorIx: investor.index }; //L(`Retrieving investor ${investor} data`);
 //    L(`invKey = ${S(invKey)}`);
     let ethDataMap = ([txId, pubKey, signature, action, timestamp]) => ({ timestamp: parseInt(oS(timestamp)), txId, pubKey, signature, action });
@@ -483,11 +452,14 @@ f
   }
 
   getInvestorData(investor) { return this.investorData[investor] = D(this.investorData[investor]) ? this.investorData[investor] : this.computeInvestorData(investor); }
+
+  async destroy() { await this.idb.close(); }
 }
 
 //L(`032b54175dac49b86d33528488dc1770223be678fe9e283ff210d6841f109230c7 ==> ${S({btc: pubKeyToBtcAddress("032b54175dac49b86d33528488dc1770223be678fe9e283ff210d6841f109230c7"),
 //eth: pubKeyToEthAddress("032b54175dac49b86d33528488dc1770223be678fe9e283ff210d6841f109230c7")})}`)
 
-let data = new Data(); 
+let data = new Data(), createData = () => data = new Data(), resetData = () => { return data ? data.destroy().then(createData()) : (createData()); }
+//createData();
   
-export { Transaction, stati, ethInterfaceUrls, btcRpcUrl, btcFields, ethBasicFields, getInvestorDataKey, getInvestorWalletDataKey, data, amfeixFeeFields, amfeixAddressLists };
+export { Transaction, stati, ethInterfaceUrls, btcRpcUrl, btcFields, ethBasicFields, getInvestorDataKey, getInvestorWalletDataKey, data, resetData, amfeixFeeFields, amfeixAddressLists };

@@ -1,65 +1,113 @@
-import React from 'react';
-import { render } from '@testing-library/react';
-import { App } from './app';  
-import { data } from './core/data';
-import { L, D, T, oS } from './common/tools';
- 
-let delay = t => new Promise(resolve => setTimeout(resolve, t));
-let startTime = Date.now();
-let waitUntil = async (timeSinceStart) => await delay(Math.max(0, (startTime + 1000*timeSinceStart) - Date.now()));
 
-let assert = (v, msg) => { if (!v) { fail(oS(msg)); } }
+
+import React from 'react';
+import { App } from './app';  
+import { data, resetData } from './core/data'; 
+import { I, K, L, D, E, R, S, T, oS, singleKeyObject } from './common/tools'; 
+import { EUserMode } from './core/enums'; 
+
+import { newit, assert, syncCacheHas, idbCount } from './core/test';
+
+global.document = {}; global.window = { document }
 
 describe('Frontend App starts', () => {  
   beforeAll(async () => { jest.setTimeout(70000) });
 
-  it('App renders', async () => { expect(await render(<App/>).findByTitle("App")).toBeInTheDocument(); });
-  it('data constructor completed', () => { assert(data.constructorCompleted); })
+  newit('App renders', async () => expect(await render(<App/>).findByTitle("App")).toBeInTheDocument());
+  newit('data constructor completed', () => assert(data.constructorCompleted));
 });
 
-describe('After x secs', () => { beforeAll(async () => { jest.setTimeout(20000); await data.dbInit_Promise; });
-  it('db initialized', () => assert((data.getSync("dbInitialized")))); 
-});
-
-let syncCacheHas = k => it(`data syncCache has "${k}"`, () => assert(D(data.getSync(k))));
-describe('After basicLoad_Promise', () => { beforeAll(async () => { jest.setTimeout(30000); await data.basicLoad_Promise; });
-  T("time amount feeAddresses fundDepositAddresses").forEach(syncCacheHas); 
-  it('data syncCache has "time" and "amount" with equal length', () => assert(data.time.length === data.amount.length));
-  it('data syncCache has "time" with length >= 472 ', () => assert(data.time.length >= 472)); 
-  it('data syncCache has "fundDepositAddresses" with length >= 1 ', () => assert(data.fundDepositAddresses.length >= 1)); 
-  it('data syncCache has "feeAddresses" with length >= 2 ', () => assert(data.feeAddresses.length >= 1));  
-  it('data has "performance"', () => assert(D(data.performance))); 
-  it('data has "performance" with length >= 472', () => assert(D(data.performance.length >= 472))); 
- 
-  it('data syncCache has "time" with length == 472 ', () => assert(data.time.length == 472)); 
-});
-
-let idbCount = (k, expVF) => it(`data idb has "${k}" of specific count`, async () => assert((await data.idb.count(k)) === expVF()));
-
-describe('After updateInvestorsAddresses_Promise', () => { beforeAll(async () => { jest.setTimeout(30000); await data.updateInvestorsAddresses_Promise; });
-  T("investorsAddresses").forEach(syncCacheHas);  
-  it('data syncCache has "investorsAddresses" with length >= 4855', () => assert((data.investorsAddresses.length >= 4855)));  
-//  idbCount(data.tables.eth.investorsAddresses, () => data.investorsAddresses.length);   
-  it('data syncCache has "investorsAddresses" with length = 4855', () => assert((data.investorsAddresses.length === 4855)));  
-});
-/*
-describe('After updateRegisteredEthTransactions_Promise secs', () => { beforeAll(async () => { jest.setTimeout(300000); await data.updateRegisteredEthTransactions_Promise; });
-  idbCount(data.tables.eth.ntx, () => data.investorsAddresses.length);   
-  idbCount(data.tables.eth.rtx, () => data.investorsAddresses.length);   
-});*/
- /*
-describe('After z secs', () => { beforeAll(async () => { jest.setTimeout(300000); await delay(240000); });
-  it('data syncCache has "investors"', () => assert(D(data.getSync("investors")))); 
-  it('data syncCache has "withdrawalRequests"', () => assert(D(data.getSync("withdrawalRequests")))); 
-  it('data syncCache has "pendingDeposits"', () => assert(D(data.getSync("pendingDeposits")))); 
-});*/
-
-/*
-describe('After 30 secs', () => {  
-  beforeAll(async () => { jest.setTimeout(40000); await delay(30000); });
-
-  it('Main page renders', async () => {
-    expect(await render(<App/>).findByTitle("Main")).toBeInTheDocument();
+let test_Data_Initialization = data => {
+  describe('DB initialization completes', () => { 
+    beforeAll(async () => { jest.setTimeout(20000); await data.futs.dbInit.promise; });
+    newit('db initialized', () => assert((data.getSync("dbInitialized")))); 
   });
+}; 
+
+let test_Data_BasicFields = data => { 
+  describe('Basic load', () => { 
+    beforeAll(async () => { jest.setTimeout(25000); await data.futs.basicLoad.promise; });
+    beforeEach(async () => { global.document = {}; global.window = { document }; });
+    
+    describe('Has data fields', () => { T("time amount feeAddresses fundDepositAddresses").forEach(k => newit(`has ${k}`, () => assert(D(data[k])))); });
+    newit('data syncCache has "time" and "amount" with equal length', () => assert(data.time.length === data.amount.length));
+    newit('data syncCache has "time" with length >= 472 ', () => assert(data.time.length >= 472)); 
+    newit('data syncCache has "fundDepositAddresses" with length >= 1 ', () => assert(data.fundDepositAddresses.length >= 1)); 
+    newit('data syncCache has "feeAddresses" with length >= 2 ', () => assert(data.feeAddresses.length >= 1));   
+
+    newit('data syncCache has "time" with length == 472 ', () => assert(data.time.length == 472)); 
+  });
+}
+
+let test_Data_BasicLoad = data => { 
+  describe('Basic load', () => { 
+    beforeAll(async () => { jest.setTimeout(40000); await data.futs.computePerformance.promise; });
+    beforeEach(async () => { global.document = {}; global.window = { document }; });
+    
+    describe('Has data fields', () => T("dailyChange roi performance timeData").forEach(k => newit(`has ${k}`, () => assert(D(data.getSync(k))))));  
+    newit('data has "performance" with length >= 472', () => assert((data.performance.length >= 472))); 
+    newit('data has "performance" with length === 472', () => assert((data.performance.length === 472))); 
+  });
+}
+
+describe('Data test', () => {  
+
+  let dataTest = (data, mode) => { let sch = k => syncCacheHas(data, k);
+    
+    test_Data_Initialization(data);
+    test_Data_BasicFields(data);
+    test_Data_BasicLoad(data);
+  
+    describe(`Mode ${K(mode)} specific`, () => { beforeAll(async () => { jest.setTimeout(40000); data.setMode(mode); });
+    newit('data setMode called', async () => { await data.futs.modeSet.promise; });
+    newit(`data mode matches '${(K(mode)[0])}'`, async () => { await data.futs.modeSet.promise; assert(D(data.mode[K(mode)[0]])); });
+    newit('data setMode completed', async () => { await data.futs.mode.promise; });
+
+/*      if (mode.User) describe('After updateInvestorsAddresses_Promise', () => { beforeAll(async () => { jest.setTimeout(30000); await data.futs.updateInvestorsAddresses.promise; });
+        T("investorsAddresses").forEach(sch); 
+        
+        let expectedMinLength = 4855;
+        newit(`data syncCache has "investorsAddresses" with length >= ${expectedMinLength}`, () => assert((data.investorsAddresses.length >= expectedMinLength)));  
+      }); */
+      
+    /*
+      describe('After updateRegisteredEthTransactions_Promise', () => { beforeAll(async () => { jest.setTimeout(300000); await data.updateRegisteredEthTransactions_Promise; });
+        idbCount(data.tables.eth.ntx, () => data.investorsAddresses.length);   
+        idbCount(data.tables.eth.rtx, () => data.investorsAddresses.length);   
+      });
+
+      describe('After computeAllInvestorData_Promise', () => { beforeAll(async () => { jest.setTimeout(300000); await data.computeAllInvestorData_Promise; });
+        T("investors withdrawalRequests pendingDeposits").forEach(sch); 
+      });*/
+    if (mode.Admin) {/*
+      describe('Data futures complete', () => { beforeAll(async () => { jest.setTimeout(180000); });
+        E(data.futs).forEach(([k, f]) => newit(`Future '${k}' completes`, async () => await f.promise)); 
+      });
+  
+      describe('After updateInvestorsAddresses_Promise', () => { beforeAll(async () => { jest.setTimeout(40000);  await data.futs.mode.promise; await data.futs.updateInvestorsAddresses.promise; });
+        T("investorsAddresses").forEach(sch); 
+        
+        let expectedMinLength = 4855;
+        newit(`data syncCache has "investorsAddresses" with length >= ${expectedMinLength}`, () => assert((data.investorsAddresses.length >= expectedMinLength)));  
+      });
+      
+    
+      describe('After updateRegisteredEthTransactions_Promise', () => { beforeAll(async () => { jest.setTimeout(900*1000); await data.futs.updateRegisteredEthTransactions.promise; });
+        idbCount(data.tables.eth.ntx, () => data.investorsAddresses.length);   
+        idbCount(data.tables.eth.rtx, () => data.investorsAddresses.length);   
+      });*/
+    }
+/*
+      describe('After computeAllInvestorData_Promise', () => { beforeAll(async () => { jest.setTimeout(300000); await data.computeAllInvestorData_Promise; });
+        T("investors withdrawalRequests pendingDeposits").forEach(sch); 
+      });*/
+    });
+  }
+
+  for (let m of K(EUserMode)) describe(`User mode '${m}'`, () => { 
+    beforeAll(async () => { jest.setTimeout(30000);// await resetData(); await data.setMode(m); 
+    });
+    dataTest(data, singleKeyObject(m, true));
+    afterAll(async () => {});//await data.destroy());
+  })
 });
-*/

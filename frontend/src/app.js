@@ -3,12 +3,12 @@
 /* eslint no-unused-vars: 0 */
 import React from 'react';  
 // eslint-disable-next-line
-import { A, D, E, F, G, H, I, K, L, P, S, T, U, V, oA, oO, oS, asA, makeEnum, singleKeyObject } from './common/tools';  
+import { A, C, D, E, F, G, H, I, K, L, P, S, T, U, V, oA, oO, oS, asA, makeEnum, singleKeyObject } from './common/tools';  
 // eslint-disable-next-line
 import { FormControlLabel, Switch, List, ListItem, ListItemText, ListItemIcon, AppBar, Toolbar, Typography, Button, Box, TextField, Paper, Accordion, AccordionSummary, AccordionDetails } from '@material-ui/core';
 import { createMuiTheme, ThemeProvider}  from '@material-ui/core/styles';
 // eslint-disable-next-line
-import { Sidebar, ProgressDialog, OpenDialogButton, DialogWrap, cleanText, Selector, ValidatableComp, Comp, TabbedView, button, tabulize, formTable } from './ui/components'; 
+import { Sidebar, ProgressDialog, OpenDialogButton, DialogWrap, cleanText, Selector, ValidatableComp, Comp, TabbedView, button, tabulize, formTable, TabTimeline, form, preamble } from './ui/components'; 
 import { Admin } from './ui/admin';
 import { LogIn } from './ui/login';
 import { Network } from './ui/network';
@@ -80,24 +80,38 @@ if (urlParams.asPublicKey) investor = { data: L("0x" + pubKeyToEthAddress(urlPar
 
 L(`Initializing with investor ${S(investor)}`);
 
-if (D(investor)) data.runWhenDBInitialized(() => data.registerInvestorAddress(investor.data)); 
+let simulateWithUser = async i => { investor = L(i); 
+  await data.setMode(EUserMode.User); 
+  L(`simulate for ${S(investor)}`);
+  if (D(i)) data.runWhenDBInitialized(() => { if (i.data) data.registerInvestorAddress(i.data); }); 
+  wallet.lastLogin = C(i);
+};
+//if (investor) simulateWithUser(investor);
 
-class App extends Comp { constructor(p) { super(p, { wallet, investor, ...G({EDeveloperMode, EUserMode, EPallette}, enumDefObj)}); this.state.theme = this.createTheme(); } 
-  isDark() { let s = this.state; return !D(s.EPallette) || s.EPallette.Default ? darkMode : D(s.EPallette.Dark) }
+// 0x4A31d6AaDD57Ffe1624f87A43E170060d199A574 -- 02f1b2a982dbe744305a37f9dfd69d7d7c6eeaa5c34c1aba3bd277567df5b972fb
+class InvestorForm extends ValidatableComp { constructor(p, s) { super(p, s, "publicKey ethAddress btcAddress"); }
+  ren(p, s) { return tabulize(1/3, [[this.genTextField("publicKey"), this.genTextField("ethAddress"), this.genTextField("btcAddress")]]); }
+  validate() { let e = {}; return ((this.setErrors(e)) && (this.state.values)); }
+}
+
+class App extends Comp { constructor(p) { super(p, { wallet, ...G({EDeveloperMode, EUserMode, EPallette}, enumDefObj)}); this.state.theme = this.createTheme(); } 
+  componentDidUpdate(prevProps, prevState) { if (prevState.EUserMode !== this.state.EUserMode) data.setMode(this.state.EUserMode); }
+  isDark() { let s = this.state; return !D((s.EPallette)) || s.EPallette.Default ? darkMode : D(s.EPallette.Dark) }
   createTheme() { let dark = this.isDark();
     A(document.body.style, { color: getMainColor(true, dark), backgroundColor: getMainColor(false, dark) });
     return createMuiTheme({ palette: { type: dark ? 'dark' : 'light' } }) ;
   } 
   ren(p, s) { 
     return <div title="App" style={{width: "100%", height: "100%"}}><ThemeProvider theme={s.theme}>{urlParams.testMode ? <>
-      {tabulize(1/3, [[...E({EUserMode, EDeveloperMode, EPallette}).map(([k, v]) => <Selector options={K(v).map(cleanText)} horizontal={true} onChanged={i => this.setState(singleKeyObject(k, singleKeyObject(V(v)[i], true)), this.setState({ theme: this.createTheme() }))}/>)]])}
+      {tabulize(1/3, [[...E({EUserMode, EDeveloperMode, EPallette}).map(([k, v]) => <Selector options={K(v).map(cleanText)} horizontal={true} onChanged={i => this.setState((singleKeyObject(k, singleKeyObject(K(v)[i], V(v)[i]))), () => this.setState({ theme: this.createTheme() }))}/>)]])}
       <InvestorList caption={"Choose an investor to simulate the UI"} onChangedSelectedInvestor={investor => this.setState(L({ investor }))} {...(P(s, T("EUserMode EDeveloperMode")))} />
       <InvestorID investor={s.investor} />
     </> : null}
+    <InvestorForm onChanged={d => simulateWithUser(L(d))}/>
     <p>{`Future UI (work in progress, version >= ${version}) below this line.  Numbers shown may be inaccurate or entirely incorrect due to the development process being in progress.`}</p>
     <hr/>
     <MainView {...(P(s, T("investor EUserMode EDeveloperMode wallet")))} urlParams={urlParams} dark={this.isDark()}/></ThemeProvider></div>
   } 
 } 
 
-export { App }
+export { App, simulateWithUser }

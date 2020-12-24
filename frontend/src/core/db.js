@@ -1,6 +1,6 @@
-import { A, D, I, K, L, S, U, V, oA, oF, isA } from '../common/tools';
+import { A, D, I, K, L, S, U, V, oA, oF, isA, future } from '../common/tools';
 import { tableStrucMap } from './data';
-import fakeIndexedDB from 'fake-indexeddb';
+import fakeIndexedDB from 'fake-indexeddb/auto';
 
 let computeKey = (table, data, keyPath) => (z => keyPath && keyPath.length === 1 ? z.join("") : z)(data && ((keyPath || tableStrucMap[table].keyPath).map(k => data[k]))); 
 
@@ -8,29 +8,29 @@ let computeKey = (table, data, keyPath) => (z => keyPath && keyPath.length === 1
 class IndexedDB {
   constructor(name) {
     this.name = name;
-    this.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB || fakeIndexedDB;
+    this.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB || fakeIndexedDB 
     this.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction;
     this.IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange;
+    this.whenInitialized = future();
+    this.init();
   }
 
-  async init() {
-    L("Initializing db.");
-    this.db = await new Promise((resolve, reject) => A(this.indexedDB.open(this.name, 5), {
-      onerror: e => reject(`DB Error: ${e.target.error}`), onsuccess: e => { L("DB opened."); resolve(e.target.result); },
-      onupgradeneeded: e => (async () => { let db = e.target.result; L("Upgrading db.");
-        for (let i = 0; i < db.objectStoreNames.length; ++i) await db.deleteObjectStore(db.objectStoreNames.item(i));
-        await Promise.all((V(tableStrucMap)).map((({ table, keyPath, indices, autoIncrement }) => new Promise((resolve, reject) => { // L({ table, keyPath, indices, autoIncrement });
-          let os = db.createObjectStore(table, ({ keyPath: keyPath || "id", autoIncrement: autoIncrement || !D(keyPath) }));
-          oA(indices).forEach(i => os.createIndex(i[0], i[1], { unique: i[2], multiEntry: true }));
-          os.transaction.oncomplete = () => { I(`Object store created: ${L(K(os))}`); resolve(os); };
-          os.transaction.onerror = () => reject(`Creating table '${table}' failed`);
-        })))); L("DB structure initialized.");
-        resolve(db);
-      })()
-    })); 
-  }
+  async init() { this.whenInitialized.resolve(this.db = await (new Promise((resolve, reject) => A(this.indexedDB.open(this.name, 5), {
+    onerror: e => reject(`DB Error: ${e.target.error}`), onsuccess: e => { L("DB opened."); resolve(e.target.result); },
+    onupgradeneeded: e => (async () => { let db = e.target.result; L("Upgrading db.");
+      for (let i = 0; i < db.objectStoreNames.length; ++i) await db.deleteObjectStore(db.objectStoreNames.item(i));
+      await Promise.all((V(tableStrucMap)).map((({ table, keyPath, indices, autoIncrement }) => new Promise((resolve, reject) => { // L({ table, keyPath, indices, autoIncrement });
+        let os = db.createObjectStore(table, ({ keyPath: keyPath || "id", autoIncrement: autoIncrement || !D(keyPath) }));
+        oA(indices).forEach(i => os.createIndex(i[0], i[1], { unique: i[2], multiEntry: true }));
+        os.transaction.oncomplete = () => { I(`Object store created: ${L(K(os))}`); resolve(os); };
+        os.transaction.onerror = () => reject(`Creating table '${table}' failed`);
+      })))); L("DB structure initialized.");
+      resolve(db);
+    })()
+  })))); }
  
-  deleteDB(name) { return this.indexedDB ? this.indexedDB.deleteDatabase(name) : U; }
+  async close() { await this.whenInitialized.promise; await this.db.close();  }
+  async deleteDB(name) { await this.db.deleteDatabase(name); }
 
   getTx(table, label, reject) { let tx = this.db.transaction(isA(table) ? table: [table], "readwrite"); 
     return A(tx, { onerror: () => (tx.error !== null) && reject(`Error on ${label} for ${table}: ${tx.error}`) }); 

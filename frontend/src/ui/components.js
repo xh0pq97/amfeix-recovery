@@ -143,7 +143,7 @@ class ValidatableComp extends Comp {
   constructor(p, s, fers) { super(p, { values: {}, errors: {}, ...s }, fers);  }
   setErrors(errors) { this.setState({ errors }, () => L(`New errors = ${S(this.state.errors)}`)); return (((K(errors).filter(I)).length) === 0); } 
   validate() { return true; }
-  genTextField(k, p) { let s = this.state; return <TextField error={(D(s.errors[k]))} variant="outlined" ref={this.fers[k]} id={k} label={cleanText(k)} onChange={e => this.setState({ values: { ...s.values, ...singleKeyObject(k, e.target.value)}})} value={oS(s.values[k])} {...p} helperText={s.errors[k] || oO(p).helperText}/> }
+  genTextField(k, p) { let s = this.state; return <TextField error={(D(s.errors[k]))} variant="outlined" ref={this.fers[k]} id={k} label={cleanText(k)} onChange={e => this.setState({ values: { ...s.values, ...singleKeyObject(k, e.target.value)}}, () => { if (D(this.props.onChanged)) this.props.onChanged(); })} value={oS(s.values[k])} {...p} helperText={s.errors[k] || oO(p).helperText}/> }
 }
 
 let tabulize = (borderSpacing, cells, cellStyles) => <table style={{borderSpacing: `${borderSpacing || 0}em`}}><tbody>{cells.map((r, i) => <tr key={i}>{r.map((c, j) => 

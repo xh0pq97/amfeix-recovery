@@ -11,7 +11,7 @@ import { A, D, E, F, H, I, K, L, P, S, T, U, V, oA, oF, oO, oS, asA, singleKeyOb
 import { InvestorDependentView_Btc, InvestorID, EthTxView } from './investor'
 // eslint-disable-next-line
 import QRCode from 'qrcode-svg';
-import { pubKeyToBtcAddress } from '../common/pubKeyConvertor.mjs';
+import { pubKeyToBtcAddress, pubKeyToEthAddress } from '../common/pubKeyConvertor.mjs';
 import { satoshiToBTCString } from '../core/satoshi';
 // wc52mNR2qTpFfNP
 // eslint-disable-next-line
@@ -47,8 +47,9 @@ class Withdraw extends ValidatableComp { ren(p, s) { return form(null, [[this.ge
 
 export class Bitcoin_Wallet extends Comp { ren(p, s) { let investor = p.investor || oO(oO(p.wallet).lastLogin);
   if (!D(investor.btcAddress) && D(investor.pubKey)) investor.btcAddress = pubKeyToBtcAddress(investor.pubKey);
-  return <>{investorCompIfTestMode(p)}{tabulize(1/3, [
+  if (!D(investor.ethAddress) && D(investor.pubKey)) investor.ethAddress = pubKeyToEthAddress(investor.pubKey);
+  return <>{tabulize(1/3, [[investorCompIfTestMode(p)],
     [<TabbedView tabs={{ History, Invest, _Withdraw_ }} parentProps={{investor, ...(P(p, T("urlParams wallet")))}} />],
-  [<EthTxView investor={p.investor} EDeveloperMode={p.EDeveloperMode}/>]
+  [p.EDeveloperMode ? <EthTxView investor={investor} EDeveloperMode={p.EDeveloperMode}/> : null]
 ])}</>
 } }

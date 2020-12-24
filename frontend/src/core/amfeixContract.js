@@ -3,6 +3,8 @@ import amfeixCjson from '../amfeixC.json';
 import { A, F, I, L, S, oA, oO } from '../common/tools';
 import { BN } from './bignumber';
 import aggregate from '../lib/multicall/src/aggregate';
+import nodeFetch from 'node-fetch';
+global.fetch = nodeFetch;
 
 export let amfeixAddress = "0xb0963da9baef08711583252f5000Df44D4F56925";
  
@@ -41,21 +43,16 @@ class MultiCallBatch {
 
 class AmfeixContract {
   setWeb3Url(url) {
-    A(this, { url, queuedOps: [], batchIx: 0, queuedOpCount: 0, processedOpCount: 0, queuedBatches: [], processing: false, inFlight: [], maxInFlight: 4, nextIx: 0, batchSize: 32, activeBatch: Promise.resolve() });
+    A(this, { url, queuedOps: [], batchIx: 0, processedOpCount: 0, queuedBatches: [], processing: false, inFlight: [], maxInFlight: 4, nextIx: 0, batchSize: 32, activeBatch: Promise.resolve() });
     this.web3 = new Web3(new (this.url.indexOf("ws://") === 0 ? Web3.providers.WebsocketProvider : Web3.providers.HttpProvider)(this.url, { timeout: 60000 }));
     this.amfeixM = () => (new this.web3.eth.Contract(amfeixCjson.abi, amfeixAddress, { from: this.from })).methods;
   }
 
   setFrom(address) { this.from = address; }
 
-  queueOp(method, params, onSuccess, onError) {
-    this.queuedOpCount++;
-    this.queuedOps.push(({ method, params, onSuccess, onError }));
-    //    if (this.queuedOps.length  >= this.batchSize) this.flushBatch(); 
-  }
-
   async execute(op) { try { return await amfx.amfeixM()[op.method](...oA(op.params)).call(); } catch (err) { return { err }; } }
 
+  queueOp(method, params, onSuccess, onError) {  this.queuedOps.push(({ method, params, onSuccess, onError })); }
   async executeBatch() {
     let batch = new MultiCallBatch();
     for (let op of this.queuedOps.slice(0, this.batchSize)) batch.add(amfeixAddress, op.method, oA(op.params), op.onSuccess, op.onError);
@@ -63,15 +60,13 @@ class AmfeixContract {
     await batch.execute(this.url);
   }
 
-  async actualFlushBatch() {
-    while (this.queuedOps.length > 0) {
+  async actualFlushBatch() { while (this.queuedOps.length > 0) {
       //      L({length: this.inFlight.length, queued: this.queuedOps.length, mif: this.maxInFlight});
       if (this.inFlight.length === this.maxInFlight) { await this.inFlight[0]; this.inFlight.shift(); }
       if (this.inFlight.length > this.maxInFlight) L(`>> ${S({ length: this.inFlight.length, mif: this.maxInFlight })}`);
       this.inFlight.push(this.executeBatch());
       //      await Promise.all(this.inFlight);
-    }
-  }
+  } }
 
   async flushBatch() { await new Promise((resolve, reject) => { try { setTimeout(() => resolve(this.actualFlushBatch()), 0); } catch (err) { reject(err); } }); }
 }

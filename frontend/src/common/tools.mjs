@@ -7,6 +7,7 @@ let isS = s => typeof s === "string";
 
 let A = Object.assign;
 let B = (a, k, t) => { let r = {}; a.forEach(b => { let y = r[b[(t || I)(k)]]; if (y) { y.push(b); } else { r[b[(t || I)(k)]] = [b]; } }); return r; }
+let C = x => x && P(x, K(x));
 let D = x => typeof x !== "undefined";
 let E = o => Object.entries(oO(o));
 let F = Object.fromEntries; 
@@ -35,6 +36,12 @@ let oS = s => s || "";
 let asA = a => (b => isA(b) ? b : [b])(oA(a))
 
 let singleKeyObject = (k, v) => { let o = {}; o[k] = v; return o; }
-let makeEnum = soo => Object.freeze(F(T(soo).map(k => [k, k]))); 
+let makeEnum = soo => Object.freeze(F(T(soo).map(k => [k, singleKeyObject(k, true)]))); 
 
-export { A, B, D, E, F, G, GA, H, I, K, L, LL, P, R, S, T, U, V, W, oA, oB, oO, oS, oF, isA, isO, isF, isS, isP, asA, singleKeyObject, makeEnum }
+class Future { 
+  constructor() { A(this, { creationTime: Date.now(), promise: new Promise((resolve, reject) => A(this, { resolve: x => { this.resolveTime = Date.now(); resolve(x) }, reject })) }); } 
+  async resolveWithPromise(p) { try { return this.resolve(await p); } catch(e) { return this.reject(e); } }
+}
+let future = () => new Future();
+
+export { A, B, C, D, E, F, G, GA, H, I, K, L, LL, P, R, S, T, U, V, W, oA, oB, oO, oS, oF, isA, isO, isF, isS, isP, asA, Future, future, singleKeyObject, makeEnum }
