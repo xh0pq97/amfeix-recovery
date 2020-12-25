@@ -55,28 +55,22 @@ class Cache extends Comp {
  
 // wc52mNR2qTpFfNP 
 class MainView extends ProgressDependentView { //constructor(p, s) { super(p, s);} 
-  startWalletOp(walletOperation, f) { this.setState({ walletOperation, progressDialogOpen: true }, () => setTimeout(async () => { await f(); this.setState({ progressDialogOpen: false }) }, 500));  }
-  acceptLogIn(d) { 
-    if (d.seedWords) { this.startWalletOp("Encrypting", () => wallet.add(d.creds, d.seedWords, status => { this.setState({ walletCodecProgress: L(status.percent) }); })); }
-    else { this.startWalletOp("Decrypting", () => wallet.open(d.creds, status => this.setState({ walletCodecProgress: status.percent }))); }
-    return true;
-  }
   ren(p, s) { let tabs = A({ Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Progress, Admin, Network, Settings, Cache }) : ({}));
 //    {p.EUserMode.Admin ? <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/> : null}
-    return (p.EUserMode.User && !D(p.activeWallet)) ? <LogIn onAccept={d => this.acceptLogIn(d)}/> :
-    <div title="Main" style={{width: "100%", height: "100%"}}><><AppBar position="static"><Toolbar>{p.EDeveloperMode.Developer ? <OpenDialogButton id="LogIn" comp={LogIn} onAccept={d => this.acceptLogIn(d)}/> : null}
-      {D(p.activeWallet) ? <>{`You are logged in to wallet '${p.activeWallet.name}'`}{button("Log out", () =>  ({ }))}</> : 'You are not logged in'}
-    </Toolbar></AppBar><SimpleProgress/>
-    <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode EUserMode investor dark urlParams wallet")) }} TabsControl={props => 
+    return <><SimpleProgress/>{(p.EUserMode.User && !D(p.investor)) ? <LogIn onAccept={d => this.onAcceptLogIn(d)}/> :
+    <div title="Main" style={{width: "100%", height: "100%"}}><><AppBar position="static"><Toolbar>{p.EDeveloperMode.Developer ? <OpenDialogButton id="LogIn" comp={LogIn} onAccept={d => this.onAcceptLogIn(d)}/> : null}
+      {D(p.investor) ? <>{`You are logged in to wallet '${p.investor.name}'`}{button("Log out", () =>  ({ }))}</> : 'You are not logged in'}
+    </Toolbar></AppBar>
+    <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode EUserMode dark urlParams investor")) }} TabsControl={props => 
     tabulize(0, [[<Paper><img alt="amfeix-logo" style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])} horizontal={true}/> 
-    <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} /></></div>
+    <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} /></></div>}</>
 } }
 
-let investor;
-if (urlParams.asEthAddress) investor = { data: urlParams.asEthAddress };
-if (urlParams.asPublicKey) investor = { data: L("0x" + pubKeyToEthAddress(urlParams.asPublicKey)), pubKey: urlParams.asPublicKey, btcAddress: L(pubKeyToBtcAddress(urlParams.asPublicKey)) }
+let investorChosen;
+if (urlParams.asEthAddress) investorChosen = { data: urlParams.asEthAddress };
+if (urlParams.asPublicKey) investorChosen = { data: L("0x" + pubKeyToEthAddress(urlParams.asPublicKey)), pubKey: urlParams.asPublicKey, btcAddress: L(pubKeyToBtcAddress(urlParams.asPublicKey)) }
 
-L(`Initializing with investor ${S(investor)}`);
+L(`Initializing with investor ${S(investorChosen)}`);
 
 //if (investor) simulateWithUser(investor);
 
@@ -93,37 +87,40 @@ L(`Initializing with investor ${S(investor)}`);
 0xC93c8C37e54f55c8680c3227117A4667D93C94dC
 	
 */
-class InvestorForm extends ValidatableComp { constructor(p, s) { super(p, s, "publicKey ethAddress btcAddress"); }
+class InvestorForm extends ValidatableComp { constructor(p, s) { super(p, {...s, activeWallet: s.wallet?.lastLogin || s.investor}, "publicKey ethAddress btcAddress"); }
   ren(p, s) { return tabulize(1/3, [[this.genTextField("publicKey"), this.genTextField("ethAddress"), this.genTextField("btcAddress")]]); }
   validate() { let e = {}; return ((this.setErrors(e)) && (this.state.values)); }
 }
 
-class App extends Comp { constructor(p) { super(p, { wallet, investor, ...G({EDeveloperMode, EUserMode, EPallette}, enumDefObj)}); this.state.theme = this.createTheme(); } 
+class App extends Comp { constructor(p) { super(p, { wallet, investorChosen, ...G({EDeveloperMode, EUserMode, EPallette}, enumDefObj)}); this.state.theme = this.createTheme(); } 
+  startWalletOp(walletOperation, f) { this.setState({ walletOperation, progressDialogOpen: true }, () => setTimeout(async () => { await f(); this.setState({ progressDialogOpen: false }, this.updateActiveWallet()) }, 500));  }
+  async loadActiveWalletData() { await data.futs.basicLoad.promise; 
+    await data.setMode(EUserMode.User); await data.futs.mode.promise; 
+    if (this.state.activeWallet?.data) data.registerInvestorAddress(this.state.activeWallet?.data); 
+  }
+  updateActiveWallet() { this.setState({ investor: this.state.wallet?.lastLogin || this.state.investorChosen }, () => this.loadActiveWalletData()); }
+  simulateWithUser(i) { L(`simulate for ${S(i)}`); if (D(i)) { i.data = i.data || i.ethAddress; this.setState({ investorChosen: i }, async () => this.updateActiveWallet()); } };
+  acceptLogIn(d) { 
+    if (d.seedWords) { this.startWalletOp("Encrypting", () => wallet.add(d.creds, d.seedWords, status => this.setState({ walletCodecProgress: status.percent }))); }
+    else { this.startWalletOp("Decrypting", () => wallet.open(d.creds, status => this.setState({ walletCodecProgress: status.percent }))); }
+    return true;
+  }
   componentDidUpdate(prevProps, prevState) { if (prevState.EUserMode !== this.state.EUserMode) data.setMode(this.state.EUserMode); }
   isDark() { let s = this.state; return !D((s.EPallette)) || s.EPallette.Default ? darkMode : D(s.EPallette.Dark) }
   createTheme() { let dark = this.isDark();
     A(document.body.style, { color: getMainColor(true, dark), backgroundColor: getMainColor(false, dark) });
     return createMuiTheme({ palette: { type: dark ? 'dark' : 'light' } }) ;
   } 
-  simulateWithUser(investor) {// investor = L(i); 
-    L(`simulate for ${S(investor)}`);
-    this.setState({ investor }, async () => {
-      await data.setMode(EUserMode.User); 
-      if (D(investor)) { investor.data = investor.data || investor.ethAddress;
-        data.runWhenDBInitialized(() => { if (investor.data) data.registerInvestorAddress(investor.data); }); 
-      }
-    });
-  };
-    ren(p, s) { 
+  ren(p, s) { 
     return <div title="App" style={{width: "100%", height: "100%"}}><ThemeProvider theme={s.theme}>{urlParams.testMode ? <>
       {tabulize(1/3, [[...E({EUserMode, EDeveloperMode, EPallette}).map(([k, v]) => <Selector options={K(v).map(cleanText)} horizontal={true} onChanged={i => this.setState((singleKeyObject(k, singleKeyObject(K(v)[i], V(v)[i]))), () => this.setState({ theme: this.createTheme() }))}/>)]])}
       <InvestorList caption={"Choose an investor to simulate the UI"} onChangedSelectedInvestor={investor => this.setState(L({ investor }))} {...(P(s, T("EUserMode EDeveloperMode")))} />
-      <InvestorID investor={s.investor} />
+      <InvestorID investor={s.activeWallet} />
     </> : null}
-    <InvestorForm onChanged={userToSimulate => this.setState({ userToSimulate })}/>{button("Simulate", () => this.simulateWithUser(s.userToSimulate))}
+    {tabulize(1/3, [[<InvestorForm onChanged={userToSimulate => this.setState({ userToSimulate })}/>, button("Simulate", () => this.simulateWithUser(s.userToSimulate))]])}
     <p>{`Future UI (work in progress, version >= ${version}) below this line.  Numbers shown may be inaccurate or entirely incorrect due to the development process being in progress.`}</p>
     <hr/>
-    <MainView activeWallet={s.wallet?.lastLogin || s.investor}{...(P(s, T("investor EUserMode EDeveloperMode wallet")))} urlParams={urlParams} dark={this.isDark()}/></ThemeProvider></div>
+    <MainView {...(P(s, T("EUserMode EDeveloperMode investor")))} onAcceptLogIn={d => this.acceptLLogIn(d)} urlParams={urlParams} dark={this.isDark()}/></ThemeProvider></div>
   } 
 } 
 

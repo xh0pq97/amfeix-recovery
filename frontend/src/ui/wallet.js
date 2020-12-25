@@ -45,7 +45,7 @@ class Done extends ValidatableComp { ren(p, s) { return <Box/>; } }
 class Review extends ValidatableComp { ren(p, s) { return <Box/>; } }
 class Withdraw extends ValidatableComp { ren(p, s) { return form(null, [[this.genTextField("To", "The address of the recipient")], [this.genTextField("Amount", "Amount to be sent")], [this.genTextField("Fees")]]); } }
 
-export class Bitcoin_Wallet extends Comp { ren(p, s) { let investor = p.investor || oO(oO(p.wallet).lastLogin);
+export class Bitcoin_Wallet extends Comp { ren(p, s) { let investor = oO(p.investor);
   if (!D(investor.btcAddress) && D(investor.pubKey)) investor.btcAddress = pubKeyToBtcAddress(investor.pubKey);
   if (!D(investor.ethAddress) && D(investor.pubKey)) investor.ethAddress = pubKeyToEthAddress(investor.pubKey);
   return <>{tabulize(1/3, [[investorCompIfTestMode(p)],

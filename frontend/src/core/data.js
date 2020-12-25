@@ -175,7 +175,8 @@ class Data extends Persistent {
   }); } 
 
   async registerInvestorAddress(address) { await this.updateSyncCache(); L(`registerInvestorAddress ${address}`);
-    let index = this.investorsAddresses.map(x => x?.data?.toLowerCase()).indexOf(address.toLowerCase());
+    let index = this.investorsAddresses.find(v => v.data && (v.data.toLowerCase() === address.toLowerCase())) 
+    index = this.investorsAddresses[index].index;
     if (index >= 0) { let investor = await this.setData(tables.eth.investorsAddresses, L({ index, data: address }));
       let localBuf = this.idb.newBuffer();
       let p = Promise.all(investorMaps.map(m => this.updateInvestorTxs(investor, m, localBuf, amfx))); 
@@ -383,7 +384,7 @@ f
 
   async getInvestorIndexFromInvestorsAddressesTable(ethAddress) { return (L(await this.idb.get(tables.eth.investorsAddresses, { data: ethAddress }, "data", ["data"])))?.index; }
 
-  async computeInvestorData(investor, lengths, allData) { //L(`retrieveInvestorData = ${S(investor)}`);
+  async computeInvestorData(investor, lengths, allData) { //L(`retrieveInvestorData = ${S(investor)}`);  
     if (!(D(investor.data))) return U;
     let cached = this.getSync(getInvestorDataKey(investor));
     if (cached) { L('cached'); return cached; }
