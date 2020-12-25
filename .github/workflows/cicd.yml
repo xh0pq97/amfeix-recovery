@@ -28,8 +28,6 @@ jobs:
       run: npm install -g node-gyp-build react-scripts create-react-app eslint-config-react-app gh-pages
     - name: Frontend Install
       run: npm run-script frontend-install
-    - name: Test 
-      run: npm run-script frontend-test
     - name: Frontend Build
       run: npm run-script frontend-build
     - name: Deploy
