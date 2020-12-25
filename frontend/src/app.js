@@ -61,17 +61,15 @@ class MainView extends ProgressDependentView { //constructor(p, s) { super(p, s)
     else { this.startWalletOp("Decrypting", () => wallet.open(d.creds, status => this.setState({ walletCodecProgress: status.percent }))); }
     return true;
   }
-  ren(p, s) {
-    let activeWallet = oO(p.wallet).lastLogin; 
-    let tabs = A({ Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Progress, Admin, Network, Settings, Cache }) : ({}));
+  ren(p, s) { let tabs = A({ Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Progress, Admin, Network, Settings, Cache }) : ({}));
 //    {p.EUserMode.Admin ? <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/> : null}
-    return !(p.EUserMode.Admin || this.isLoaded()) ? <SimpleProgress/> : <><SimpleProgress/>{p.EUserMode.User && !D(activeWallet) ? <LogIn onAccept={d => this.acceptLogIn(d)}/> :
+    return (p.EUserMode.User && !D(p.activeWallet)) ? <LogIn onAccept={d => this.acceptLogIn(d)}/> :
     <div title="Main" style={{width: "100%", height: "100%"}}><><AppBar position="static"><Toolbar>{p.EDeveloperMode.Developer ? <OpenDialogButton id="LogIn" comp={LogIn} onAccept={d => this.acceptLogIn(d)}/> : null}
-      {D(activeWallet) ? <>{`You are logged in to wallet '${activeWallet.name}'`}{button("Log out", () =>  ({ }))}</> : 'You are not logged in'}
-    </Toolbar></AppBar> 
+      {D(p.activeWallet) ? <>{`You are logged in to wallet '${p.activeWallet.name}'`}{button("Log out", () =>  ({ }))}</> : 'You are not logged in'}
+    </Toolbar></AppBar><SimpleProgress/>
     <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode EUserMode investor dark urlParams wallet")) }} TabsControl={props => 
     tabulize(0, [[<Paper><img alt="amfeix-logo" style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])} horizontal={true}/> 
-    <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} /></></div>}</>
+    <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} /></></div>
 } }
 
 let investor;
@@ -80,38 +78,53 @@ if (urlParams.asPublicKey) investor = { data: L("0x" + pubKeyToEthAddress(urlPar
 
 L(`Initializing with investor ${S(investor)}`);
 
-let simulateWithUser = async i => { investor = L(i); 
-  await data.setMode(EUserMode.User); 
-  L(`simulate for ${S(investor)}`);
-  if (D(i)) data.runWhenDBInitialized(() => { if (i.data) data.registerInvestorAddress(i.data); }); 
-  wallet.lastLogin = C(i);
-};
 //if (investor) simulateWithUser(investor);
 
-// 0x4A31d6AaDD57Ffe1624f87A43E170060d199A574 -- 02f1b2a982dbe744305a37f9dfd69d7d7c6eeaa5c34c1aba3bd277567df5b972fb
+/*
+0x20D79A69eE74fd126889a6ac9c3c9e56C88d566b -- 02563b8cd535a191858d01f67ccf7572112d6c9910f1649b2204bea7d38dd8737e -- 1Ak8tjBRuK2JuQjuDPRHkTUZdRAnQkeYhP -- 20d79a69ee74fd126889a6ac9c3c9e56c88d566b
+0x4A31d6AaDD57Ffe1624f87A43E170060d199A574 -- 02f1b2a982dbe744305a37f9dfd69d7d7c6eeaa5c34c1aba3bd277567df5b972fb 
+0x4A4432Ce76855B05ED7B15b5153402b4BBe847F4 
+0x7868382355A068bDCa578304aee7FeE4B83Bcb5d 
+0xa644039B0FbE1185958E6F77028fdAA6E1268EEf 
+0x63069CB12712aC4C8F7AdaEeA501C82014050688 
+0x84F5634f650baAa08E1D7B25e86824c53b2C198b 
+0x9Be31098Bf7bc1241f54b221f2577c1D81F4Ee4c 
+0x25bc9eb983eC1f3c36aaB1574662723d6671E65d 
+0xC93c8C37e54f55c8680c3227117A4667D93C94dC
+	
+*/
 class InvestorForm extends ValidatableComp { constructor(p, s) { super(p, s, "publicKey ethAddress btcAddress"); }
   ren(p, s) { return tabulize(1/3, [[this.genTextField("publicKey"), this.genTextField("ethAddress"), this.genTextField("btcAddress")]]); }
   validate() { let e = {}; return ((this.setErrors(e)) && (this.state.values)); }
 }
 
-class App extends Comp { constructor(p) { super(p, { wallet, ...G({EDeveloperMode, EUserMode, EPallette}, enumDefObj)}); this.state.theme = this.createTheme(); } 
+class App extends Comp { constructor(p) { super(p, { wallet, investor, ...G({EDeveloperMode, EUserMode, EPallette}, enumDefObj)}); this.state.theme = this.createTheme(); } 
   componentDidUpdate(prevProps, prevState) { if (prevState.EUserMode !== this.state.EUserMode) data.setMode(this.state.EUserMode); }
   isDark() { let s = this.state; return !D((s.EPallette)) || s.EPallette.Default ? darkMode : D(s.EPallette.Dark) }
   createTheme() { let dark = this.isDark();
     A(document.body.style, { color: getMainColor(true, dark), backgroundColor: getMainColor(false, dark) });
     return createMuiTheme({ palette: { type: dark ? 'dark' : 'light' } }) ;
   } 
-  ren(p, s) { 
+  simulateWithUser(investor) {// investor = L(i); 
+    L(`simulate for ${S(investor)}`);
+    this.setState({ investor }, async () => {
+      await data.setMode(EUserMode.User); 
+      if (D(investor)) { investor.data = investor.data || investor.ethAddress;
+        data.runWhenDBInitialized(() => { if (investor.data) data.registerInvestorAddress(investor.data); }); 
+      }
+    });
+  };
+    ren(p, s) { 
     return <div title="App" style={{width: "100%", height: "100%"}}><ThemeProvider theme={s.theme}>{urlParams.testMode ? <>
       {tabulize(1/3, [[...E({EUserMode, EDeveloperMode, EPallette}).map(([k, v]) => <Selector options={K(v).map(cleanText)} horizontal={true} onChanged={i => this.setState((singleKeyObject(k, singleKeyObject(K(v)[i], V(v)[i]))), () => this.setState({ theme: this.createTheme() }))}/>)]])}
       <InvestorList caption={"Choose an investor to simulate the UI"} onChangedSelectedInvestor={investor => this.setState(L({ investor }))} {...(P(s, T("EUserMode EDeveloperMode")))} />
       <InvestorID investor={s.investor} />
     </> : null}
-    <InvestorForm onChanged={d => simulateWithUser(L(d))}/>
+    <InvestorForm onChanged={userToSimulate => this.setState({ userToSimulate })}/>{button("Simulate", () => this.simulateWithUser(s.userToSimulate))}
     <p>{`Future UI (work in progress, version >= ${version}) below this line.  Numbers shown may be inaccurate or entirely incorrect due to the development process being in progress.`}</p>
     <hr/>
-    <MainView {...(P(s, T("investor EUserMode EDeveloperMode wallet")))} urlParams={urlParams} dark={this.isDark()}/></ThemeProvider></div>
+    <MainView activeWallet={s.wallet?.lastLogin || s.investor}{...(P(s, T("investor EUserMode EDeveloperMode wallet")))} urlParams={urlParams} dark={this.isDark()}/></ThemeProvider></div>
   } 
 } 
 
-export { App, simulateWithUser }
+export { App }

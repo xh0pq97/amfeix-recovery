@@ -31,7 +31,7 @@ let oA = a => a || [];
 let oB = b => b || false;
 let oF = f => f || (() => {});
 let oO = o => o || {};
-let oS = s => s || ""; 
+let oS = s => isS(s) ? s : ""; 
 
 let asA = a => (b => isA(b) ? b : [b])(oA(a))
 
