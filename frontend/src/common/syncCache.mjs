@@ -1,4 +1,4 @@
-import { A, D, E, oA } from './tools';
+import { A, D, E, oA } from './tools.mjs';
 
 class Observer {
   constructor(observable, onChange, context, index) { A(this, { observable, onChange, context, index }); }

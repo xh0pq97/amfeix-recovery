@@ -6,8 +6,8 @@ import bs58check from 'bs58check';
 import JSONBig from 'json-bigint';
 import BigNumber from 'bignumber.js';
 import { A, B, D, E, F, I, K, L, LL, P, S, T, U, V, oA, oO, oS, oF, singleKeyObject } from './tools.mjs'; 
-import mariadb from  'mariadb';
 import { Q, select, insertIfNotExists } from './utils.mjs';
+import { dbMethod } from "./utils.mjs";
 
 dotenv.config(); const cfg = process.env;  
 let BN = (v, b) => new BigNumber(v, b); 
@@ -16,8 +16,6 @@ const verbose = true;
 let LOG = d => verbose ? L(d) : d; 
 
 L(`args = ${process.argv}`);
- 
-const pool = mariadb.createPool({ host: cfg.DB_HOST, user: cfg.DB_USER, password: cfg.DB_PWD, connectionLimit: 8 }); 
  
 const url = `http://${cfg.rpcuser}:${cfg.rpcpassword}@127.0.0.1:8332/`; LOG({url});
 const headers = { "content-type": "text/plain;" };
@@ -79,122 +77,117 @@ let trimLeadingZeroes = v => { while ((v.length > 0) && (v[0] === '0')) v = v.su
 let compressValue = v => htb(trimLeadingZeroes(v)).toString('base64');
 let formatOutput = v => [ v.time, compressValue(v.value), v.txid.toString('base64'), v.pubKey.toString('base64'), v.voutIx ].join(" ");
 
-let getTransfers = async (toAddress, fromPublicKey) => { 
+let getTransfers = async (toAddress, fromPublicKey) => await dbMethod(async conn => { 
   toAddress = (toAddress.length > 1) ? toAddress : U;
-  if (toAddress || (fromPublicKey.length > 1)) { let conn = await pool.getConnection(); if (conn) { try { 
-  let binToAddress = toAddress && bs58check.decode(toAddress);
-  let binFromPublicKey = (fromPublicKey.length > 1) && htb(fromPublicKey);
-  L({toAddress, fromPublicKey});
-  try { await conn.query("USE transfers");
-    let data = [];
-    try { 
-      let parmConstraints = (binToAddress ? ` AND address.v = ? ` : '') + (binFromPublicKey ? ` AND pubKey.v = ? ` : '');
-      let q = await conn.query(L(`SELECT UNIX_TIMESTAMP(block.time) as time, transaction.v as txid, HEX(vout.value) as value, vout.ix as voutIx, transaction.id as tIx, address.v AS address, pubKey.v AS pubKey FROM transaction, block, vout, vin, address, pubKey WHERE address.id = idToAddress AND pubKey.id = idPubKey AND transaction.id = vin.idTransaction AND transaction.id = vout.idTransaction AND block.id = idBlock ${parmConstraints} ORDER BY tIx`), L([binToAddress, binFromPublicKey].filter(I))); 
-      L(`result = ${q.length}`);
-      let txs = B(q, "tIx");
-      for (let tx of V(txs)) {
-        let ins = B(tx, "pubKey", pk => pubKeyToBtcAddress(pk.toString("hex")));
-        if ((K(ins).length > 1) || (!D[ins[toAddress]])) {
-          let selfDeposit = ins.reduce((p, c) => BN(c.value).plus(p), BN(0));
-          let outs = B(tx, "address"); 
-          for (let v of (toAddress ? outs[binToAddress] : tx)) data.push(formatOutput(v));
-        }
-//        if ((K(F(tx.map(t => [t.pubKey.toString('hex'), true])))).length !== 1) { L(`Ignoring tx ${v.tIx}: Several input pubkeys`); continue; }
-//        if (K(F(tx.map(t => [t.voutIx, true]))).length !== 1) { L(`Ignoring tx ${v.tIx}: Several voutIx`); continue; } 
-//          let value = tx.reduce((p, c) => p.plus(BN(c.value, 16)), BN(0)); 
-        //[ v.time, compressValue(v.value), v.txid.toString('base64'), v.pubKey.toString('base64'), v.voutIx ]);
-      }
-      L(`result = ${q.length} data = ${data.length}`);
-    } catch(e) { return { err: `Query failed: ${S(e)}` }; }
-    return { data }; 
-  } catch(e) { return { err: `DB error: ${S(e)}` } }
-} catch(e) { return { err: `Invalid address: ${S(e)}` } } 
-finally { conn.close(); } } else { return { err: `No db connection` }; } } else { return { err: 'Specify toAddress or fromPublicKey or both.' } } }
-
-let formatDeposit = v => [ (v).time, compressValue(v.value), v.txid.toString('base64'), v.fromBtcAddress ? bs58check.decode(v.fromBtcAddress).toString('base64') : U ].join(" ");
-let getDeposits = async (toAddress, fromPublicKey) => { if (toAddress.length <= 1) return { err: `To address required.` };
-  let conn = await pool.getConnection(); if (conn) { try { 
-    let binToAddress = bs58check.decode(toAddress);
+  if (toAddress || (fromPublicKey.length > 1)) { 
+    let binToAddress = toAddress && bs58check.decode(toAddress);
+    let binFromPublicKey = (fromPublicKey.length > 1) && htb(fromPublicKey);
     L({toAddress, fromPublicKey});
     try { await conn.query("USE transfers");
-      let idToAddress = oO(oA(await Q(conn, 'SELECT id FROM address WHERE address.v = ?', [binToAddress]))[0]).id;
-      L({idToAddress});
-      if (!D(idToAddress)) return { err: `To address '${toAddress}' not found.`}
+      let data = [];
+      try { 
+        let parmConstraints = (binToAddress ? ` AND address.v = ? ` : '') + (binFromPublicKey ? ` AND pubKey.v = ? ` : '');
+        let q = await conn.query(L(`SELECT UNIX_TIMESTAMP(block.time) as time, transaction.v as txid, HEX(vout.value) as value, vout.ix as voutIx, transaction.id as tIx, address.v AS address, pubKey.v AS pubKey FROM transaction, block, vout, vin, address, pubKey WHERE address.id = idToAddress AND pubKey.id = idPubKey AND transaction.id = vin.idTransaction AND transaction.id = vout.idTransaction AND block.id = idBlock ${parmConstraints} ORDER BY tIx`), L([binToAddress, binFromPublicKey].filter(I))); 
+        L(`result = ${q.length}`);
+        let txs = B(q, "tIx");
+        for (let tx of V(txs)) {
+          let ins = B(tx, "pubKey", pk => pubKeyToBtcAddress(pk.toString("hex")));
+          if ((K(ins).length > 1) || (!D[ins[toAddress]])) {
+            let selfDeposit = ins.reduce((p, c) => BN(c.value).plus(p), BN(0));
+            let outs = B(tx, "address"); 
+            for (let v of (toAddress ? outs[binToAddress] : tx)) data.push(formatOutput(v));
+          }
+  //        if ((K(F(tx.map(t => [t.pubKey.toString('hex'), true])))).length !== 1) { L(`Ignoring tx ${v.tIx}: Several input pubkeys`); continue; }
+  //        if (K(F(tx.map(t => [t.voutIx, true]))).length !== 1) { L(`Ignoring tx ${v.tIx}: Several voutIx`); continue; } 
+  //          let value = tx.reduce((p, c) => p.plus(BN(c.value, 16)), BN(0)); 
+          //[ v.time, compressValue(v.value), v.txid.toString('base64'), v.pubKey.toString('base64'), v.voutIx ]);
+        }
+        L(`result = ${q.length} data = ${data.length}`);
+      } catch(e) { return { err: `Query failed: ${S(e)}` }; }
+      return { data }; 
+    } catch(e) { return { err: `DB error: ${S(e)}` } } 
+  }
+});
 
-      try {
-        if (fromPublicKey.length <= 1) fromPublicKey = U;
-        let fromBtcAddress = fromPublicKey && pubKeyToBtcAddress(fromPublicKey);
-        let binFromPublicKey = fromPublicKey && htb(fromPublicKey);
+let formatDeposit = v => [ (v).time, compressValue(v.value), v.txid.toString('base64'), v.fromBtcAddress ? bs58check.decode(v.fromBtcAddress).toString('base64') : U ].join(" ");
+let getDeposits = async (toAddress, fromPublicKey) => await dbMethod(async conn => { if (toAddress.length <= 1) return { err: `To address required.` };
+  let binToAddress = bs58check.decode(toAddress);
+  L({toAddress, fromPublicKey});
+  try { await conn.query("USE transfers");
+    let idToAddress = oO(oA(await Q(conn, 'SELECT id FROM address WHERE address.v = ?', [binToAddress]))[0]).id;
+    L({idToAddress});
+    if (!D(idToAddress)) return { err: `To address '${toAddress}' not found.`}
 
-        let data = [];
-        try { 
-          let txs = B(await Q(conn, L(`SELECT UNIX_TIMESTAMP(block.time) as time, transaction.v as txid, value, transaction.id as tIx FROM transaction, block, vout WHERE vout.idToAddress = ? AND transaction.id = vout.idTransaction AND block.id = transaction.idBlock`), L([idToAddress])), "tIx"); 
-          for (let [tIx, tx] of E(txs)) {
-            let sumValueBN = tx.reduce((p, c) => BN(c.value, 10).plus(p), BN(0));
-            let vins = B(await Q(conn, (`SELECT HEX(pubKey.v) as fromPubKey FROM vin, pubKey WHERE vin.idTransaction = ? AND vin.idPubKey = pubKey.id ${fromPublicKey ? 'AND pubKey.v = ?' : ''}`), ([tIx, binFromPublicKey].filter(D))), "fromPubKey");
-            if (K(vins).length === 1) { let vinFromBtcAddress = fromBtcAddress || pubKeyToBtcAddress(K(vins)[0]);
-              if (vinFromBtcAddress !== toAddress) {
-                let hexToBs58 = h => bs58check.encode(Buffer.from(h, 'hex'));
-                let vouts = B(await Q(conn, (`SELECT HEX(address.v) as toAddress FROM vout, address WHERE vout.idTransaction = ? AND vout.idToAddress = address.id`), ([tIx])), "toAddress");
-                let otherToAddresses = K(vouts).filter(a => hexToBs58(a) !== toAddress);
-                if ((otherToAddresses.length <= 1) && ((otherToAddresses.length === 0) || (hexToBs58(otherToAddresses[0]) === vinFromBtcAddress))) { //L('x')
-                  data.push(formatDeposit(({ time: tx[0].time, value: sumValueBN.toString(16), txid: tx[0].txid, fromBtcAddress: D(fromPublicKey) ? U : vinFromBtcAddress })));
-                }
+    try {
+      if (fromPublicKey.length <= 1) fromPublicKey = U;
+      let fromBtcAddress = fromPublicKey && pubKeyToBtcAddress(fromPublicKey);
+      let binFromPublicKey = fromPublicKey && htb(fromPublicKey);
+
+      let data = [];
+      try { 
+        let txs = B(await Q(conn, L(`SELECT UNIX_TIMESTAMP(block.time) as time, transaction.v as txid, value, transaction.id as tIx FROM transaction, block, vout WHERE vout.idToAddress = ? AND transaction.id = vout.idTransaction AND block.id = transaction.idBlock`), L([idToAddress])), "tIx"); 
+        for (let [tIx, tx] of E(txs)) {
+          let sumValueBN = tx.reduce((p, c) => BN(c.value, 10).plus(p), BN(0));
+          let vins = B(await Q(conn, (`SELECT HEX(pubKey.v) as fromPubKey FROM vin, pubKey WHERE vin.idTransaction = ? AND vin.idPubKey = pubKey.id ${fromPublicKey ? 'AND pubKey.v = ?' : ''}`), ([tIx, binFromPublicKey].filter(D))), "fromPubKey");
+          if (K(vins).length === 1) { let vinFromBtcAddress = fromBtcAddress || pubKeyToBtcAddress(K(vins)[0]);
+            if (vinFromBtcAddress !== toAddress) {
+              let hexToBs58 = h => bs58check.encode(Buffer.from(h, 'hex'));
+              let vouts = B(await Q(conn, (`SELECT HEX(address.v) as toAddress FROM vout, address WHERE vout.idTransaction = ? AND vout.idToAddress = address.id`), ([tIx])), "toAddress");
+              let otherToAddresses = K(vouts).filter(a => hexToBs58(a) !== toAddress);
+              if ((otherToAddresses.length <= 1) && ((otherToAddresses.length === 0) || (hexToBs58(otherToAddresses[0]) === vinFromBtcAddress))) { //L('x')
+                data.push(formatDeposit(({ time: tx[0].time, value: sumValueBN.toString(16), txid: tx[0].txid, fromBtcAddress: D(fromPublicKey) ? U : vinFromBtcAddress })));
               }
             }
           }
-          L(`data = ${data.length}`);
-        } catch(e) { return { err: `Query failed: ${S(e)}` }; }
-        return { data }; 
-      } catch(e) { return { err: `Invalid public key '${fromPublicKey}': ${S(e)}` } } 
-    } catch(e) { return { err: `DB error: ${S(e)}` } }
-  } catch(e) { return { err: `Invalid address '${toAddress}': ${S(e)}` } } 
-finally { conn.close(); } } else { return { err: `No db connection` }; } }
+        }
+        L(`data = ${data.length}`);
+      } catch(e) { return { err: `Query failed: ${S(e)}` }; }
+      return { data }; 
+    } catch(e) { return { err: `Invalid public key '${fromPublicKey}': ${S(e)}` } } 
+  } catch(e) { return { err: `DB error: ${S(e)}` } } 
+})
  
 
-let getTransactions = async (address) => { if (address.length <= 1) return { err: `Address required.` };
-  L('gettxs');
-  let conn = await pool.getConnection(); if (conn) { try {  
-    let binToAddress = bs58check.decode(address);
+let getTransactions = async (address) => await dbMethod(async conn => { if (address.length <= 1) return { err: `Address required.` };
+  let binToAddress = bs58check.decode(address);
 //    L({toAddress, publicKey});
-    try { await conn.query("USE transfers");
-      let idToAddress = oO(oA(await Q(conn, 'SELECT id FROM address WHERE address.v = ?', [binToAddress]))[0]).id;
-      L({idToAddress});
-      if (!D(idToAddress)) return { err: `Address '${address}' not found.`}
+  try { await conn.query("USE transfers");
+    let idToAddress = oO(oA(await Q(conn, 'SELECT id FROM address WHERE address.v = ?', [binToAddress]))[0]).id;
+    L({idToAddress});
+    if (!D(idToAddress)) return { err: `Address '${address}' not found.`}
 
-      try {
+    try {
 ////        if (publicKey.length <= 1) publicKey = U;
-    ///    let fromBtcAddress = publicKey && pubKeyToBtcAddress(publicKey);
-       // let binFromPublicKey = publicKey && htb(publicKey);
+  ///    let fromBtcAddress = publicKey && pubKeyToBtcAddress(publicKey);
+      // let binFromPublicKey = publicKey && htb(publicKey);
 
-        try {  
-          let voutTxs = await Q(conn, (`(SELECT UNIX_TIMESTAMP(block.time) as time, HEX(t.v) as txid, t.id as tIx FROM block, transaction AS t, vout WHERE block.id = t.idBlock AND vout.idToAddress = ? AND t.id = vout.idTransaction GROUP BY tIx)`),  ([idToAddress])); 
-          let voutMatchesVin = 'vin.idSourceTransaction = vout.idTransaction AND vin.voutIx = vout.ix';
-          let vinTxs = await Q(conn, (`SELECT t.v as txid, t.id as tIx FROM transaction AS t, vout, vin WHERE vout.idToAddress = ? AND ${voutMatchesVin} AND vin.idTransaction = t.id GROUP BY tIx`),  ([idToAddress]));
-          let allTxs = K(B(voutTxs.concat(vinTxs), "tIx")), txList = `(${allTxs.join(", ")})`; 
-          let vouts = B((await Q(conn, (`SELECT value, HEX(address.v) AS addr, vout.idTransaction AS tIx FROM address, vout  WHERE vout.idTransaction IN ${txList} AND vout.idToAddress = address.id`), [])), "tIx");
-          let vins = B(await Q(conn, (`SELECT value, HEX(address.v) AS addr, vin.idTransaction AS tIx FROM address, vout, vin WHERE vin.idTransaction IN ${txList} AND vout.idToAddress = address.id AND ${voutMatchesVin}`), []), "tIx");
+      try {  
+        let voutTxs = await Q(conn, (`(SELECT UNIX_TIMESTAMP(block.time) as time, HEX(t.v) as txid, t.id as tIx FROM block, transaction AS t, vout WHERE block.id = t.idBlock AND vout.idToAddress = ? AND t.id = vout.idTransaction GROUP BY tIx)`),  ([idToAddress])); 
+        let voutMatchesVin = 'vin.idSourceTransaction = vout.idTransaction AND vin.voutIx = vout.ix';
+        let vinTxs = await Q(conn, (`SELECT t.v as txid, t.id as tIx FROM transaction AS t, vout, vin WHERE vout.idToAddress = ? AND ${voutMatchesVin} AND vin.idTransaction = t.id GROUP BY tIx`),  ([idToAddress]));
+        let allTxs = K(B(voutTxs.concat(vinTxs), "tIx")), txList = `(${allTxs.join(", ")})`; 
+        let vouts = B((await Q(conn, (`SELECT value, HEX(address.v) AS addr, vout.idTransaction AS tIx FROM address, vout  WHERE vout.idTransaction IN ${txList} AND vout.idToAddress = address.id`), [])), "tIx");
+        let vins = B(await Q(conn, (`SELECT value, HEX(address.v) AS addr, vin.idTransaction AS tIx FROM address, vout, vin WHERE vin.idTransaction IN ${txList} AND vout.idToAddress = address.id AND ${voutMatchesVin}`), []), "tIx");
 
-          let sumValueBN = txs => txs.reduce((p, c) => BN(c.value, 10).plus(p), BN(0));
-       //   L({allTxs});
-          let data = allTxs.map(tIx => { 
-            let vox = B(voutTxs, "tIx")[tIx];
-         //   L({tIx, vox});
-          let mapTx = tx => P(tx, T("value addr"));
-            let outs = oA(vouts[tIx]).map(mapTx), ins = oA(vins[tIx]).map(mapTx);
-           // L({outs, ins});
-            return ({ time: oA(vox)[0]?.time, txId: oA(vox)[0]?.txid, ins, outs})
-          });
-          L('xxx');
-          return { data };
-        } catch(e) { return { err: `Query failed: ${S(e)}` }; }
-        return { data }; 
-      } catch(e) { return { err: `Invalid public key '${fromPublicKey}': ${S(e)}` } } 
-    } catch(e) { return { err: `DB error: ${S(e)}` } }
-  } catch(e) { return { err: `Invalid address '${toAddress}': ${S(e)}` } } 
-finally { conn.close(); } } else { return { err: `No db connection` }; } }
+        let sumValueBN = txs => txs.reduce((p, c) => BN(c.value, 10).plus(p), BN(0));
+      //   L({allTxs});
+        let data = allTxs.map(tIx => { 
+          let vox = B(voutTxs, "tIx")[tIx];
+        //   L({tIx, vox});
+        let mapTx = tx => P(tx, T("value addr"));
+          let outs = oA(vouts[tIx]).map(mapTx), ins = oA(vins[tIx]).map(mapTx);
+          // L({outs, ins});
+          return ({ time: oA(vox)[0]?.time, txId: oA(vox)[0]?.txid, ins, outs})
+        });
+        L('xxx');
+        return { data };
+      } catch(e) { return { err: `Query failed: ${S(e)}` }; }
+      return { data }; 
+    } catch(e) { return { err: `Invalid public key '${fromPublicKey}': ${S(e)}` } } 
+  } catch(e) { return { err: `DB error: ${S(e)}` } } 
+});
 
-let getOutTransfers = async (toAddress, fromPublicKey) => { if ((toAddress.length > 1) || (fromPublicKey.length > 1)) { let conn = await pool.getConnection(); if (conn) { try { 
+let getOutTransfers = async (toAddress, fromPublicKey) => await dbMethod(async conn => { if ((toAddress.length > 1) || (fromPublicKey.length > 1)) {  
   fromPublicKey = (fromPublicKey.length > 1) ? (fromPublicKey.length > 1) : U;
   let binToAddress = (toAddress.length > 1) && bs58check.decode(toAddress);
   let binFromPublicKey = htb(fromPublicKey);
@@ -219,24 +212,21 @@ let getOutTransfers = async (toAddress, fromPublicKey) => { if ((toAddress.lengt
       L(`result = ${q.length} data = ${data.length}`);
     } catch(e) { return { err: `Query failed: ${S(e)}` }; }
     return { data }; 
-  } catch(e) { return { err: `DB error: ${S(e)}` } }s
-} catch(e) { return { err: `Invalid address: ${S(e)}` } } 
-finally { conn.close(); } } else { return { err: `No db connection` }; } } else { return { err: 'Specify toAddress or fromPublicKey or both.' } } }
+  } catch(e) { return { err: `DB error: ${S(e)}` } }
+}})
 
 app.get(`/getdeposits/toAddress/:toAddress/fromPublicKey/:fromPublicKey/`, async (req, a) => a.send(S(await getDeposits(L(req.params).toAddress, req.params.fromPublicKey))));
 app.get(`/gettxs/address/:address/`, async (req, a) => a.send(S(await getTransactions(L(req.params).address))));
  
-app.get(`/getAddressId/:toAddress/`, async (req, a) => { L(`req = ${req.params}`); //addCorsHeaders(a);
-  let conn = await pool.getConnection(); 
+app.get(`/getAddressId/:toAddress/`, async (req, a) => await dbMethod(async conn => { L(`req = ${req.params}`); //addCorsHeaders(a);
   try { let binToAddress = bs58check.decode(req.params.toAddress);
     try { let r = await conn.query("USE transfers");
       try { let q = await conn.query(`SELECT  FROM address WHERE v = ?`, [binToAddress]);
         a.send(S(q));
       } catch(e) { a.send(S({ err: `Failed to open db: ${S(e)}` })) }
     } catch(e) { a.send(S({ err: `DB error: ${S(e)}` })) }
-  } catch(e) { a.send(S({ err: `Invalid address: ${S(e)}` })) }
-  finally { if (conn) conn.close(); }
-});
+  } catch(e) { a.send(S({ err: `Invalid address: ${S(e)}` })) } 
+}));
 
 app.get(`/getDecodedTx/:hash/`, async (req, a) => { L(`req = ${req.params}`); //addCorsHeaders(a);
   a.send(S(await rpc("decoderawtransaction", [(await rpc("getrawtransaction", [req.params.hash]))]))); 

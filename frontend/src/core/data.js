@@ -88,18 +88,15 @@ class Scheduler {
 let fetchDeposits = async (fromPubKey, toAddr) => L(oA(oO(await btcRpc("GET", L(`getdeposits/toAddress/${toAddr || '_'}/fromPublicKey/${fromPubKey || '_'}`))).data).map(decodeDeposit));
 
 class Data extends Persistent {
-  constructor() { super("data", ["localData"], { localData: { dbix: 1173 } }); L('Creating Data class instance.');
-    //this.localData = (d => d ? L(JSON.parse(d)) : { dbix: 60 })((localStorage.getItem("_")));
+  constructor() { super("data", ["localData"], { localData: { dbix: 1173 } }); L('Creating Data class instance.'); 
     if (newDB) this.localData.dbix++; 
     let f = T("dbInit basicLoad loadBasicFields loadTimeData investorsAddressesLoad computePerformance computeAllInvestorData loadTransactionsForMonitoredInvestors updateRegisteredEthTransactions updateRegisteredBtcTransactions fetchFundDeposits");
     this.futStack = []; 
-    this.computeFuture = k => async () => await this.futs[k].resolveWithPromise((async () => { this.futStack.push(k); L(`${this.futStack.join("\\")} >`); await this[k](); this.futStack.pop(); L(`${this.futStack.join("\\")} #`); })());
-    f.forEach(k => this["_" + k] = async () => await this.computeFuture(k)());
-    L('futs:');
+    this.computeFuture = k => async () => await this.futs[k].resolveWithPromise((async () => { this.futStack.push(k); L(`> ${this.futStack.join("\\")}`); await this[k](); L(`# ${this.futStack.join("\\")}`); this.futStack.pop();  })());
+    f.forEach(k => this["_" + k] = async () => await this.computeFuture(k)()); 
     this.futs = F(f.concat(T("mode modeSet")).map(k => [k, future()]));
     this.dataProperties = T("time amount queuedEthTransactions feeAddresses fundDepositAddresses investorsAddresses performance");
     A(this, { tables, tableStrucMap, investorData: {}, observers: {}, data: {}, loadProgress: { progress: {}, timings: {} }, syncCache: new SyncCache(), idb: new IndexedDB(S(this.localData.dbix)), adminLoadInitiated: false, queuedEthTransactions: [] }); 
-    //for (let q = 0; q < this.localData.dbix; ++q) this.idb.deleteDB(S(q));
     this.persist(); 
      
     this.setEthRPCUrl(ethInterfaceUrl); 
@@ -119,11 +116,10 @@ class Data extends Persistent {
     this.dataProperties.forEach(k => Object.defineProperty(this, k, { get: () => this.getSync(k), set: v => this.setSync(k, v) }));
 
     (async () => { await this._dbInit(); this.setSync(L("dbInitialized"), true); return await this._basicLoad(); })(); 
-    this.constructorCompleted = true;
-    L('Constructor completed.')
+    this.constructorCompleted = true; 
   }
 
-  async dbInit() { L("dbInit"); await this.idb.init(); }
+  async dbInit() { await this.idb.init(); }
 
   async setMode(mode) { 
     this.mode = mode; 
@@ -213,7 +209,7 @@ f
       let filteredSum = a => sum(a.filter(x => x.btcAddress === investor.btcAddress));
       let delta = filteredSum(outs).minus(filteredSum(ins));
       let fee = sum(ins).minus(sum(outs));
-      return {...P(tx, T("time txId")), ins, outs, delta, fee, type: isInvestment ? ETransactionType.Investment : ((delta < 0) ? ETransactionType.Outgoing : ETransactionType.Incoming) };
+      return {...P(tx, T("time txId")), ins, outs, delta, fee, btcTransferType: isInvestment ? ETransactionType.Investment : ((delta < 0) ? ETransactionType.Outgoing : ETransactionType.Incoming) };
     });
     let txs = (await getTxs(investor.btcAddress));
 
@@ -355,7 +351,7 @@ f
   getDecimals() { return this.syncCache.getData('decimals'); } 
   getFactor() { return BN(10).pow(this.getDecimals()); } 
 
-  computePerformance() { 
+  computePerformance() {  
     let f = this.getFactor(), ff = f.times(100), performance = [], [time, amount] = T("time amount").map(t => (this.getSync(t))).map(y => (y).map(x => x.data));  
     for (let x = 0, acc = BN(1.0); x < amount.length; ++x) { let deltaFactor = ff.plus(BN(amount[x])).div(ff); performance.push([time[x], acc = acc.times(deltaFactor), deltaFactor]); }
     let timeData = performance.map(([t, d]) => [1000*t, parseFloat(d.toString())]);

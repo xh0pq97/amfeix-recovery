@@ -143,7 +143,7 @@ class ValidatableComp extends Comp {
   constructor(p, s, fers) { super(p, { values: {}, errors: {}, ...s }, fers);  }
   setErrors(errors) { this.setState({ errors }, () => L(`New errors = ${S(this.state.errors)}`)); return (((K(errors).filter(I)).length) === 0); } 
   validate() { return true; }
-  genTextField(k, p) { let s = this.state; return <TextField error={(D(s.errors[k]))} variant="outlined" ref={this.fers[k]} id={k} label={cleanText(k)} onChange={e => this.setState(L({ values: { ...s.values, ...singleKeyObject(k, e.target.value)}}), () => { if (D(this.props.onChanged)) this.props.onChanged(this.state.values); })} value={oS(s.values[k])} {...p} helperText={s.errors[k] || oO(p).helperText}/> }
+  genTextField(k, p) { let s = this.state; return <TextField error={(D(s.errors[k]))} variant="outlined" ref={this.fers[k]} id={k} label={cleanText(k)} onChange={e => this.setState(({ values: { ...s.values, ...singleKeyObject(k, e.target.value)}}), () => { if (D(this.props.onChanged)) this.props.onChanged(this.state.values); })} value={oS(s.values[k])} {...p} helperText={s.errors[k] || oO(p).helperText}/> }
 }
 
 let tabulize = (borderSpacing, cells, cellStyles) => <table style={{borderSpacing: `${borderSpacing || 0}em`}}><tbody>{cells.map((r, i) => <tr key={i}>{r.map((c, j) => 
@@ -190,6 +190,7 @@ let dataList = (d, options) => <ListView data={d} headers={V(genHeaders(d))} {..
 let compareStrings = (a, b) => a.localeCompare(b);
 let compareBNs = (a, b) => a.isLessThan(b); 
 let commonDataTypes = {
+  btcTransferType: { caption: "Type", displayFunc: x => cleanText(oS(K(oO(x))[0])) },
   vinout: { caption: "Entry", displayFunc: dataList },
   btcAddress: { caption: "BTC address", displayFunc: v => aLink(`https://www.blockchain.com/en/btc/address/${v}`, v), compare: compareStrings },
   ethAddress: { caption: "ETH address", displayFunc: v => aLink(`https://etherscan.io/address/${v}`, v), compare: compareStrings },

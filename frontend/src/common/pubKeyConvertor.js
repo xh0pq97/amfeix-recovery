@@ -1,6 +1,6 @@
-import { SyncCache } from './syncCache';
-import * as crypto from './crypto';
-import { F, T } from './tools';
+import { SyncCache } from './syncCache.mjs';
+import * as crypto from './crypto.mjs';
+import { F, T } from './tools.mjs';
 
 let pubKeyConvertors = { btc: crypto.pubKeyToBtcAddress, eth: crypto.pubKeyToEthAddress };
 let pubKeySyncCaches = { btc: new SyncCache(), eth: new SyncCache() };

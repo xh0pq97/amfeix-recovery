@@ -114,7 +114,7 @@ class App extends Comp { constructor(p) { super(p, { wallet, investorChosen, ...
   ren(p, s) { 
     return <div title="App" style={{width: "100%", height: "100%"}}><ThemeProvider theme={s.theme}>{urlParams.testMode ? <>
       {tabulize(1/3, [[...E({EUserMode, EDeveloperMode, EPallette}).map(([k, v]) => <Selector options={K(v).map(cleanText)} horizontal={true} onChanged={i => this.setState((singleKeyObject(k, singleKeyObject(K(v)[i], V(v)[i]))), () => this.setState({ theme: this.createTheme() }))}/>)]])}
-      <InvestorList caption={"Choose an investor to simulate the UI"} onChangedSelectedInvestor={investor => this.setState(L({ investor }))} {...(P(s, T("EUserMode EDeveloperMode")))} />
+      <InvestorList caption={"Choose an investor to simulate the UI"} onChangedSelectedInvestor={investor => this.setState(({ investor }))} {...(P(s, T("EUserMode EDeveloperMode")))} />
       <InvestorID investor={s.activeWallet} />
     </> : null}
     {tabulize(1/3, [[<InvestorForm onChanged={userToSimulate => this.setState({ userToSimulate })}/>, button("Simulate", () => this.simulateWithUser(s.userToSimulate))]])}
