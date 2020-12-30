@@ -19,13 +19,16 @@ import { Bitcoin_Wallet } from './ui/wallet';
 import { InvestorID, InvestorList, EthTxView, InvestorDependentView } from './ui/investor';
 //import ImpactFundIcon from './assets/impactFund.svg'
 import { wallet } from './core/wallet';
+import { testStatusIcons } from './ui/icons.js';
 import { pubKeyToEthAddress, pubKeyToBtcAddress } from "./common/pubKeyConvertor.mjs";
 // eslint-disable-next-line
 import { basePallette, getMainLightness, seriesColors, getMainColor, darkMode } from './ui/colors';
 import { version } from './version.js'; 
 import { data, ethInterfaceUrls } from './core/data'; 
 // eslint-disable-next-line
-import { EPallette, EUserMode, EDeveloperMode, enumDefault, enumDefObj } from './core/enums';   
+import { EPallette, EUserMode, EDeveloperMode, ETestStatus, enumDefault, enumDefObj } from './core/enums';   
+import { instantiateTests } from './index.test.js';
+
 
 let url = new URL(window.location.href);
 let getUrlParam = k => (v => v === null ? U : v)(url.searchParams.get(k));
@@ -44,18 +47,25 @@ class Settings extends Comp {
 
 class Cache extends Comp {
   ethInterfaceChanged(v) { data.setEthRPCUrl(ethInterfaceUrls[v]) }
-  ren(p, s) { 
-    return tabulize(1/3, [
-      [button("Clear data cache", async () => { await data.clearCache() })],
-      [button("Clear bitcoin transaction cache", async () => { await data.clearTransactionCache('btc'); })],  
-      [button("Clear ethereum registered transaction cache", async () => { await data.clearTransactionCache('eth'); })]
-    ]) 
-  }
+  ren(p, s) { return tabulize(1/3, [
+    [button("Clear data cache",  () => data.clearCache())],
+    ...T('btc eth').map(x => [button(`Clear ${x} transaction cache`, () => data.clearTransactionCache(x))])
+  ]) }
 }
+
+class TestContext extends Comp { ren(p, s) { let c = oO(p.context); let z = { textAlign: "left", verticalAlign: "top" };
+  return <div style={{ border: "1px solid #778", borderRadius: "0.333em" }}>{tabulize(1/3, [[c.name], 
+  [tabulize(1/3, oA(c.children).map((t, i) => <div key={i}>{tabulize(1/9, [[`[${i}]`, <TestContext context={t}/>]], [[{ width: "2.5em", ...z }, z]])}</div>).map(x => [x]))], 
+  [tabulize(1/3, oA(c.tests).map((t, i) => { let O = testStatusIcons[(K(t.getStatus())[0])]; return <div key={i}>{tabulize(1/9, [[<O/>,  t.name]], [[{ width: "2.5em", ...z }, z]])}</div>; }).map(x => [x]))]], 
+  [[{...z, fontWeight: "bold"}]])}</div>; 
+} }
+
+class Test extends Comp { constructor() { super(); this.state = { r: instantiateTests() } }
+  ren(p, s) { return <>{button("Start", () => this.state.r.execute(() => this.setState({ r: G(this.state.r, v => v) })))}<TestContext context={this.state.r}/></> } }
  
 // wc52mNR2qTpFfNP 
 class MainView extends ProgressDependentView { //constructor(p, s) { super(p, s);} 
-  ren(p, s) { let tabs = A({ Bitcoin_Wallet, Impact_Fund }, p.EUserMode.Admin ? ({ Progress, Admin, Network, Settings, Cache }) : ({}));
+  ren(p, s) { let tabs = A(p.EUserMode.Admin ? ({ Test, Progress, Admin, Network, Settings, Cache }) : ({}), { Bitcoin_Wallet, Impact_Fund });
 //    {p.EUserMode.Admin ? <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/> : null}
     return <><SimpleProgress/>{(p.EUserMode.User && !D(p.investor)) ? <LogIn onAccept={d => this.onAcceptLogIn(d)}/> :
     <div title="Main" style={{width: "100%", height: "100%"}}><><AppBar position="static"><Toolbar>{p.EDeveloperMode.Developer ? <OpenDialogButton id="LogIn" comp={LogIn} onAccept={d => this.onAcceptLogIn(d)}/> : null}

@@ -51,6 +51,7 @@ class IndexedDB {
   clear(table) { return this.act(table, "clear", U, I); }
 
   newBuffer() { return new IDBuffer(this) }
+  async withLocalBuffer(f) { var buf = this.newBuffer(); await f(buf); await buf.flush(); }
 }
 
 class IDBuffer {
