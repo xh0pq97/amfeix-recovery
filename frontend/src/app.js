@@ -32,8 +32,9 @@ import { instantiateTests } from './index.test.js';
 
 let url = new URL(window.location.href);
 let getUrlParam = k => (v => v === null ? U : v)(url.searchParams.get(k));
-let urlParams = F(T("asEthAddress asPublicKey asBtcAddress").map(k => [k, getUrlParam(k)]));
+let urlParams = F(T("asEthAddress asPublicKey asBtcAddress autorunTests").map(k => [k, getUrlParam(k)]));
 urlParams.testMode = D(L(getUrlParam("8e763620037a1054b3656092dece8d324eef5dd5efd4e4d5c1bbc125c9c74996")));
+urlParams.autorunTests = D(urlParams.autorunTests)
 
 class Settings extends Comp {
   ethInterfaceChanged(v) { data.setEthRPCUrl(ethInterfaceUrls[v]) }
@@ -53,50 +54,39 @@ class Cache extends Comp {
   ]) }
 }
 
-class TestContext extends Comp { ren(p, s) { let c = oO(p.context); let z = { textAlign: "left", verticalAlign: "top" };
-  return <div style={{ border: "1px solid #778", borderRadius: "0.333em" }}>{tabulize(1/3, [[c.name], 
-  [tabulize(1/3, oA(c.children).map((t, i) => <div key={i}>{tabulize(1/9, [[`[${i}]`, <TestContext context={t}/>]], [[{ width: "2.5em", ...z }, z]])}</div>).map(x => [x]))], 
-  [tabulize(1/3, oA(c.tests).map((t, i) => { let O = testStatusIcons[(K(t.getStatus())[0])]; return <div key={i}>{tabulize(1/9, [[<O/>,  t.name]], [[{ width: "2.5em", ...z }, z]])}</div>; }).map(x => [x]))]], 
-  [[{...z, fontWeight: "bold"}]])}</div>; 
+class TestContext extends Comp { ren(p, s) { let c = oO(p.context); let z = { textAlign: "left", verticalAlign: "top" }; let verbose = p.context && !c.allSuccessful(); 
+  return <div style={{ border: "1px solid #45a", borderRadius: "0.25em" }}>{tabulize(1/27, [
+    [tabulize(0, [[c.name, c.summ ? tabulize(0, [K(ETestStatus).map(k => { let O = testStatusIcons[k]; return c.summ[k] > 0 ? <>{c.summ[k]}<O/></> : U; })]) : U].filter(D)])], 
+    verbose && [tabulize(0, oA(c.children).map((t, i) => [!t.allSuccessful() && <div key={i}>{tabulize(0, [[i, <TestContext context={t}/>]], [[{ width: "2.5em", ...z }, z]])}</div>].filter(I)))], 
+    verbose && [tabulize(0, oA(c.tests).map((t, i) => { let O = testStatusIcons[(K(t.getStatus())[0])]; return [<div key={i}>{tabulize(0, [[<O/>,  t.name]], [[{ width: "2.5em", ...z }, z]])}</div>]; }))]
+  ].filter(I), [[z]])}</div>; 
 } }
 
-class Test extends Comp { constructor() { super(); this.state = { r: instantiateTests() } }
-  ren(p, s) { return <>{button("Start", () => this.state.r.execute(() => this.setState({ r: G(this.state.r, v => v) })))}<TestContext context={this.state.r}/></> } }
+let testsRootContext = instantiateTests();
+
+class Test extends Comp { constructor(p) { super(p, { testsRootContext }); if (urlParams.autorunTests) setTimeout(() => this.runTests(), 20); }
+  runTests() { this.state.testsRootContext.execute(() => this.setState({ testsRootContext })); }
+  ren(p, s) { return <>{button("Start", () => this.runTests())}{button("Get report", () => {})}<TestContext context={this.state.testsRootContext}/></> } 
+}
  
 // wc52mNR2qTpFfNP 
-class MainView extends ProgressDependentView { //constructor(p, s) { super(p, s);} 
-  ren(p, s) { let tabs = A(p.EUserMode.Admin ? ({ Test, Progress, Admin, Network, Settings, Cache }) : ({}), { Bitcoin_Wallet, Impact_Fund });
+class MainView extends ProgressDependentView { ren(p, s) { let tabs = A(p.EUserMode.Admin ? { Test, Progress, Admin, Network, Settings, Cache } : {}, { Bitcoin_Wallet, Impact_Fund } );
 //    {p.EUserMode.Admin ? <OpenDialogButton id="Log_in" comp={Log_in} onAccept={d => this.acceptLogIn(d)}/> : null}
-    return <><SimpleProgress/>{(p.EUserMode.User && !D(p.investor)) ? <LogIn onAccept={d => this.onAcceptLogIn(d)}/> :
-    <div title="Main" style={{width: "100%", height: "100%"}}><><AppBar position="static"><Toolbar>{p.EDeveloperMode.Developer ? <OpenDialogButton id="LogIn" comp={LogIn} onAccept={d => this.onAcceptLogIn(d)}/> : null}
-      {D(p.investor) ? <>{`You are logged in to wallet '${p.investor.name}'`}{button("Log out", () =>  ({ }))}</> : 'You are not logged in'}
-    </Toolbar></AppBar>
-    <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode EUserMode dark urlParams investor")) }} TabsControl={props => 
-    <div style={{width: "100%"}}>{tabulize(0, [[<Paper><img alt="amfeix-logo" style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])}</div>} horizontal={true}/>
-    <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} /></></div>}</>
+  return <><SimpleProgress/>{(p.EUserMode.User && !D(p.investor)) ? <LogIn onAccept={d => this.onAcceptLogIn(d)}/> :
+  <div title="Main" style={{width: "100%", height: "100%"}}><><AppBar position="static"><Toolbar>{p.EDeveloperMode.Developer ? <OpenDialogButton id="LogIn" comp={LogIn} onAccept={d => this.onAcceptLogIn(d)}/> : null}
+  {D(p.investor) ? <>{`You are logged in to wallet '${p.investor.name}'`}{button("Log out", () =>  ({ }))}</> : 'You are not logged in'}
+  </Toolbar></AppBar>
+  <TabbedView tabs={tabs} parentProps={P(p, T("EDeveloperMode EUserMode dark urlParams investor"))} TabsControl={props => 
+  <div style={{width: "100%"}}>{tabulize(0, [[<Paper><img alt="amfeix-logo" style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])}</div>} horizontal={true}/>
+  <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} /></></div>}</>
 } }
 
 let investorChosen;
 if (urlParams.asEthAddress) investorChosen = { data: urlParams.asEthAddress };
 if (urlParams.asPublicKey) investorChosen = { data: L("0x" + pubKeyToEthAddress(urlParams.asPublicKey)), pubKey: urlParams.asPublicKey, btcAddress: L(pubKeyToBtcAddress(urlParams.asPublicKey)) }
 
-L(`Initializing with investor ${S(investorChosen)}`);
+L(`Initializing with investor ${S(investorChosen)}`); 
 
-//if (investor) simulateWithUser(investor);
-
-/*
-0x20D79A69eE74fd126889a6ac9c3c9e56C88d566b -- 02563b8cd535a191858d01f67ccf7572112d6c9910f1649b2204bea7d38dd8737e -- 1Ak8tjBRuK2JuQjuDPRHkTUZdRAnQkeYhP -- 20d79a69ee74fd126889a6ac9c3c9e56c88d566b
-0x4A31d6AaDD57Ffe1624f87A43E170060d199A574 -- 02f1b2a982dbe744305a37f9dfd69d7d7c6eeaa5c34c1aba3bd277567df5b972fb 
-0x4A4432Ce76855B05ED7B15b5153402b4BBe847F4 
-0x7868382355A068bDCa578304aee7FeE4B83Bcb5d 
-0xa644039B0FbE1185958E6F77028fdAA6E1268EEf 
-0x63069CB12712aC4C8F7AdaEeA501C82014050688 
-0x84F5634f650baAa08E1D7B25e86824c53b2C198b 
-0x9Be31098Bf7bc1241f54b221f2577c1D81F4Ee4c 
-0x25bc9eb983eC1f3c36aaB1574662723d6671E65d 
-0xC93c8C37e54f55c8680c3227117A4667D93C94dC
-	
-*/
 class InvestorForm extends ValidatableComp { constructor(p, s) { super(p, {...s, activeWallet: s.wallet?.lastLogin || s.investor}, "publicKey ethAddress btcAddress"); }
   ren(p, s) { return tabulize(1/3, [[this.genTextField("publicKey"), this.genTextField("ethAddress"), this.genTextField("btcAddress")]]); }
   validate() { let e = {}; return ((this.setErrors(e)) && (this.state.values)); }

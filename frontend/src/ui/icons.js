@@ -7,10 +7,13 @@ import LockOpenIcon from '@material-ui/icons/LockOpen';
 import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount';
 import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
 
-import BugReportIcon from '@material-ui/icons/BugReport';
+//import BugReportIcon from '@material-ui/icons/BugReport';
 import AdbIcon from '@material-ui/icons/Adb';
-import AssignmentTurnedInIcon from '@material-ui/icons/AssignmentTurnedIn';
-import AutorenewIcon from '@material-ui/icons/Autorenew';
+import ErrorOutlineRoundedIcon from '@material-ui/icons/ErrorOutlineRounded';
+import HourglassEmptyRoundedIcon from '@material-ui/icons/HourglassEmptyRounded';
+//import AssignmentTurnedInIcon from '@material-ui/icons/AssignmentTurnedIn';
+//import AutorenewIcon from '@material-ui/icons/Autorenew';
+import CheckCircleOutlineRoundedIcon from '@material-ui/icons/CheckCircleOutlineRounded';
 
 import VpnKeyIcon from '@material-ui/icons/VpnKey';
 import HourglassEmptyIcon from '@material-ui/icons/HourglassEmpty';
@@ -27,9 +30,9 @@ let captionIconMap = {
   Admin: SupervisorAccountIcon
 };
 
-let testStatusIcons = { Described: () => <AdbIcon style={{color: "#777"}} />, 
-  Failed: () => <BugReportIcon style={{color: "#A77"}} />, 
-  Running: () => <AutorenewIcon style={{color: "#997"}} />, 
-  Success: () => <AssignmentTurnedInIcon style={{color: "#7A7"}} /> }
+let testStatusIcons = { Described: () => <AdbIcon style={{color: "#F70"}} />, 
+  Failed: () => <ErrorOutlineRoundedIcon style={{color: "#F02"}} />, 
+  Running: () => <HourglassEmptyRoundedIcon style={{color: "#02F"}} />, 
+  Success: () => <CheckCircleOutlineRoundedIcon style={{color: "#0F2"}} /> }
 
 export { captionIconMap, testStatusIcons }
