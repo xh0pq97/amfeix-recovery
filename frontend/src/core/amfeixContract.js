@@ -1,3 +1,5 @@
+/* eslint no-unused-vars: 0 */
+/* eslint no-loop-func: 0 */
 import Web3 from 'web3';
 import amfeixCjson from '../amfeixC.json';
 import { A, F, I, L, S, oA, oO } from '../common/tools';
@@ -12,8 +14,7 @@ class ABI { constructor(abi) { this.methodMap = F(abi.filter(x => x.type === "fu
 
 let abi = new ABI(amfeixCjson.abi);
 
-class MultiCallBatch {
-  constructor() { this.calls = []; }
+class MultiCallBatch { constructor() { this.calls = []; }
   add(target, method, params, onSuccess, onError) { this.calls.push(({ target, method, params, onSuccess, onError })); }
   async execute(rpcUrl) { 
     let calls = this.calls.map((c, i) => { let m = abi.methodMap[c.method];
