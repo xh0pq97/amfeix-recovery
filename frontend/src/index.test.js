@@ -13,6 +13,8 @@ import { EUserMode, ETestStatus } from './core/enums';
 import _investorsAddresses from './test/investorsAddresses.json'
 import _fundDepositAddresses from './test/fundDepositAddresses.json'
 import _feeAddresses from './test/feeAddresses.json'
+import _time from './test/time.json'
+import _amount from './test/amount.json'
 // eslint-disable-next-line
 //import { render, unmountComponentAtNode } from "react-dom";
 
@@ -78,7 +80,7 @@ let assertEqualObjs = (a, b) => {
   K(a).forEach(k => assert(D(b[(k)]) && a[k] === b[k]));;
   K(b).forEach(k => assert(D(a[(k)]) && a[k] === b[k]));;
 }
-let assertEqualArrays = (a, b) => { 
+let assertEqualArrays = (a, b) => { //L({a,b});
   if (a.length !== b.length) throw new Error(`Length of a (${a.length}) != length of b (${b.length})`);
   a.forEach((x, i) => assertEqualObjs(x, b[i]));
 }
@@ -100,19 +102,19 @@ let createTests = () => { testStack = [new Context("/", () => {})];
       }, 20000); 
       
       describe('Basic load', U, () => { 
-        describe('Time and amount', data.futs.loadTimeData, () => { fieldCheck(data, T("time amount"));   
-          test('time, amount: equal length', () => assert(data.time.length === data.amount.length));
-          test('time: length >= 472 ', () => assert(data.time.length >= 472)); 
-          test('time: length == 472 ', () => assert(data.time.length === 472));  
+        describe('Time and amount', data.futs.loadTimeData, () => { fieldCheck(data, (T("time amount")));   
+          test('time, amount: equal length', () => assert((data.time).length === (data.amount).length));
+          test('time matches exp', () => assertEqualArrays((_time), (data.time)));  
+          test('amount matches exp', () => assertEqualArrays(_amount, data.amount));  
         }, 25000); 
       
         describe('Constants', data.futs.loadConstants, () => { fieldCheck(data, K(expConstants));   
           E(expConstants).map(([k, v]) => test(`${k} == ${v}`, () => assert(data[k] === v)));
         }, 25000); 
       
-        describe('Address lists', data.futs.loadAddressLists, () => { fieldCheck(data, T("feeAddresses fundDepositAddresses")); 
-          test('data.fundDepositAddresses.length >= 1 ', () => assert(L(data.fundDepositAddresses).length >= 1)); 
-          test('data.feeAddresses.length >= 2 ', () => assert(L(data.feeAddresses).length >= 2));    
+        describe('Address lists', data.futs.loadAddressLists, () => { fieldCheck(data, (T("feeAddresses fundDepositAddresses"))); 
+          test('data.fundDepositAddresses.length >= 1 ', () => assert((data.fundDepositAddresses).length >= 1)); 
+          test('data.feeAddresses.length >= 2 ', () => assert((data.feeAddresses).length >= 2));    
           test(`Loaded data.feeAddresses matches exp`, () => assertEqualArrays(_feeAddresses, data.feeAddresses));
           test(`Loaded data.fundDepositAddresses matches exp`, () => assertEqualArrays(_fundDepositAddresses, data.fundDepositAddresses));
         }, 25000); 
@@ -157,7 +159,7 @@ let createTests = () => { testStack = [new Context("/", () => {})];
     }
 
 //    for (let m of K(EUserMode)) describe(`User mode '${m}'`, U, () => { dataTest(data, singleKeyObject(m, true));  })
-    describe(`User mode '${EUserMode.Admin}'`, U, () => { dataTest(data, EUserMode.Admin);  })
+    describe(`Admin mode`, U, () => { dataTest(data, EUserMode.Admin);  })
   });
 
   describe("Data futures resolve", U, () => {

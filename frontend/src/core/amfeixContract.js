@@ -5,8 +5,8 @@ import amfeixCjson from '../amfeixC.json';
 import { A, F, I, L, S, oA, oO } from '../common/tools';
 import { BN } from './bignumber';
 import aggregate from '../lib/multicall/src/aggregate';
-import nodeFetch from 'node-fetch';
-global.fetch = nodeFetch;
+//import nodeFetch from 'node-fetch';
+//global.fetch = nodeFetch;
 
 export let amfeixAddress = "0xb0963da9baef08711583252f5000Df44D4F56925";
  

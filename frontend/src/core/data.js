@@ -151,8 +151,7 @@ class Data extends Persistent {
   async updateFixedLengthArray(name) { await this.measureTime(`Update '${name}' array`, () => this.updateArray(name, `${name}Length`)) }
 
   async updateSyncCache() { await Promise.all(T("investorsAddresses").map(async t => this.setSync(t, (await this.idb.getAll(tables.eth[t]))))); } 
-  async basicLoad() { this.onGlobalLoad(0); await this.loadBasicFields(); this.onGlobalLoad(1); if (!D(this.decimals)) throw new Error("X");
-    await this.computePerformance(); this.onGlobalLoad(3); } 
+  async basicLoad() { this.onGlobalLoad(0); await this.loadBasicFields(); this.onGlobalLoad(1); await this.computePerformance(); this.onGlobalLoad(3); } 
   async loadBasicFields() { await Promise.all([this.loadTimeData(), this.loadConstants(), this.loadAddressLists()]); }
   async loadConstants() { await Promise.all(V(this.updateConstants).map(async x => await x())); }
   async loadAddressLists() { await Promise.all(indexMaps.map(l => this.updateFixedLengthArray(l))); }
@@ -333,7 +332,7 @@ f
   getFactor() { return BN(10).pow(this.decimals); } 
 
   async computePerformance() { await this.futs.loadConstants.promise;
-    let f = this.getFactor(), ff = f.times(100), performance = [], [time, amount] = T("time amount").map(t => L(this.getSync(t))).map(y => y.map(x => x.data));  
+    let f = this.getFactor(), ff = f.times(100), performance = [], [time, amount] = T("time amount").map(t => (this.getSync(t))).map(y => y.map(x => x.data));  
     L({f, ff});
     for (let x = 0, acc = BN(1.0); x < amount.length; ++x) { let deltaFactor = ff.plus(BN(amount[x])).div(ff); performance.push([time[x], acc = acc.times(deltaFactor), deltaFactor]); }
     let timeData = performance.map(([t, d]) => [1000*t, parseFloat(d.toString())]);
