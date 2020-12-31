@@ -72,7 +72,7 @@ class MainView extends ProgressDependentView { //constructor(p, s) { super(p, s)
       {D(p.investor) ? <>{`You are logged in to wallet '${p.investor.name}'`}{button("Log out", () =>  ({ }))}</> : 'You are not logged in'}
     </Toolbar></AppBar>
     <TabbedView tabs={tabs} parentProps={{...P(p, T("EDeveloperMode EUserMode dark urlParams investor")) }} TabsControl={props => 
-    tabulize(0, [[<Paper><img alt="amfeix-logo" style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])} horizontal={true}/> 
+    <div style={{width: "100%"}}>{tabulize(0, [[<Paper><img alt="amfeix-logo" style={{width: "100%", height: "100%"}} src="amfeix.png"/></Paper>], [<hr/>], [<Sidebar tabs={tabs} {...props}/>]])}</div>} horizontal={true}/>
     <ProgressDialog open={s.progressDialogOpen || false} title={`${s.walletOperation} wallet...`} progress={s.walletCodecProgress} /></></div>}</>
 } }
 

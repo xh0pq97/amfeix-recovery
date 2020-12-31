@@ -89,7 +89,7 @@ let fetchDeposits = async (fromPubKey, toAddr) => L(oA(oO(await btcRpc("GET", L(
 class Data extends Persistent {
   constructor() { super("data", ["localData"], { localData: { dbix: 1173 } }); L('Creating Data class instance.'); 
     if (newDB) this.localData.dbix++; 
-    let f = T("dbInit basicLoad loadBasicFields loadTimeData investorsAddressesLoad computePerformance computeAllInvestorData loadTransactionsForMonitoredInvestors updateRegisteredEthTransactions updateRegisteredBtcTransactions fetchFundDeposits");
+    let f = T("dbInit basicLoad loadBasicFields loadTimeData investorsAddressesLoad computePerformance updateRegisteredEthTransactions fetchFundDeposits updateRegisteredBtcTransactions computeAllInvestorData loadTransactionsForMonitoredInvestors");
     this.futStack = []; 
     this.computeFuture = k => async () => await this.futs[k].resolveWithPromise((async () => { this.futStack.push(k); L(`> ${this.futStack.join("\\")}`); await this[k](); L(`# ${this.futStack.join("\\")}`); this.futStack.pop();  })());
     f.forEach(k => this["_" + k] = async () => await this.computeFuture(k)()); 

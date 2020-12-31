@@ -1,6 +1,9 @@
-
-
+/* eslint react/jsx-key: 0 */
+/* eslint react/prop-types: 0 */
+/* eslint no-unused-vars: 0 */
+// eslint-disable-next-line
 import React from 'react';
+// eslint-disable-next-line
 import { App } from './app';  
 // eslint-disable-next-line
 import { amfeixFeeFields, data, resetData } from './core/data'; 
@@ -30,11 +33,11 @@ class Context { constructor(name, descriptor, parent) {
     if (parent) parent.addChild(this);
   }
   addChild(c) { this.children.push(c); } 
-  async execute(onUpdate) { L(`Executing [${this.name}] (${this.children.count} ${this.tests.count})`);
+  async execute(onUpdate) { //L(`Executing [${this.name}] (${this.children.count} ${this.tests.count})`);
     for (let c of this.children) await c.execute(onUpdate);
     await Promise.all(this.beforeAll.map(f => f()));
     let testsDone = 0;
-    for (let t of this.tests) { L(`Testing <${t.name}>`);
+    for (let t of this.tests) { //L(`Testing <${t.name}>`);
       await Promise.all(this.beforeEach.map(f => f())); await t.execute(onUpdate); onUpdate({ testsDone: ++testsDone }); 
     }
   }
@@ -87,8 +90,8 @@ let createTests = () => { testStack = [new Context("/", () => {})];
       test('"fundDepositAddresses": length >= 1 ', () => assert(data.fundDepositAddresses.length >= 1)); 
       test('"feeAddresses": length >= 2 ', () => assert(data.feeAddresses.length >= 1));   
 
-      test('time: length == 472 ', () => assert(data.time.length == 472)); 
-      test('time: length == 473 ', () => assert(data.time.length == 473)); 
+      test('time: length == 472 ', () => assert(data.time.length === 472)); 
+      test('time: length == 473 ', () => assert(data.time.length === 473)); 
     });
   }
 

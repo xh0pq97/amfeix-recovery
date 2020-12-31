@@ -87,16 +87,14 @@ class ListView extends Comp {
   }
 }
  
-class Sidebar extends Comp {
-  ren(p, s) {  
+class Sidebar extends Comp { ren(p, s) {  
     return <List>{E(p.tabs).map(([title, control], i) => { let color = p.value === i ? "secondary" : "primary";
       return <ListItem button onClick={() => oF(p.onChange)(U, i)} key={i}>{tabulize(0, [[
         <ListItemIcon>{(C => D(C) ? <C color={color}/> : null)(captionIconMap[title])}</ListItemIcon>, 
         <Typography color={color}>{cleanText(title)}</Typography>
       ]], [[{width: "2em"}, U]])}</ListItem>})}
     </List>; 
-  }
-}
+} }
 
 class TabbedView extends Comp { constructor(p) { super(p, { selectedTabIx: 0 }); this.fers.visibleTab = {}; }
   getVisibleTab() { return this.fers.visibleTab.current; }
